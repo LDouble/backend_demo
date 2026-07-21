@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -88,7 +89,8 @@ func (h *Handler) updateErrand(c *gin.Context) {
 	}
 	task, err := h.errands.Update(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, errandInput(req))
 	if err != nil {
-		if _, ok := err.(*apperror.Error); ok {
+		var appErr *apperror.Error
+		if errors.As(err, &appErr) {
 			failure(c, err)
 		} else {
 			failure(c, apperror.Wrap(400, "invalid_errand", err.Error(), err))
