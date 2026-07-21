@@ -214,7 +214,7 @@ func (h *Handler) getActivity(c *gin.Context) {
 	if !ok {
 		return
 	}
-	activity, err := h.activities.GetPublic(c.Request.Context(), id)
+	activity, err := h.activities.GetPublic(c.Request.Context(), id, c.GetUint64(userIDKey))
 	if err != nil {
 		failure(c, err)
 		return
@@ -337,8 +337,17 @@ func (h *Handler) successActivity(c *gin.Context, status int, activity *activity
 
 func (h *Handler) activityViews(c *gin.Context, rows []activitydomain.Activity) ([]activityView, error) {
 	views := make([]activityView, 0, len(rows))
+	ids := make([]uint64, 0, len(rows))
 	for i := range rows {
-		view, err := h.activityView(c, &rows[i])
+		ids = append(ids, rows[i].ID)
+	}
+	viewerID := c.GetUint64(userIDKey)
+	registered, err := h.activities.IsViewerRegisteredBatch(c.Request.Context(), viewerID, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		view, err := h.activityViewWithAccess(c, &rows[i], registered[rows[i].ID])
 		if err != nil {
 			return nil, err
 		}
@@ -347,11 +356,26 @@ func (h *Handler) activityViews(c *gin.Context, rows []activitydomain.Activity) 
 	return views, nil
 }
 
+// activityViewWithAccess is the list-path variant of activityView that takes
+// a precomputed registration flag. Single-row callers use activityView
+// (which falls back to issuing a fresh IsViewerRegistered query).
+func (h *Handler) activityViewWithAccess(c *gin.Context, activity *activitydomain.Activity, registered bool) (activityView, error) {
+	contact, err := h.activities.ContactWithAccess(c.Request.Context(), activity, c.GetUint64(userIDKey), registered)
+	if err != nil {
+		return activityView{}, err
+	}
+	return h.assembleActivityView(activity, contact), nil
+}
+
 func (h *Handler) activityView(c *gin.Context, activity *activitydomain.Activity) (activityView, error) {
 	contact, err := h.activities.Contact(c.Request.Context(), activity, c.GetUint64(userIDKey))
 	if err != nil {
 		return activityView{}, err
 	}
+	return h.assembleActivityView(activity, contact), nil
+}
+
+func (h *Handler) assembleActivityView(activity *activitydomain.Activity, contact activitydomain.ContactDetails) activityView {
 	return activityView{
 		ID:              activity.ID,
 		Title:           activity.Title,
@@ -374,7 +398,7 @@ func (h *Handler) activityView(c *gin.Context, activity *activitydomain.Activity
 		Version:         activity.Version,
 		CreatedAt:       activity.CreatedAt,
 		UpdatedAt:       activity.UpdatedAt,
-	}, nil
+	}
 }
 
 func activityInput(req activityRequest) activitydomain.ActivityInput {

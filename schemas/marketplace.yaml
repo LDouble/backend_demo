@@ -43,6 +43,7 @@ entities:
 crud: [create, get, list, update, delete]
 operations:
   - operation_id: CreateMarketplaceListing
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/marketplace/listings
     permission: marketplace:create
@@ -57,6 +58,7 @@ operations:
         - {name: image_urls, type: array, items: string}
     responses: [{status: 201, kind: success}, {status: 400, kind: error}]
   - operation_id: SubmitMarketplaceListing
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/marketplace/listings/{id}/submit
     permission: marketplace:submit
@@ -64,6 +66,7 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: WithdrawMarketplaceListing
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/marketplace/listings/{id}/withdraw
     permission: marketplace:withdraw

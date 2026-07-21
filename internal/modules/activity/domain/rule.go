@@ -169,6 +169,64 @@ func IsPubliclyVisible(status, reviewStatus string) bool {
 	return status == ActivityStatusPublished && reviewStatus == ReviewStatusApproved
 }
 
+// MaxReviewCommentLength matches the VARCHAR(500) column for review_comment.
+// MySQL STRICT_ALL_TABLES raises Data too long for column without this guard;
+// the AppError code mirrors the GitHub review-comment convention so the rule
+// is consistent with errand/marketplace rejection envelopes.
+const MaxReviewCommentLength = 500
+
+// VisibleToViewer decides whether `GetPublic` should return the activity to a
+// non-anonymous viewer. The activity is reachable to the public when it is
+// currently published+approved; it is also reachable to its owner or to anyone
+// with an active registration even after the activity enters a terminal state
+// (cancelled / finished). Other viewers see 404.
+//
+// ownerID == 0 means "no owner relation to evaluate", e.g. requests executed on
+// behalf of platform staff through a service account.
+func VisibleToViewer(status, reviewStatus string, ownerID uint64, viewerID uint64, viewerHasActiveRegistration bool) bool {
+	if IsPubliclyVisible(status, reviewStatus) {
+		return true
+	}
+	if viewerID == 0 {
+		return false
+	}
+	if ownerID != 0 && ownerID == viewerID {
+		return true
+	}
+	if viewerHasActiveRegistration {
+		return true
+	}
+	return false
+}
+
+// ValidateCapacityUpdate enforces A.3: the new capacity must be at least 1 and
+// must not be lower than the number of registrations already accepted,
+// otherwise registered_count would exceed capacity on a path that has no
+// recovery code.
+func ValidateCapacityUpdate(newCapacity, currentRegistered int64) error {
+	if newCapacity < 1 {
+		return fmt.Errorf("活动容量必须大于 0")
+	}
+	if newCapacity < currentRegistered {
+		return fmt.Errorf("活动容量 %d 不能小于已报名人数 %d", newCapacity, currentRegistered)
+	}
+	return nil
+}
+
+// ValidateReviewComment enforces the size limit (≤ MaxReviewCommentLength) for
+// reviewer comments. Empty input is rejected only via explicit validation in
+// the caller — approve may legitimately pass "" to clear a previous comment.
+func ValidateReviewComment(s string) error {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil
+	}
+	if length := len([]rune(trimmed)); length > MaxReviewCommentLength {
+		return fmt.Errorf("审核意见长度 %d 不能超过 %d", length, MaxReviewCommentLength)
+	}
+	return nil
+}
+
 // RegistrationAllowed validates whether a new registration may be created now.
 func RegistrationAllowed(activity *Activity, now time.Time) error {
 	if !IsPubliclyVisible(activity.Status, activity.ReviewStatus) {

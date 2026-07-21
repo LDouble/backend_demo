@@ -379,17 +379,14 @@ func createOrderTransition(tx *gorm.DB, order *tradedomain.Order, from, to strin
 	return tx.Create(&tradedomain.OrderTransition{OrderId: order.ID, FromStatus: from, ToStatus: to, ActorType: "user", ActorId: id, ReasonCode: &reason, IdempotencyKey: key}).Error
 }
 func taskEvent(tx *gorm.DB, task *domain.Task, kind, key string) error {
-	return event(tx, "errand", task.ID, kind, key, map[string]any{"task_id": task.ID, "status": task.Status, "version": task.Version})
+	return domainevent.WriteWithKey(tx, "errand", task.ID, kind, key, map[string]any{"task_id": task.ID, "status": task.Status, "version": task.Version})
 }
 func orderEvent(tx *gorm.DB, order *tradedomain.Order, kind, key string) error {
-	return event(tx, "order", order.ID, kind, key, order)
+	return domainevent.WriteWithKey(tx, "order", order.ID, kind, key, order)
 }
+// event is retained for legacy callers and forwards to the shared domainevent helper.
 func event(tx *gorm.DB, aggregate string, id uint64, kind, key string, payload any) error {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	return tx.Create(&domainevent.Event{AggregateType: aggregate, AggregateID: id, EventType: kind, PayloadVersion: 1, Payload: data, IdempotencyKey: key, Status: domainevent.StatusPending, AvailableAt: time.Now().UTC()}).Error
+	return domainevent.WriteWithKey(tx, aggregate, id, kind, key, payload)
 }
 func taskNotFound(err error) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {

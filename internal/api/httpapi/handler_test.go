@@ -17,6 +17,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/api/httpapi"
 	"github.com/weouc-plus/campus-platform/internal/core/auth"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
+	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
@@ -368,7 +369,7 @@ func newHandlerFixture(t *testing.T) *handlerFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}, &activitydomain.Activity{}, &activitydomain.ActivityRegistration{}); err != nil {
+	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}, &activitydomain.Activity{}, &activitydomain.ActivityRegistration{}, &domainevent.Event{}); err != nil {
 		t.Fatal(err)
 	}
 	permissions, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
@@ -548,9 +549,14 @@ func activityUserPermissions() []permission.Permission {
 	}
 }
 
+// decodeActivityView decodes a 2xx envelope carrying a single activityView.
+// The caller is responsible for asserting the status code up front; this
+// helper deliberately does NOT auto-assert, because callers depend on this
+// behaviour to test partial decode paths. (Previous versions had a self-
+// comparing `assertStatusCode(t, response, response.Code)` line which was a
+// no-op and masked regressions where the body was a non-2xx error envelope.)
 func decodeActivityView(t *testing.T, response *httptest.ResponseRecorder) activityView {
 	t.Helper()
-	assertStatusCode(t, response, response.Code)
 	var envelope struct {
 		Data activityView `json:"data"`
 	}

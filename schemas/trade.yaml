@@ -62,6 +62,7 @@ operations:
     summary: 查询交易订单详情
     responses: [{status: 200, kind: success}, {status: 404, kind: error}]
   - operation_id: CancelTradeOrder
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/orders/{id}/cancel
     permission: trade:cancel
@@ -69,6 +70,7 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: CompleteTradeOrder
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/orders/{id}/complete
     permission: trade:complete

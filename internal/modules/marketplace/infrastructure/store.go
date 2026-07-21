@@ -462,11 +462,7 @@ func newOrderNo() (string, error) {
 }
 
 func writeEvent(tx *gorm.DB, aggregate string, id uint64, eventType, key string, payload any) error {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	return tx.Create(&domainevent.Event{AggregateType: aggregate, AggregateID: id, EventType: eventType, PayloadVersion: 1, Payload: data, IdempotencyKey: key, Status: domainevent.StatusPending, AvailableAt: time.Now().UTC()}).Error
+	return domainevent.WriteWithKey(tx, aggregate, id, eventType, key, payload)
 }
 
 func listingEventPayload(listing *domain.Listing) map[string]any {

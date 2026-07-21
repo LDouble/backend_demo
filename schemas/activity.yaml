@@ -25,7 +25,7 @@ entities:
       - {name: version, type: uint64, required: true}
     indexes:
       - {name: idx_activity_public_list, fields: [status, review_status, start_at]}
-      - {name: idx_activity_admin_list, fields: [review_status, status, start_at]}
+      - {name: idx_activity_admin_list, fields: [status, review_status, start_at]}
   - name: ActivityRegistration
     table: activity_registrations
     fields:
@@ -34,9 +34,11 @@ entities:
       - {name: status, type: string, size: 16, required: true, index: true}
       - {name: registered_at, type: datetime, required: true}
       - {name: cancelled_at, type: datetime}
+      - {name: idempotency_key, type: string, size: 128, required: true}
       - {name: version, type: uint64, required: true}
     indexes:
       - {name: uk_activity_registration_user, fields: [activity_id, user_id], unique: true}
+      - {name: uk_activity_registration_idempotency, fields: [activity_id, user_id, idempotency_key], unique: true}
       - {name: idx_activity_registration_user, fields: [user_id, status, registered_at]}
     foreign_keys:
       - {field: activity_id, references: activities.id, on_delete: CASCADE}
@@ -56,6 +58,7 @@ operations:
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
     responses: [{status: 200, kind: success}]
   - operation_id: CreateAdminActivity
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/admin/activities
     permission: activity:admin_create
@@ -81,6 +84,7 @@ operations:
     summary: 管理端查看活动详情
     responses: [{status: 200, kind: success}, {status: 404, kind: error}]
   - operation_id: UpdateAdminActivity
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: PATCH
     path: /api/v1/admin/activities/{id}
     permission: activity:admin_update
@@ -101,6 +105,7 @@ operations:
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: SubmitAdminActivityReview
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/admin/activities/{id}/submit-review
     permission: activity:admin_submit_review
@@ -108,6 +113,7 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: ApproveAdminActivity
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/admin/activities/{id}/approve
     permission: activity:admin_approve
@@ -118,6 +124,7 @@ operations:
         - {name: review_comment, type: string}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: RejectAdminActivity
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/admin/activities/{id}/reject
     permission: activity:admin_reject
@@ -128,6 +135,7 @@ operations:
         - {name: review_comment, type: string, required: true}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: PublishAdminActivity
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/admin/activities/{id}/publish
     permission: activity:admin_publish
@@ -135,6 +143,7 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: CancelAdminActivity
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/admin/activities/{id}/cancel
     permission: activity:admin_cancel
@@ -142,6 +151,7 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: FinishAdminActivity
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     path: /api/v1/admin/activities/{id}/finish
     permission: activity:admin_finish
@@ -170,9 +180,10 @@ operations:
     path: /api/v1/activities/{id}/registrations
     permission: activity:register
     summary: 报名活动
-    headers: [{name: Idempotency-Key, type: string}]
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     responses: [{status: 201, kind: success}, {status: 409, kind: error}]
   - operation_id: CancelMyActivityRegistration
+    headers: [{name: Idempotency-Key, type: string, required: true}]
     method: DELETE
     path: /api/v1/activities/{id}/registrations/me
     permission: activity:registration_cancel

@@ -3,7 +3,6 @@ package infrastructure
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -248,9 +247,7 @@ func notFound(err error) error {
 }
 func conflict(code, msg string) error { return apperror.New(409, code, msg) }
 func event(tx *gorm.DB, trip *domain.Trip, kind string) error {
-	payload, err := json.Marshal(map[string]any{"trip_id": trip.ID, "status": trip.Status})
-	if err != nil {
-		return err
-	}
-	return tx.Create(&domainevent.Event{AggregateType: "carpool_trip", AggregateID: trip.ID, EventType: kind, PayloadVersion: 1, Payload: payload, IdempotencyKey: fmt.Sprintf("%s:%d:%d", kind, trip.ID, trip.Version), Status: domainevent.StatusPending, AvailableAt: time.Now().UTC()}).Error
+	payload := map[string]any{"trip_id": trip.ID, "status": trip.Status, "version": trip.Version}
+	key := fmt.Sprintf("carpool.%s:%d:%d", kind, trip.ID, trip.Version)
+	return domainevent.WriteWithKey(tx, "carpool_trip", trip.ID, kind, key, payload)
 }

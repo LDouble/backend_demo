@@ -34,6 +34,7 @@ func newActivityRegistration(db *gorm.DB, opts ...gen.DOOption) activityRegistra
 	_activityRegistration.Status = field.NewString(tableName, "status")
 	_activityRegistration.RegisteredAt = field.NewTime(tableName, "registered_at")
 	_activityRegistration.CancelledAt = field.NewTime(tableName, "cancelled_at")
+	_activityRegistration.IdempotencyKey = field.NewString(tableName, "idempotency_key")
 	_activityRegistration.Version = field.NewUint64(tableName, "version")
 	_activityRegistration.CreatedAt = field.NewTime(tableName, "created_at")
 	_activityRegistration.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -46,16 +47,17 @@ func newActivityRegistration(db *gorm.DB, opts ...gen.DOOption) activityRegistra
 type activityRegistration struct {
 	activityRegistrationDo activityRegistrationDo
 
-	ALL          field.Asterisk
-	ID           field.Uint64
-	ActivityId   field.Uint64
-	UserId       field.Uint64
-	Status       field.String
-	RegisteredAt field.Time
-	CancelledAt  field.Time
-	Version      field.Uint64
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
+	ALL             field.Asterisk
+	ID              field.Uint64
+	ActivityId      field.Uint64
+	UserId          field.Uint64
+	Status          field.String
+	RegisteredAt    field.Time
+	CancelledAt     field.Time
+	IdempotencyKey  field.String
+	Version         field.Uint64
+	CreatedAt       field.Time
+	UpdatedAt       field.Time
 
 	fieldMap map[string]field.Expr
 }
@@ -78,6 +80,7 @@ func (a *activityRegistration) updateTableName(table string) *activityRegistrati
 	a.Status = field.NewString(table, "status")
 	a.RegisteredAt = field.NewTime(table, "registered_at")
 	a.CancelledAt = field.NewTime(table, "cancelled_at")
+	a.IdempotencyKey = field.NewString(table, "idempotency_key")
 	a.Version = field.NewUint64(table, "version")
 	a.CreatedAt = field.NewTime(table, "created_at")
 	a.UpdatedAt = field.NewTime(table, "updated_at")
@@ -109,13 +112,14 @@ func (a *activityRegistration) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (a *activityRegistration) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 9)
+	a.fieldMap = make(map[string]field.Expr, 10)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["activity_id"] = a.ActivityId
 	a.fieldMap["user_id"] = a.UserId
 	a.fieldMap["status"] = a.Status
 	a.fieldMap["registered_at"] = a.RegisteredAt
 	a.fieldMap["cancelled_at"] = a.CancelledAt
+	a.fieldMap["idempotency_key"] = a.IdempotencyKey
 	a.fieldMap["version"] = a.Version
 	a.fieldMap["created_at"] = a.CreatedAt
 	a.fieldMap["updated_at"] = a.UpdatedAt

@@ -400,6 +400,16 @@ func (s *Schema) normalizeAPIOperations() error {
 			return fmt.Errorf("duplicate operation route %q", routeKey)
 		}
 		seenRoutes[routeKey] = struct{}{}
+		// Constraint: every state-changing operation (POST / PATCH / DELETE)
+		// MUST declare an `Idempotency-Key` header with `required: true`. This
+		// makes retry-safe semantics a first-class contract and stops the
+		// review-finding "handler advertises idempotency, store ignores it"
+		// pattern from sneaking back in. read-side endpoints (GET) are exempt.
+		if op.Method == "POST" || op.Method == "PATCH" || op.Method == "DELETE" || op.Method == "PUT" {
+			if !hasIdempotencyHeader(op.Headers) {
+				return fmt.Errorf("operation %q (%s %s) must declare Idempotency-Key header (required: true); see platformwide idempotency contract", op.OperationID, op.Method, op.Path)
+			}
+		}
 		for j := range op.Headers {
 			if err := normalizeAPIParameter(&op.Headers[j]); err != nil {
 				return fmt.Errorf("operation %q header: %w", op.OperationID, err)
@@ -576,4 +586,17 @@ func validMethod(method string) bool {
 	default:
 		return false
 	}
+}
+
+// hasIdempotencyHeader reports whether any of the supplied API parameters is
+// the Idempotency-Key header with `required: true`. The header is required
+// for every state-changing operation (POST / PATCH / PUT / DELETE) so retry-
+// safety is enforced at the schema level rather than discovered via review.
+func hasIdempotencyHeader(params []APIParameter) bool {
+	for _, p := range params {
+		if strings.EqualFold(p.Name, "Idempotency-Key") && p.Required {
+			return true
+		}
+	}
+	return false
 }

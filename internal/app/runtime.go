@@ -78,12 +78,12 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	}
 	configService := configcenter.NewService(mysql.NewConfigRepository(db), cipher)
 	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
-	noticeService := noticeapp.NewManager(noticeinfra.NewNoticeStore(db))
-	activityService := activityapp.NewManager(activityinfra.NewStore(db, cipher))
-	marketplaceService := marketplaceapp.NewManager(marketplaceinfra.NewStore(db, cipher))
-	errandService := errandapp.NewManager(errandinfra.NewStore(db, cipher))
-	carpoolService := carpoolapp.NewManager(carpoolinfra.NewStore(db, cipher))
-	tradeService := tradeapp.NewManager(tradeinfra.NewStore(db))
+	noticeService := noticeinfra.NewManager(db, nil)
+	activityService := activityinfra.NewManager(db, cipher)
+	marketplaceService := marketplaceinfra.NewManager(db, cipher)
+	errandService := errandinfra.NewManager(db, cipher)
+	carpoolService := carpoolinfra.NewManager(db, cipher)
+	tradeService := tradeinfra.NewManager(db, nil)
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, fmt.Errorf("get sql db: %w", err)

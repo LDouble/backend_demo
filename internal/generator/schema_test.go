@@ -154,11 +154,51 @@ func TestOperationsDerivePermissions(t *testing.T) {
 func TestOperationsRejectDuplicateRoute(t *testing.T) {
 	schema := validSchema()
 	schema.Operations = []APIOperation{
-		{OperationID: "CreateOne", Method: "POST", Path: "/api/v1/items", Permission: "activity:create"},
-		{OperationID: "CreateTwo", Method: "post", Path: "/api/v1/items", Permission: "activity:create_two"},
+		{OperationID: "CreateOne", Method: "POST", Path: "/api/v1/items", Permission: "activity:create", Headers: []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}}},
+		{OperationID: "CreateTwo", Method: "post", Path: "/api/v1/items", Permission: "activity:create_two", Headers: []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}}},
 	}
 	err := schema.Normalize()
 	if err == nil || !strings.Contains(err.Error(), "duplicate operation route") {
 		t.Fatalf("Normalize() error = %v", err)
+	}
+}
+
+// TestOperationsRequireIdempotencyKey validates B.2: every state-changing
+// operation (POST/PATCH/DELETE/PUT) must declare an Idempotency-Key header
+// with `required: true`. GET endpoints remain exempt.
+func TestOperationsRequireIdempotencyKey(t *testing.T) {
+	cases := []struct {
+		name    string
+		method  string
+		headers []APIParameter
+		wantErr bool
+	}{
+		{"post without header", "POST", nil, true},
+		{"post with non-required header", "POST", []APIParameter{{Name: "Idempotency-Key", Type: "string"}}, true},
+		{"post with wrong header", "POST", []APIParameter{{Name: "Trace-Id", Type: "string"}}, true},
+		{"post with required header", "POST", []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}}, false},
+		{"patch with header", "PATCH", []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}}, false},
+		{"delete with header", "DELETE", []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}}, false},
+		{"put with header", "PUT", []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}}, false},
+		{"get without header", "GET", nil, false},
+		{"get with required header ignored", "GET", []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := validSchema()
+			s.Operations = []APIOperation{
+				{OperationID: "Op", Method: tc.method, Path: "/api/v1/only", Permission: "x:op", Headers: tc.headers},
+			}
+			err := s.Normalize()
+			if tc.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "Idempotency-Key") {
+					t.Fatalf("expected idempotency error, got %v", err)
+				}
+				return
+			}
+			if err != nil && strings.Contains(err.Error(), "Idempotency-Key") {
+				t.Fatalf("unexpected idempotency error: %v", err)
+			}
+		})
 	}
 }

@@ -15,7 +15,9 @@ type Store interface {
 	Create(context.Context, uint64, domain.ActivityInput) (*domain.Activity, error)
 	Update(context.Context, uint64, uint64, uint64, domain.ActivityInput, time.Time) (*domain.Activity, error)
 	GetAdmin(context.Context, uint64) (*domain.Activity, error)
-	GetPublic(context.Context, uint64) (*domain.Activity, error)
+	GetPublic(context.Context, uint64, uint64) (*domain.Activity, error)
+	IsViewerRegistered(context.Context, uint64, uint64) (bool, error)
+	IsViewerRegisteredBatch(context.Context, uint64, []uint64) (map[uint64]bool, error)
 	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Activity, int64, error)
 	ListPublic(context.Context, domain.PublicSearch, int, int) ([]domain.Activity, int64, error)
 	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Activity, error)
@@ -28,6 +30,7 @@ type Store interface {
 	CancelRegistration(context.Context, uint64, uint64, uint64, time.Time) (*domain.ActivityRegistration, *domain.Activity, error)
 	ListMyRegistrations(context.Context, uint64, int, int) ([]domain.MyRegistration, int64, error)
 	Contact(context.Context, *domain.Activity, uint64) (domain.ContactDetails, error)
+	ContactWithAccess(context.Context, *domain.Activity, uint64, bool) (domain.ContactDetails, error)
 }
 
 // Manager validates activity inputs before delegating to the store.
@@ -62,9 +65,32 @@ func (m *Manager) GetAdmin(ctx context.Context, id uint64) (*domain.Activity, er
 	return m.store.GetAdmin(ctx, id)
 }
 
-// GetPublic returns a publicly visible activity.
-func (m *Manager) GetPublic(ctx context.Context, id uint64) (*domain.Activity, error) {
-	return m.store.GetPublic(ctx, id)
+// GetPublic returns an activity reachable by `viewerID` (publicly visible, or
+// owned / registered by the viewer even after the activity enters a terminal
+// state). viewerID == 0 represents anonymous endpoints that only see the
+// public-visibility subset.
+func (m *Manager) GetPublic(ctx context.Context, id, viewerID uint64) (*domain.Activity, error) {
+	return m.store.GetPublic(ctx, id, viewerID)
+}
+
+// IsViewerRegistered reports whether the viewer holds an active registration
+// for the activity. Used by handlers that need to render contact visibility
+// without doing a per-row lookup in the loop.
+func (m *Manager) IsViewerRegistered(ctx context.Context, viewerID, activityID uint64) (bool, error) {
+	return m.store.IsViewerRegistered(ctx, viewerID, activityID)
+}
+
+// IsViewerRegisteredBatch returns the subset of activityIDs the viewer is
+// actively registered for. list/contact handlers should call this once before
+// iterating to avoid the N+1 pattern of an inner query per row.
+func (m *Manager) IsViewerRegisteredBatch(ctx context.Context, viewerID uint64, activityIDs []uint64) (map[uint64]bool, error) {
+	return m.store.IsViewerRegisteredBatch(ctx, viewerID, activityIDs)
+}
+
+// ContactWithAccess is the list-path variant of Contact that reuses a
+// precomputed `hasActiveRegistration` flag in lieu of issuing a fresh query.
+func (m *Manager) ContactWithAccess(ctx context.Context, activity *domain.Activity, viewerID uint64, hasActiveRegistration bool) (domain.ContactDetails, error) {
+	return m.store.ContactWithAccess(ctx, activity, viewerID, hasActiveRegistration)
 }
 
 // ListAdmin returns admin-visible activities with search filters.

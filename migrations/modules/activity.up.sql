@@ -43,12 +43,14 @@ CREATE TABLE activity_registrations (
     status VARCHAR(16) NOT NULL,
     registered_at DATETIME(3) NOT NULL,
     cancelled_at DATETIME(3) NULL,
+    idempotency_key VARCHAR(128) NOT NULL DEFAULT '',
     version BIGINT UNSIGNED NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
     KEY idx_activity_registrations_status (status),
     UNIQUE KEY uk_activity_registration_user (activity_id, user_id),
+    UNIQUE KEY uk_activity_registration_idempotency (activity_id, user_id, idempotency_key),
     KEY idx_activity_registration_user (user_id, status, registered_at),
     FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
