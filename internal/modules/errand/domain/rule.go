@@ -8,15 +8,23 @@ import (
 )
 
 const (
-	CurrencyCNY   = "CNY"
-	TaskOpen      = "open"
-	TaskAccepted  = "accepted"
-	TaskPickedUp  = "picked_up"
+	// CurrencyCNY is the only supported errand currency.
+	CurrencyCNY = "CNY"
+	// TaskOpen and the following constants define the task lifecycle.
+	TaskOpen = "open"
+	// TaskAccepted means a runner has accepted the task.
+	TaskAccepted = "accepted"
+	// TaskPickedUp means the item has been picked up.
+	TaskPickedUp = "picked_up"
+	// TaskDelivered means the item has been delivered.
 	TaskDelivered = "delivered"
+	// TaskCompleted means the requester confirmed completion.
 	TaskCompleted = "completed"
+	// TaskCancelled means the workflow has been cancelled.
 	TaskCancelled = "cancelled"
 )
 
+// TaskInput contains the user-controlled mutable task content.
 type TaskInput struct {
 	Title, Description, PickupLocation, DropoffLocation string
 	RewardCents                                         int64
@@ -38,6 +46,7 @@ type ContactDetails struct {
 	Value string
 }
 
+// ValidateTaskInput validates a new task before persistence.
 func ValidateTaskInput(input TaskInput, now time.Time) error {
 	if err := validateTaskContent(input, now); err != nil {
 		return err
@@ -93,6 +102,7 @@ func ValidateContactInput(input ContactInput, required bool) error {
 	return nil
 }
 
+// CanTransition reports whether a task state transition is legal.
 func CanTransition(from, to string) bool {
 	return map[string]map[string]bool{
 		TaskOpen:      {TaskAccepted: true, TaskCancelled: true},

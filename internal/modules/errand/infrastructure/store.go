@@ -20,11 +20,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// Store persists errand aggregates and their trade-order workflow.
 type Store struct {
 	db     *gorm.DB
 	cipher *configcenter.Cipher
 }
 
+// NewStore creates an errand persistence adapter.
 func NewStore(db *gorm.DB, ciphers ...*configcenter.Cipher) *Store {
 	store := &Store{db: db}
 	if len(ciphers) > 0 {
@@ -33,6 +35,7 @@ func NewStore(db *gorm.DB, ciphers ...*configcenter.Cipher) *Store {
 	return store
 }
 
+// Create inserts a new errand task and encrypts its contact details.
 func (s *Store) Create(ctx context.Context, requester uint64, input domain.TaskInput) (*domain.Task, error) {
 	task := &domain.Task{Title: strings.TrimSpace(input.Title), Description: strings.TrimSpace(input.Description), RewardCents: input.RewardCents, Currency: domain.CurrencyCNY, PickupLocation: strings.TrimSpace(input.PickupLocation), DropoffLocation: strings.TrimSpace(input.DropoffLocation), Deadline: input.Deadline.UTC(), Status: domain.TaskOpen, RequesterId: requester, ContactType: strings.TrimSpace(input.Contact.Type), Version: 1}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -52,11 +55,14 @@ func (s *Store) Create(ctx context.Context, requester uint64, input domain.TaskI
 	return task, err
 }
 
+// Get returns one task by ID.
 func (s *Store) Get(ctx context.Context, id uint64) (*domain.Task, error) {
 	var task domain.Task
 	err := s.db.WithContext(ctx).First(&task, id).Error
 	return &task, taskNotFound(err)
 }
+
+// ListOpen returns currently open tasks before their deadlines.
 func (s *Store) ListOpen(ctx context.Context, page, size int, now time.Time) ([]domain.Task, int64, error) {
 	var rows []domain.Task
 	base := s.db.WithContext(ctx).Model(&domain.Task{}).Where("status = ? AND deadline > ?", domain.TaskOpen, now)
@@ -67,6 +73,8 @@ func (s *Store) ListOpen(ctx context.Context, page, size int, now time.Time) ([]
 	err := base.Order("deadline ASC, id DESC").Offset((page - 1) * size).Limit(size).Find(&rows).Error
 	return rows, total, err
 }
+
+// ListMine returns tasks related to the supplied user.
 func (s *Store) ListMine(ctx context.Context, user uint64, page, size int) ([]domain.Task, int64, error) {
 	var rows []domain.Task
 	base := s.db.WithContext(ctx).Model(&domain.Task{}).Where("requester_id = ? OR runner_id = ?", user, user)
@@ -77,7 +85,9 @@ func (s *Store) ListMine(ctx context.Context, user uint64, page, size int) ([]do
 	err := base.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&rows).Error
 	return rows, total, err
 }
-func (s *Store) Update(ctx context.Context, id, requester, version uint64, input domain.TaskInput, now time.Time) (*domain.Task, error) {
+
+// Update changes an editable open task.
+func (s *Store) Update(ctx context.Context, id, requester, version uint64, input domain.TaskInput, _ time.Time) (*domain.Task, error) {
 	return s.mutate(ctx, id, requester, version, domain.TaskOpen, func(tx *gorm.DB, task *domain.Task) error {
 		task.Title, task.Description, task.RewardCents = strings.TrimSpace(input.Title), strings.TrimSpace(input.Description), input.RewardCents
 		task.PickupLocation, task.DropoffLocation, task.Deadline, task.Version = strings.TrimSpace(input.PickupLocation), strings.TrimSpace(input.DropoffLocation), input.Deadline.UTC(), task.Version+1
@@ -133,6 +143,7 @@ func (s *Store) decryptContact(ciphertext, aad string) (string, error) {
 
 func taskContactAAD(id uint64) string { return fmt.Sprintf("errand-task:%d", id) }
 
+// Accept atomically accepts a task and creates its trade order.
 func (s *Store) Accept(ctx context.Context, id, runner, version uint64, key string, now time.Time) (*domain.Task, *tradedomain.Order, error) {
 	if key = strings.TrimSpace(key); key == "" || len(key) > 128 {
 		return nil, nil, apperror.New(400, "invalid_idempotency_key", "Idempotency-Key 无效")
@@ -194,12 +205,16 @@ func (s *Store) Accept(ctx context.Context, id, runner, version uint64, key stri
 	return &task, &order, err
 }
 
+// Pickup marks a task as picked up by its runner.
 func (s *Store) Pickup(ctx context.Context, id, runner, version uint64, now time.Time) (*domain.Task, error) {
 	return s.runnerTransition(ctx, id, runner, version, domain.TaskAccepted, domain.TaskPickedUp, now, "picked_up")
 }
+
+// Deliver marks a task as delivered by its runner.
 func (s *Store) Deliver(ctx context.Context, id, runner, version uint64, now time.Time) (*domain.Task, error) {
 	return s.runnerTransition(ctx, id, runner, version, domain.TaskPickedUp, domain.TaskDelivered, now, "delivered")
 }
+
 func (s *Store) runnerTransition(ctx context.Context, id, runner, version uint64, from, to string, now time.Time, event string) (*domain.Task, error) {
 	return s.mutate(ctx, id, 0, version, from, func(tx *gorm.DB, task *domain.Task) error {
 		if task.RunnerId == nil || *task.RunnerId != runner {
@@ -221,14 +236,19 @@ func (s *Store) runnerTransition(ctx context.Context, id, runner, version uint64
 	})
 }
 
+// Complete marks a delivered task completed and finalizes its order.
 func (s *Store) Complete(ctx context.Context, id, requester, version uint64, now time.Time) (*domain.Task, *tradedomain.Order, error) {
 	task, order, err := s.finish(ctx, id, requester, version, domain.TaskCompleted, now)
 	return task, order, err
 }
+
+// Cancel cancels a task and, when present, its trade order.
 func (s *Store) Cancel(ctx context.Context, id, actor, version uint64, now time.Time) (*domain.Task, *tradedomain.Order, error) {
 	task, order, err := s.finish(ctx, id, actor, version, domain.TaskCancelled, now)
 	return task, order, err
 }
+
+// CompleteOrder completes the order associated with a task.
 func (s *Store) CompleteOrder(ctx context.Context, orderID, actor, version uint64, now time.Time) (*tradedomain.Order, error) {
 	var task domain.Task
 	if err := s.db.WithContext(ctx).Where("trade_order_id = ?", orderID).First(&task).Error; err != nil {
@@ -244,6 +264,8 @@ func (s *Store) CompleteOrder(ctx context.Context, orderID, actor, version uint6
 	_, completed, err := s.Complete(ctx, task.ID, actor, task.Version, now)
 	return completed, err
 }
+
+// CancelOrder cancels the order associated with a task.
 func (s *Store) CancelOrder(ctx context.Context, orderID, actor, version uint64, now time.Time) (*tradedomain.Order, error) {
 	var task domain.Task
 	if err := s.db.WithContext(ctx).Where("trade_order_id = ?", orderID).First(&task).Error; err != nil {
