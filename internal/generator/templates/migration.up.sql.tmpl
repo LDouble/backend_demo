@@ -1,5 +1,23 @@
 -- {{.Header}}
 -- Source: {{.Source}}
+{{- if .Entities}}{{range .Entities}}{{$table := .Table}}
+CREATE TABLE {{.Table}} (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+{{- range .Fields}}
+    {{.Name}} {{.SQLType}} {{if .Required}}NOT NULL{{else}}NULL{{end}},
+{{- end}}
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id)
+{{- range .Fields}}{{if .Unique}},
+    UNIQUE KEY uk_{{$table}}_{{.Name}} ({{.Name}}){{else if .Index}},
+    KEY idx_{{$table}}_{{.Name}} ({{.Name}}){{end}}{{end}}
+{{- range .Indexes}},
+    {{if .Unique}}UNIQUE {{end}}KEY {{.Name}} ({{range $i, $f := .Fields}}{{if $i}}, {{end}}{{$f}}{{end}}){{end}}
+{{- range .ForeignKeys}},
+    FOREIGN KEY ({{.Field}}) REFERENCES {{.RefTable}}({{.RefField}}) ON DELETE {{.OnDelete}}{{end}}
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+{{end}}{{else}}
 CREATE TABLE {{.Entity.Table}} (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 {{- range .Entity.Fields}}
@@ -12,3 +30,4 @@ CREATE TABLE {{.Entity.Table}} (
     UNIQUE KEY uk_{{$.Entity.Table}}_{{.Name}} ({{.Name}}){{else if .Index}},
     KEY idx_{{$.Entity.Table}}_{{.Name}} ({{.Name}}){{end}}{{end}}
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+{{end}}

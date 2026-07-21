@@ -1,4 +1,4 @@
-.PHONY: build generate generate-check generate-module check-architecture run test test-race test-core-coverage test-generator test-integration test-compose lint fmt vet env migrate-up migrate-down compose-up compose-down
+.PHONY: build generate generate-check generate-module check-architecture run test test-race test-core-coverage test-notice-coverage test-generator test-integration test-compose lint fmt vet env migrate-up migrate-down compose-up compose-down
 
 build:
 	go build ./...
@@ -7,8 +7,7 @@ generate:
 	go generate ./...
 
 generate-check:
-	go generate ./...
-	git diff --exit-code -- internal/api/generated internal/infrastructure/mysql/query internal/infrastructure/mysql/generator/modules.gen.go
+	./scripts/check-go-generated.sh
 	./scripts/check-generated-modules.sh
 
 generate-module:
@@ -32,6 +31,9 @@ test-race:
 
 test-core-coverage:
 	./scripts/check-core-coverage.sh
+
+test-notice-coverage:
+	./scripts/check-notice-coverage.sh
 
 test-generator:
 	go test -coverprofile=/tmp/campus-generator-coverage.out ./internal/generator

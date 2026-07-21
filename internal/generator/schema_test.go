@@ -31,7 +31,7 @@ func TestSchemaNormalize(t *testing.T) {
 		want   string
 	}{
 		{name: "valid"},
-		{name: "version", mutate: func(s *Schema) { s.Version = 2 }, want: "unsupported schema version"},
+		{name: "version", mutate: func(s *Schema) { s.Version = 3 }, want: "unsupported schema version"},
 		{name: "path traversal module", mutate: func(s *Schema) { s.Module = "../activity" }, want: "invalid module name"},
 		{name: "duplicate field", mutate: func(s *Schema) { s.Entity.Fields = append(s.Entity.Fields, s.Entity.Fields[0]) }, want: "duplicate name"},
 		{name: "reserved field", mutate: func(s *Schema) { s.Entity.Fields[0].Name = "id" }, want: "reserved"},
@@ -95,6 +95,23 @@ func TestFieldTypes(t *testing.T) {
 				t.Fatalf("fieldTypes(%q) = %q, %q", test.kind, goType, sqlType)
 			}
 		})
+	}
+}
+
+func TestSchemaV2DependencyValidationAndNullableTypes(t *testing.T) {
+	schema := Schema{Version: 2, Module: "notice", Entities: []Entity{
+		{Name: "Child", Table: "children", Fields: []Field{{Name: "parent_id", Type: "uint64", Required: true}, {Name: "read_at", Type: "datetime"}}, ForeignKeys: []ForeignKey{{Field: "parent_id", References: "parents.id"}}},
+		{Name: "Parent", Table: "parents", Primary: true, Fields: []Field{{Name: "name", Type: "string", Required: true}}},
+	}}
+	if err := schema.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if schema.Entities[0].Table != "parents" || schema.Entities[1].Fields[1].GoType != "*time.Time" {
+		t.Fatalf("normalized v2 schema=%+v", schema.Entities)
+	}
+	schema.Entities[1].ForeignKeys = []ForeignKey{{Field: "parent_id", References: "missing.id"}}
+	if err := schema.Normalize(); err == nil || !strings.Contains(err.Error(), "undeclared table") {
+		t.Fatalf("unknown dependency error=%v", err)
 	}
 }
 

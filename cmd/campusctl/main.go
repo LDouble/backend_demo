@@ -106,6 +106,20 @@ func bootstrapAdmin(parent context.Context, cfg bootstrap.Config, output io.Writ
 	if err = permissions.Bootstrap(ctx, admin.ID); err != nil {
 		return fmt.Errorf("bootstrap permissions: %w", err)
 	}
+	for page := 1; ; page++ {
+		rows, _, listErr := repo.List(ctx, page, 100)
+		if listErr != nil {
+			return fmt.Errorf("list users for member backfill: %w", listErr)
+		}
+		for i := range rows {
+			if roleErr := permissions.EnsureMemberForUser(ctx, rows[i].ID); roleErr != nil {
+				return fmt.Errorf("backfill member role: %w", roleErr)
+			}
+		}
+		if len(rows) < 100 {
+			break
+		}
+	}
 	_, err = fmt.Fprintf(output, "administrator %s is ready\n", admin.Username)
 	if err != nil {
 		return fmt.Errorf("write administrator result: %w", err)

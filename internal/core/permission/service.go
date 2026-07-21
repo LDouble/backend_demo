@@ -165,7 +165,7 @@ func (s *Service) SetUserRoles(ctx context.Context, userID uint64, roles []strin
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	normalized := unique(roles)
+	normalized := unique(append(roles, model.MemberRole))
 	for _, name := range normalized {
 		if _, err := s.roles.GetByName(ctx, name); errors.Is(err, gorm.ErrRecordNotFound) {
 			return apperror.New(400, "unknown_role", "角色不存在: "+name)
@@ -222,8 +222,8 @@ func (s *Service) SetPermissions(ctx context.Context, roleID uint64, permissions
 	if err != nil {
 		return err
 	}
-	if r.Name == model.SuperAdminRole {
-		return apperror.New(409, "builtin_role", "超级管理员权限不可修改")
+	if r.Builtin {
+		return apperror.New(409, "builtin_role", "内置角色权限不可修改")
 	}
 	rules := make([][]string, 0, len(permissions))
 	for _, p := range permissions {
@@ -271,6 +271,9 @@ func (s *Service) CanDisable(ctx context.Context, userID uint64) (bool, error) {
 
 // Bootstrap idempotently creates and assigns the built-in super administrator role.
 func (s *Service) Bootstrap(ctx context.Context, userID uint64) error {
+	if err := s.EnsureMemberForUser(ctx, userID); err != nil {
+		return err
+	}
 	r, err := s.roles.GetByName(ctx, model.SuperAdminRole)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		r, err = s.CreateRole(ctx, model.SuperAdminRole, "系统超级管理员", true)
@@ -283,6 +286,39 @@ func (s *Service) Bootstrap(ctx context.Context, userID uint64) error {
 		return err
 	}
 	_, err = s.enforcer.AddRoleForUser(subject(userID), model.SuperAdminRole)
+	return err
+}
+
+// EnsureMemberForUser creates the built-in member role and grants its fixed
+// personal-notification permissions before assigning it to a user.
+func (s *Service) EnsureMemberForUser(ctx context.Context, userID uint64) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	member, err := s.roles.GetByName(ctx, model.MemberRole)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		member, err = s.CreateRole(ctx, model.MemberRole, "平台成员", true)
+	}
+	if err != nil && !errors.Is(err, gorm.ErrDuplicatedKey) {
+		return err
+	}
+	if member != nil && !member.Builtin {
+		member.Builtin = true
+		if err = s.roles.Update(ctx, member); err != nil {
+			return fmt.Errorf("mark member role built-in: %w", err)
+		}
+	}
+	permissions := [][]string{
+		{model.MemberRole, "/api/v1/notices", "GET"},
+		{model.MemberRole, "/api/v1/notices/unread-count", "GET"},
+		{model.MemberRole, "/api/v1/notices/read-all", "PUT"},
+		{model.MemberRole, "/api/v1/notices/:id", "GET"},
+		{model.MemberRole, "/api/v1/notices/:id/read", "PUT"},
+	}
+	if _, err = s.enforcer.AddPolicies(permissions); err != nil {
+		return err
+	}
+	_, err = s.enforcer.AddRoleForUser(subject(userID), model.MemberRole)
 	return err
 }
 func unique(in []string) []string {

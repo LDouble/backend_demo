@@ -74,6 +74,13 @@ func (s *Service) Create(ctx context.Context, username, password string) (*model
 		}
 		return nil, fmt.Errorf("create user: %w", err)
 	}
+	if assigner, ok := s.guard.(interface {
+		EnsureMemberForUser(context.Context, uint64) error
+	}); ok {
+		if err := assigner.EnsureMemberForUser(ctx, u.ID); err != nil {
+			return nil, fmt.Errorf("assign member role: %w", err)
+		}
+	}
 	return u, nil
 }
 

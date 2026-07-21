@@ -13,11 +13,15 @@ import (
 	"time"
 
 	mysqldriver "github.com/go-sql-driver/mysql"
+	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/generator"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/migration"
 	platformmysql "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/redisclient"
+	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
+	noticedomain "github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
+	noticeinfra "github.com/weouc-plus/campus-platform/internal/modules/notice/infrastructure"
 )
 
 func TestRedisSessionStoreLifecycle(t *testing.T) {
@@ -105,14 +109,17 @@ func TestMigrationsUpDownUp(t *testing.T) {
 		t.Fatalf("migration up: %v", err)
 	}
 	assertTableExists(t, admin, databaseName, "users", true)
+	assertTableExists(t, admin, databaseName, "notices", true)
 	if err = migration.Run(ctx, dsn, "down", 1); err != nil {
 		t.Fatalf("migration down: %v", err)
 	}
-	assertTableExists(t, admin, databaseName, "users", false)
+	assertTableExists(t, admin, databaseName, "notices", false)
+	assertTableExists(t, admin, databaseName, "users", true)
 	if err = migration.Run(ctx, dsn, "up", 0); err != nil {
 		t.Fatalf("second migration up: %v", err)
 	}
 	assertTableExists(t, admin, databaseName, "configs", true)
+	assertTableExists(t, admin, databaseName, "notices", true)
 }
 
 func TestGeneratedModuleMigrationUpDownUp(t *testing.T) {
@@ -222,6 +229,52 @@ func TestCasbinPolicyPersistence(t *testing.T) {
 	}
 	if err = reloaded.DeleteRole(ctx, role.ID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNoticeSnapshotAndReadPersistence(t *testing.T) {
+	dsn := requiredEnv(t, "CAMPUS_INTEGRATION_MYSQL_DSN")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	db, err := platformmysql.Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	user := model.User{Username: "notice_" + strconv.FormatInt(time.Now().UnixNano(), 10), PasswordHash: "integration", Status: model.UserActive}
+	if err = db.WithContext(ctx).Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Delete(&user).Error })
+	store := noticeinfra.NewNoticeStore(db)
+	notice := &noticedomain.Notice{Title: "集成通知", Summary: "快照", Body: "不会写入投递日志的正文", Category: "campus", Priority: noticedomain.PriorityImportant, Status: noticedomain.StatusDraft, PushEnabled: true, Version: 1, CreatedBy: user.ID, UpdatedBy: user.ID}
+	if err = store.Create(ctx, notice, []noticedomain.NoticeAudience{{AudienceType: noticedomain.AudienceAll, AudienceValue: "*"}}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Delete(notice).Error })
+	if ok, queueErr := store.QueuePublish(ctx, notice.ID, user.ID, 1, time.Now().Add(-time.Second)); queueErr != nil || !ok {
+		t.Fatalf("queue publish=%v err=%v", ok, queueErr)
+	}
+	if err = store.Publish(ctx, notice.ID, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	rows, total, err := store.ListInbox(ctx, user.ID, noticeapp.InboxFilter{Page: 1, PageSize: 20})
+	if err != nil || total != 1 || len(rows) != 1 {
+		t.Fatalf("inbox=%+v total=%d err=%v", rows, total, err)
+	}
+	if err = store.MarkRead(ctx, user.ID, notice.ID, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	if unread, countErr := store.UnreadCount(ctx, user.ID); countErr != nil || unread != 0 {
+		t.Fatalf("unread=%d err=%v", unread, countErr)
+	}
+	var deliveries int64
+	if err = db.Model(&noticedomain.NoticeDelivery{}).Where("notice_id = ? AND user_id = ?", notice.ID, user.ID).Count(&deliveries).Error; err != nil || deliveries != 1 {
+		t.Fatalf("deliveries=%d err=%v", deliveries, err)
 	}
 }
 

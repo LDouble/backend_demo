@@ -44,6 +44,8 @@ row, err := repository.query.User.WithContext(ctx).
 - 在代码中说明例外原因；
 - 添加针对该数据库行为的集成测试。
 
+通知模块的受众快照、乐观锁更新和 Outbox 租约属于上述例外：它们必须在同一事务内跨多表执行，并使用 `FOR UPDATE SKIP LOCKED`。普通单表 CRUD 仍由生成 Repository/GORM Query 承担。
+
 ## 生成代码管理
 
 生成文件包含 `DO NOT EDIT` 标记。修改核心 Model 或升级 GORM Gen 后必须重新执行：

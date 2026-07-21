@@ -53,9 +53,10 @@ type registry struct {
 
 // ModuleInfo is one stable entry in the generated module registry.
 type ModuleInfo struct {
-	Name   string `json:"name"`
-	Entity string `json:"entity"`
-	Schema string `json:"schema"`
+	Name     string   `json:"name"`
+	Entity   string   `json:"entity"`
+	Entities []string `json:"entities,omitempty"`
+	Schema   string   `json:"schema"`
 }
 
 type templateData struct {
@@ -162,7 +163,7 @@ func ListModules(ctx context.Context, root string) ([]ModuleInfo, error) {
 	if err = json.Unmarshal(data, &value); err != nil {
 		return nil, fmt.Errorf("decode module registry: %w", err)
 	}
-	if value.Version != SchemaVersion {
+	if value.Version != RegistryVersion {
 		return nil, fmt.Errorf("unsupported module registry version %d", value.Version)
 	}
 	sort.Slice(value.Modules, func(i, j int) bool { return value.Modules[i].Name < value.Modules[j].Name })
@@ -184,7 +185,6 @@ func plan(root string, schema Schema, options Options) ([]outputFile, error) {
 		preserve bool
 		goFile   bool
 	}{
-		{"entity.go.tmpl", "internal/modules/" + schema.Module + "/domain/entity.gen.go", false, true},
 		{"repository.go.tmpl", "internal/modules/" + schema.Module + "/domain/repository.gen.go", false, true},
 		{"rule.go.tmpl", "internal/modules/" + schema.Module + "/domain/rule.go", true, true},
 		{"service.go.tmpl", "internal/modules/" + schema.Module + "/application/service.gen.go", false, true},
@@ -198,6 +198,31 @@ func plan(root string, schema Schema, options Options) ([]outputFile, error) {
 		{"gorm_modules.go.tmpl", "internal/infrastructure/mysql/generator/modules.gen.go", false, true},
 	}
 	outputs := make([]outputFile, 0, len(specs)+2)
+	entities := schema.Entities
+	if schema.Version == 1 {
+		entities = []Entity{schema.Entity}
+	}
+	for _, entity := range entities {
+		entityData := data
+		entityData.Entity = entity
+		content, renderErr := render("entity.go.tmpl", entityData)
+		if renderErr != nil {
+			return nil, renderErr
+		}
+		content, renderErr = format.Source(content)
+		if renderErr != nil {
+			return nil, fmt.Errorf("format entity %s: %w", entity.Name, renderErr)
+		}
+		name := "entity.gen.go"
+		if schema.Version == 2 {
+			name = entity.Table + ".gen.go"
+		}
+		path, joinErr := safeJoin(root, "internal/modules/"+schema.Module+"/domain/"+name)
+		if joinErr != nil {
+			return nil, joinErr
+		}
+		outputs = append(outputs, outputFile{path: path, content: content})
+	}
 	for _, spec := range specs {
 		content, err := render(spec.template, data)
 		if err != nil {
@@ -237,7 +262,7 @@ func planRegistry(root string, schema Schema, source string) (registry, outputFi
 	if err != nil {
 		return registry{}, outputFile{}, err
 	}
-	value := registry{Version: SchemaVersion, Modules: []ModuleInfo{}}
+	value := registry{Version: RegistryVersion, Modules: []ModuleInfo{}}
 	if data, readErr := os.ReadFile(path); readErr == nil {
 		if err = json.Unmarshal(data, &value); err != nil {
 			return registry{}, outputFile{}, fmt.Errorf("decode module registry: %w", err)
@@ -245,10 +270,17 @@ func planRegistry(root string, schema Schema, source string) (registry, outputFi
 	} else if !errors.Is(readErr, fs.ErrNotExist) {
 		return registry{}, outputFile{}, fmt.Errorf("read module registry: %w", readErr)
 	}
-	if value.Version != SchemaVersion {
+	if value.Version != RegistryVersion {
 		return registry{}, outputFile{}, fmt.Errorf("unsupported module registry version %d", value.Version)
 	}
-	entry := ModuleInfo{Name: schema.Module, Entity: schema.Entity.Name, Schema: filepath.ToSlash(source)}
+	entityNames := []string{schema.Entity.Name}
+	if schema.Version == 2 {
+		entityNames = make([]string, len(schema.Entities))
+		for i := range schema.Entities {
+			entityNames[i] = schema.Entities[i].Name
+		}
+	}
+	entry := ModuleInfo{Name: schema.Module, Entity: schema.Entity.Name, Entities: entityNames, Schema: filepath.ToSlash(source)}
 	found := false
 	for i := range value.Modules {
 		if value.Modules[i].Name == schema.Module {

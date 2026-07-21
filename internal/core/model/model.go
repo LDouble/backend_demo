@@ -8,6 +8,7 @@ const (
 	UserActive     = "active"
 	UserDisabled   = "disabled"
 	SuperAdminRole = "super_admin"
+	MemberRole     = "member"
 )
 
 // User is a platform account.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func setRequired(t *testing.T) {
@@ -12,6 +13,44 @@ func setRequired(t *testing.T) {
 	t.Setenv("CAMPUS_MYSQL_DSN", "user:pass@tcp(localhost:3306)/db")
 	t.Setenv("CAMPUS_JWT_SECRET", "0123456789abcdef0123456789abcdef")
 	t.Setenv("CAMPUS_CONFIG_MASTER_KEY", base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+}
+
+func TestLoadAllEnvironmentOverrides(t *testing.T) {
+	setRequired(t)
+	t.Setenv("CAMPUS_REDIS_ADDRESS", "redis.internal:6380")
+	t.Setenv("CAMPUS_REDIS_PASSWORD", "redis-secret")
+	t.Setenv("CAMPUS_JWT_ISSUER", "test-issuer")
+	t.Setenv("CAMPUS_ADMIN_USERNAME", "bootstrap-admin")
+	t.Setenv("CAMPUS_ADMIN_PASSWORD", "long-admin-password")
+	t.Setenv("CAMPUS_WORKER_REDIS_DB", "4")
+	t.Setenv("CAMPUS_WORKER_CONCURRENCY", "17")
+	t.Setenv("CAMPUS_WORKER_POLL_INTERVAL", "250ms")
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Redis.Address != "redis.internal:6380" || cfg.Redis.Password != "redis-secret" || cfg.JWT.Issuer != "test-issuer" || cfg.Admin.Username != "bootstrap-admin" || cfg.Worker.RedisDB != 4 || cfg.Worker.Concurrency != 17 || cfg.Worker.PollInterval != 250*time.Millisecond {
+		t.Fatalf("unexpected overrides: %+v", cfg)
+	}
+}
+
+func TestLoadRequiredValueErrors(t *testing.T) {
+	validKey := base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef"))
+	tests := []struct{ name, dsn, jwt, key string }{
+		{name: "mysql", jwt: "0123456789abcdef0123456789abcdef", key: validKey},
+		{name: "jwt", dsn: "dsn", jwt: "short", key: validKey},
+		{name: "config key", dsn: "dsn", jwt: "0123456789abcdef0123456789abcdef", key: "invalid"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("CAMPUS_MYSQL_DSN", test.dsn)
+			t.Setenv("CAMPUS_JWT_SECRET", test.jwt)
+			t.Setenv("CAMPUS_CONFIG_MASTER_KEY", test.key)
+			if _, err := Load(""); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+	}
 }
 func TestLoadDefaultsAndOverrides(t *testing.T) {
 	setRequired(t)

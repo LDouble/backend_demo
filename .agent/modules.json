@@ -1,4 +1,17 @@
 {
   "version": 1,
-  "modules": []
+  "modules": [
+    {
+      "name": "notice",
+      "entity": "Notice",
+      "entities": [
+        "Notice",
+        "NoticeAudience",
+        "NoticeRecipient",
+        "NoticeDelivery",
+        "OutboxEvent"
+      ],
+      "schema": "schemas/notice.yaml"
+    }
+  ]
 }

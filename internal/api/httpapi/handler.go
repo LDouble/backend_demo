@@ -15,6 +15,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
+	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
 	"go.uber.org/zap"
 )
 
@@ -24,10 +25,14 @@ type Handler struct {
 	users       *user.Service
 	permissions *permission.Service
 	configs     *configcenter.Service
+	notices     *noticeapp.Manager
 	mysql       func(context.Context) error
 	redis       func(context.Context) error
 	log         *zap.Logger
 }
+
+// WithNotices attaches the optional notification-center module.
+func (h *Handler) WithNotices(manager *noticeapp.Manager) *Handler { h.notices = manager; return h }
 
 // New creates an HTTP handler backed by the supplied core services.
 func New(authService *auth.Service, userService *user.Service, permissionService *permission.Service, configService *configcenter.Service, mysqlPing, redisPing func(context.Context) error, log *zap.Logger) *Handler {

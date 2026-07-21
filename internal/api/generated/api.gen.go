@@ -12,11 +12,90 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
 	"github.com/oapi-codegen/runtime"
 )
+
+// Defines values for CreateNoticeRequestChannels.
+const (
+	CreateNoticeRequestChannelsInApp CreateNoticeRequestChannels = "in_app"
+	CreateNoticeRequestChannelsPush  CreateNoticeRequestChannels = "push"
+)
+
+// Valid indicates whether the value is a known member of the CreateNoticeRequestChannels enum.
+func (e CreateNoticeRequestChannels) Valid() bool {
+	switch e {
+	case CreateNoticeRequestChannelsInApp:
+		return true
+	case CreateNoticeRequestChannelsPush:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateNoticeRequestPriority.
+const (
+	CreateNoticeRequestPriorityImportant CreateNoticeRequestPriority = "important"
+	CreateNoticeRequestPriorityNormal    CreateNoticeRequestPriority = "normal"
+	CreateNoticeRequestPriorityUrgent    CreateNoticeRequestPriority = "urgent"
+)
+
+// Valid indicates whether the value is a known member of the CreateNoticeRequestPriority enum.
+func (e CreateNoticeRequestPriority) Valid() bool {
+	switch e {
+	case CreateNoticeRequestPriorityImportant:
+		return true
+	case CreateNoticeRequestPriorityNormal:
+		return true
+	case CreateNoticeRequestPriorityUrgent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateNoticeRequestChannels.
+const (
+	UpdateNoticeRequestChannelsInApp UpdateNoticeRequestChannels = "in_app"
+	UpdateNoticeRequestChannelsPush  UpdateNoticeRequestChannels = "push"
+)
+
+// Valid indicates whether the value is a known member of the UpdateNoticeRequestChannels enum.
+func (e UpdateNoticeRequestChannels) Valid() bool {
+	switch e {
+	case UpdateNoticeRequestChannelsInApp:
+		return true
+	case UpdateNoticeRequestChannelsPush:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateNoticeRequestPriority.
+const (
+	UpdateNoticeRequestPriorityImportant UpdateNoticeRequestPriority = "important"
+	UpdateNoticeRequestPriorityNormal    UpdateNoticeRequestPriority = "normal"
+	UpdateNoticeRequestPriorityUrgent    UpdateNoticeRequestPriority = "urgent"
+)
+
+// Valid indicates whether the value is a known member of the UpdateNoticeRequestPriority enum.
+func (e UpdateNoticeRequestPriority) Valid() bool {
+	switch e {
+	case UpdateNoticeRequestPriorityImportant:
+		return true
+	case UpdateNoticeRequestPriorityNormal:
+		return true
+	case UpdateNoticeRequestPriorityUrgent:
+		return true
+	default:
+		return false
+	}
+}
 
 // Defines values for UserStatusRequestStatus.
 const (
@@ -43,6 +122,24 @@ type CreateConfigRequest struct {
 	Key       string `json:"key"`
 	Value     string `json:"value"`
 }
+
+// CreateNoticeRequest defines model for CreateNoticeRequest.
+type CreateNoticeRequest struct {
+	ActionPath *string                       `json:"action_path,omitempty"`
+	Audience   NoticeAudience                `json:"audience"`
+	Body       string                        `json:"body"`
+	Category   string                        `json:"category"`
+	Channels   []CreateNoticeRequestChannels `json:"channels"`
+	Priority   CreateNoticeRequestPriority   `json:"priority"`
+	Summary    string                        `json:"summary"`
+	Title      string                        `json:"title"`
+}
+
+// CreateNoticeRequestChannels defines model for CreateNoticeRequest.Channels.
+type CreateNoticeRequestChannels string
+
+// CreateNoticeRequestPriority defines model for CreateNoticeRequest.Priority.
+type CreateNoticeRequestPriority string
 
 // CreateRoleRequest defines model for CreateRoleRequest.
 type CreateRoleRequest struct {
@@ -71,6 +168,13 @@ type LoginRequest struct {
 	Username string `json:"username"`
 }
 
+// NoticeAudience defines model for NoticeAudience.
+type NoticeAudience struct {
+	All     bool     `json:"all"`
+	Roles   []string `json:"roles"`
+	UserIds []uint64 `json:"user_ids"`
+}
+
 // Permission defines model for Permission.
 type Permission struct {
 	Methods     []string `json:"methods"`
@@ -80,6 +184,12 @@ type Permission struct {
 // PermissionsRequest defines model for PermissionsRequest.
 type PermissionsRequest struct {
 	Permissions []Permission `json:"permissions"`
+}
+
+// PublishNoticeRequest defines model for PublishNoticeRequest.
+type PublishNoticeRequest struct {
+	ExpectedVersion uint64     `json:"expected_version"`
+	PublishAt       *time.Time `json:"publish_at,omitempty"`
 }
 
 // RefreshRequest defines model for RefreshRequest.
@@ -98,6 +208,25 @@ type UpdateConfigRequest struct {
 	ExpectedVersion uint64  `json:"expected_version"`
 	Value           *string `json:"value,omitempty"`
 }
+
+// UpdateNoticeRequest defines model for UpdateNoticeRequest.
+type UpdateNoticeRequest struct {
+	ActionPath      *string                       `json:"action_path,omitempty"`
+	Audience        NoticeAudience                `json:"audience"`
+	Body            string                        `json:"body"`
+	Category        string                        `json:"category"`
+	Channels        []UpdateNoticeRequestChannels `json:"channels"`
+	ExpectedVersion uint64                        `json:"expected_version"`
+	Priority        UpdateNoticeRequestPriority   `json:"priority"`
+	Summary         string                        `json:"summary"`
+	Title           string                        `json:"title"`
+}
+
+// UpdateNoticeRequestChannels defines model for UpdateNoticeRequest.Channels.
+type UpdateNoticeRequestChannels string
+
+// UpdateNoticeRequestPriority defines model for UpdateNoticeRequest.Priority.
+type UpdateNoticeRequestPriority string
 
 // UpdateRoleRequest defines model for UpdateRoleRequest.
 type UpdateRoleRequest struct {
@@ -122,6 +251,11 @@ type UserStatusRequest struct {
 
 // UserStatusRequestStatus defines model for UserStatusRequest.Status.
 type UserStatusRequestStatus string
+
+// VersionRequest defines model for VersionRequest.
+type VersionRequest struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
 
 // Group defines model for Group.
 type Group = string
@@ -153,11 +287,36 @@ type Refresh = RefreshRequest
 // UpdateUser defines model for UpdateUser.
 type UpdateUser = UpdateUserRequest
 
+// ListAdminNoticesParams defines parameters for ListAdminNotices.
+type ListAdminNoticesParams struct {
+	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// DeleteNoticeParams defines parameters for DeleteNotice.
+type DeleteNoticeParams struct {
+	ExpectedVersion uint64 `form:"expected_version" json:"expected_version"`
+}
+
+// ListNoticeDeliveriesParams defines parameters for ListNoticeDeliveries.
+type ListNoticeDeliveriesParams struct {
+	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
 // ListConfigsParams defines parameters for ListConfigs.
 type ListConfigsParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 	Group    *Group    `form:"group,omitempty" json:"group,omitempty"`
+}
+
+// ListMyNoticesParams defines parameters for ListMyNotices.
+type ListMyNoticesParams struct {
+	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Unread   *bool     `form:"unread,omitempty" json:"unread,omitempty"`
+	Category *string   `form:"category,omitempty" json:"category,omitempty"`
 }
 
 // ListRolesParams defines parameters for ListRoles.
@@ -171,6 +330,18 @@ type ListUsersParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
+
+// CreateNoticeJSONRequestBody defines body for CreateNotice for application/json ContentType.
+type CreateNoticeJSONRequestBody = CreateNoticeRequest
+
+// UpdateNoticeJSONRequestBody defines body for UpdateNotice for application/json ContentType.
+type UpdateNoticeJSONRequestBody = UpdateNoticeRequest
+
+// PublishNoticeJSONRequestBody defines body for PublishNotice for application/json ContentType.
+type PublishNoticeJSONRequestBody = PublishNoticeRequest
+
+// RevokeNoticeJSONRequestBody defines body for RevokeNotice for application/json ContentType.
+type RevokeNoticeJSONRequestBody = VersionRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
@@ -208,6 +379,33 @@ type SetUserStatusJSONRequestBody = UserStatusRequest
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (GET /api/v1/admin/notices)
+	ListAdminNotices(c *gin.Context, params ListAdminNoticesParams)
+
+	// (POST /api/v1/admin/notices)
+	CreateNotice(c *gin.Context)
+
+	// (DELETE /api/v1/admin/notices/{id})
+	DeleteNotice(c *gin.Context, id ID, params DeleteNoticeParams)
+
+	// (GET /api/v1/admin/notices/{id})
+	GetAdminNotice(c *gin.Context, id ID)
+
+	// (PATCH /api/v1/admin/notices/{id})
+	UpdateNotice(c *gin.Context, id ID)
+
+	// (GET /api/v1/admin/notices/{id}/deliveries)
+	ListNoticeDeliveries(c *gin.Context, id ID, params ListNoticeDeliveriesParams)
+
+	// (POST /api/v1/admin/notices/{id}/deliveries/retry)
+	RetryNoticeDeliveries(c *gin.Context, id ID)
+
+	// (POST /api/v1/admin/notices/{id}/publish)
+	PublishNotice(c *gin.Context, id ID)
+
+	// (POST /api/v1/admin/notices/{id}/revoke)
+	RevokeNotice(c *gin.Context, id ID)
+
 	// (POST /api/v1/auth/login)
 	Login(c *gin.Context)
 
@@ -234,6 +432,21 @@ type ServerInterface interface {
 
 	// (PUT /api/v1/configs/{id})
 	UpdateConfig(c *gin.Context, id ID)
+
+	// (GET /api/v1/notices)
+	ListMyNotices(c *gin.Context, params ListMyNoticesParams)
+
+	// (PUT /api/v1/notices/read-all)
+	ReadAllNotices(c *gin.Context)
+
+	// (GET /api/v1/notices/unread-count)
+	GetUnreadNoticeCount(c *gin.Context)
+
+	// (GET /api/v1/notices/{id})
+	GetMyNotice(c *gin.Context, id ID)
+
+	// (PUT /api/v1/notices/{id}/read)
+	ReadNotice(c *gin.Context, id ID)
 
 	// (GET /api/v1/roles)
 	ListRoles(c *gin.Context, params ListRolesParams)
@@ -289,6 +502,259 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// ListAdminNotices operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminNotices(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminNoticesParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAdminNotices(c, params)
+}
+
+// CreateNotice operation middleware
+func (siw *ServerInterfaceWrapper) CreateNotice(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateNotice(c)
+}
+
+// DeleteNotice operation middleware
+func (siw *ServerInterfaceWrapper) DeleteNotice(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteNoticeParams
+
+	// ------------- Required query parameter "expected_version" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "expected_version", c.Request.URL.Query(), &params.ExpectedVersion, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter expected_version: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteNotice(c, id, params)
+}
+
+// GetAdminNotice operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminNotice(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAdminNotice(c, id)
+}
+
+// UpdateNotice operation middleware
+func (siw *ServerInterfaceWrapper) UpdateNotice(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateNotice(c, id)
+}
+
+// ListNoticeDeliveries operation middleware
+func (siw *ServerInterfaceWrapper) ListNoticeDeliveries(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListNoticeDeliveriesParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListNoticeDeliveries(c, id, params)
+}
+
+// RetryNoticeDeliveries operation middleware
+func (siw *ServerInterfaceWrapper) RetryNoticeDeliveries(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RetryNoticeDeliveries(c, id)
+}
+
+// PublishNotice operation middleware
+func (siw *ServerInterfaceWrapper) PublishNotice(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PublishNotice(c, id)
+}
+
+// RevokeNotice operation middleware
+func (siw *ServerInterfaceWrapper) RevokeNotice(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RevokeNotice(c, id)
+}
 
 // Login operation middleware
 func (siw *ServerInterfaceWrapper) Login(c *gin.Context) {
@@ -471,6 +937,133 @@ func (siw *ServerInterfaceWrapper) UpdateConfig(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateConfig(c, id)
+}
+
+// ListMyNotices operation middleware
+func (siw *ServerInterfaceWrapper) ListMyNotices(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyNoticesParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "unread" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "unread", c.Request.URL.Query(), &params.Unread, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter unread: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "category" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "category", c.Request.URL.Query(), &params.Category, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter category: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListMyNotices(c, params)
+}
+
+// ReadAllNotices operation middleware
+func (siw *ServerInterfaceWrapper) ReadAllNotices(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ReadAllNotices(c)
+}
+
+// GetUnreadNoticeCount operation middleware
+func (siw *ServerInterfaceWrapper) GetUnreadNoticeCount(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetUnreadNoticeCount(c)
+}
+
+// GetMyNotice operation middleware
+func (siw *ServerInterfaceWrapper) GetMyNotice(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetMyNotice(c, id)
+}
+
+// ReadNotice operation middleware
+func (siw *ServerInterfaceWrapper) ReadNotice(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ReadNotice(c, id)
 }
 
 // ListRoles operation middleware
@@ -871,6 +1464,20 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/configs/:id", wrapper.DeleteConfig)
 	router.GET(options.BaseURL+"/api/v1/configs/:id", wrapper.GetConfig)
 	router.PUT(options.BaseURL+"/api/v1/configs/:id", wrapper.UpdateConfig)
+	router.GET(options.BaseURL+"/api/v1/admin/notices", wrapper.ListAdminNotices)
+	router.POST(options.BaseURL+"/api/v1/admin/notices", wrapper.CreateNotice)
+	router.DELETE(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.DeleteNotice)
+	router.GET(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.GetAdminNotice)
+	router.PATCH(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.UpdateNotice)
+	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/publish", wrapper.PublishNotice)
+	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/revoke", wrapper.RevokeNotice)
+	router.GET(options.BaseURL+"/api/v1/admin/notices/:id/deliveries", wrapper.ListNoticeDeliveries)
+	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/deliveries/retry", wrapper.RetryNoticeDeliveries)
+	router.GET(options.BaseURL+"/api/v1/notices", wrapper.ListMyNotices)
+	router.GET(options.BaseURL+"/api/v1/notices/unread-count", wrapper.GetUnreadNoticeCount)
+	router.PUT(options.BaseURL+"/api/v1/notices/read-all", wrapper.ReadAllNotices)
+	router.GET(options.BaseURL+"/api/v1/notices/:id", wrapper.GetMyNotice)
+	router.PUT(options.BaseURL+"/api/v1/notices/:id/read", wrapper.ReadNotice)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -878,28 +1485,37 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"FcmT8Ti/NjTw/ZiFOJ4yIQdvg7eBOgb+FwAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

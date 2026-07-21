@@ -77,4 +77,52 @@ func (h *Handler) UpdateConfig(c *gin.Context, _ generated.ID) { h.updateConfig(
 // DeleteConfig handles the generated configuration-delete operation.
 func (h *Handler) DeleteConfig(c *gin.Context, _ generated.ID) { h.deleteConfig(c) }
 
+// ListAdminNotices handles the administrator notice-list operation.
+func (h *Handler) ListAdminNotices(c *gin.Context, _ generated.ListAdminNoticesParams) {
+	h.listAdminNotices(c)
+}
+
+// CreateNotice handles draft creation.
+func (h *Handler) CreateNotice(c *gin.Context) { h.createNotice(c) }
+
+// GetAdminNotice handles administrator notice detail.
+func (h *Handler) GetAdminNotice(c *gin.Context, _ generated.ID) { h.getAdminNotice(c) }
+
+// UpdateNotice handles draft updates.
+func (h *Handler) UpdateNotice(c *gin.Context, _ generated.ID) { h.updateNotice(c) }
+
+// DeleteNotice handles draft deletion.
+func (h *Handler) DeleteNotice(c *gin.Context, _ generated.ID, params generated.DeleteNoticeParams) {
+	h.deleteNotice(c, params.ExpectedVersion)
+}
+
+// PublishNotice handles immediate or scheduled publication.
+func (h *Handler) PublishNotice(c *gin.Context, _ generated.ID) { h.publishNotice(c) }
+
+// RevokeNotice handles notice revocation.
+func (h *Handler) RevokeNotice(c *gin.Context, _ generated.ID) { h.revokeNotice(c) }
+
+// ListNoticeDeliveries handles delivery inspection.
+func (h *Handler) ListNoticeDeliveries(c *gin.Context, _ generated.ID, _ generated.ListNoticeDeliveriesParams) {
+	h.listNoticeDeliveries(c)
+}
+
+// RetryNoticeDeliveries handles failed-delivery retries.
+func (h *Handler) RetryNoticeDeliveries(c *gin.Context, _ generated.ID) { h.retryNoticeDeliveries(c) }
+
+// ListMyNotices handles the current user's inbox.
+func (h *Handler) ListMyNotices(c *gin.Context, _ generated.ListMyNoticesParams) { h.listMyNotices(c) }
+
+// GetUnreadNoticeCount handles the current user's unread count.
+func (h *Handler) GetUnreadNoticeCount(c *gin.Context) { h.getUnreadNoticeCount(c) }
+
+// GetMyNotice handles recipient-scoped notice detail.
+func (h *Handler) GetMyNotice(c *gin.Context, _ generated.ID) { h.getMyNotice(c) }
+
+// ReadNotice marks one recipient row read.
+func (h *Handler) ReadNotice(c *gin.Context, _ generated.ID) { h.readNotice(c) }
+
+// ReadAllNotices marks all visible recipient rows read.
+func (h *Handler) ReadAllNotices(c *gin.Context) { h.readAllNotices(c) }
+
 var _ generated.ServerInterface = (*Handler)(nil)

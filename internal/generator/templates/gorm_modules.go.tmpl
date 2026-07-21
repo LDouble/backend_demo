@@ -12,8 +12,12 @@ import (
 func applyGeneratedModules(generator *gen.Generator) {
 {{- if .Modules}}
 	generator.ApplyBasic(
-{{- range .Modules}}
+{{- range .Modules}}{{- $module := .Name}}
+{{- if .Entities}}{{- range .Entities}}
+		{{$module}}domain.{{.}}{},
+{{- end}}{{else}}
 		{{.Name}}domain.{{.Entity}}{},
+{{- end}}
 {{- end}}
 	)
 {{- else}}

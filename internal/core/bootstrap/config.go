@@ -17,6 +17,7 @@ type Config struct {
 	Server ServerConfig `yaml:"server"`
 	MySQL  MySQLConfig  `yaml:"mysql"`
 	Redis  RedisConfig  `yaml:"redis"`
+	Worker WorkerConfig `yaml:"worker"`
 	JWT    JWTConfig    `yaml:"-"`
 	Secret SecretConfig `yaml:"-"`
 	Admin  AdminConfig  `yaml:"-"`
@@ -37,6 +38,13 @@ type RedisConfig struct {
 	Address  string `yaml:"address"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
+}
+
+// WorkerConfig contains asynchronous delivery runtime settings.
+type WorkerConfig struct {
+	RedisDB      int           `yaml:"redis_db"`
+	Concurrency  int           `yaml:"concurrency"`
+	PollInterval time.Duration `yaml:"poll_interval"`
 }
 
 // JWTConfig contains signing and lifetime settings.
@@ -60,7 +68,8 @@ type AdminConfig struct {
 func Load(path string) (Config, error) {
 	cfg := Config{
 		Server: ServerConfig{Address: ":8080"}, Redis: RedisConfig{Address: "127.0.0.1:6379"},
-		JWT: JWTConfig{Issuer: "campus-platform", AccessTTL: 15 * time.Minute, RefreshTTL: 7 * 24 * time.Hour},
+		Worker: WorkerConfig{RedisDB: 1, Concurrency: 10, PollInterval: time.Second},
+		JWT:    JWTConfig{Issuer: "campus-platform", AccessTTL: 15 * time.Minute, RefreshTTL: 7 * 24 * time.Hour},
 	}
 	if path != "" {
 		data, err := os.ReadFile(path)
@@ -100,6 +109,21 @@ func override(c *Config) {
 	if v := os.Getenv("CAMPUS_REDIS_DB"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			c.Redis.DB = n
+		}
+	}
+	if v := os.Getenv("CAMPUS_WORKER_REDIS_DB"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.Worker.RedisDB = n
+		}
+	}
+	if v := os.Getenv("CAMPUS_WORKER_CONCURRENCY"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.Worker.Concurrency = n
+		}
+	}
+	if v := os.Getenv("CAMPUS_WORKER_POLL_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			c.Worker.PollInterval = d
 		}
 	}
 	if v := os.Getenv("CAMPUS_JWT_ISSUER"); v != "" {

@@ -97,6 +97,42 @@ func TestGeneratedArtifacts(t *testing.T) {
 	}
 }
 
+func TestGenerateV2MultipleEntitiesAndDependencies(t *testing.T) {
+	root := t.TempDir()
+	schema := Schema{Version: 2, Module: "notice", CRUD: []string{"create", "get"}, Entities: []Entity{
+		{Name: "Recipient", Table: "notice_recipients", Fields: []Field{{Name: "notice_id", Type: "uint64", Required: true}, {Name: "user_id", Type: "uint64", Required: true}}, Indexes: []Index{{Name: "uk_notice_recipient", Fields: []string{"notice_id", "user_id"}, Unique: true}}, ForeignKeys: []ForeignKey{{Field: "notice_id", References: "notices.id", OnDelete: "CASCADE"}}},
+		{Name: "Notice", Table: "notices", Primary: true, Fields: []Field{{Name: "title", Type: "string", Required: true, Index: true}}},
+	}}
+	if _, err := Generate(context.Background(), schema, Options{Root: root, Source: "schemas/notice.yaml"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"notices.gen.go", "notice_recipients.gen.go"} {
+		if _, err := os.Stat(filepath.Join(root, "internal/modules/notice/domain", name)); err != nil {
+			t.Fatalf("generated entity %s: %v", name, err)
+		}
+	}
+	migration, err := os.ReadFile(filepath.Join(root, "migrations/modules/notice.up.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(migration)
+	if strings.Index(text, "CREATE TABLE notices") > strings.Index(text, "CREATE TABLE notice_recipients") {
+		t.Fatal("primary table must be generated before dependent table")
+	}
+	for _, expected := range []string{"UNIQUE KEY uk_notice_recipient (notice_id, user_id)", "REFERENCES notices(id) ON DELETE CASCADE", "idx_notices_title"} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("migration missing %q:\n%s", expected, text)
+		}
+	}
+	registration, err := os.ReadFile(filepath.Join(root, "internal/infrastructure/mysql/generator/modules.gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(registration), "noticedomain.Notice{}") || !strings.Contains(string(registration), "noticedomain.Recipient{}") {
+		t.Fatalf("registration does not include every entity:\n%s", registration)
+	}
+}
+
 func TestSafeJoin(t *testing.T) {
 	root := t.TempDir()
 	if _, err := safeJoin(root, "../../escape"); err == nil {

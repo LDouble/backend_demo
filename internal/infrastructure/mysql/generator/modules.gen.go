@@ -2,8 +2,17 @@
 
 package main
 
-import "gorm.io/gen"
+import (
+	noticedomain "github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
+	"gorm.io/gen"
+)
 
 func applyGeneratedModules(generator *gen.Generator) {
-	_ = generator
+	generator.ApplyBasic(
+		noticedomain.Notice{},
+		noticedomain.NoticeAudience{},
+		noticedomain.NoticeRecipient{},
+		noticedomain.NoticeDelivery{},
+		noticedomain.OutboxEvent{},
+	)
 }

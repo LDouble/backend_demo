@@ -12,6 +12,9 @@ x-app-environment: &app-environment
   CAMPUS_CONFIG_MASTER_KEY: "${CAMPUS_CONFIG_MASTER_KEY:?请先运行 make env}"
   CAMPUS_ADMIN_USERNAME: "${CAMPUS_ADMIN_USERNAME:?请先运行 make env}"
   CAMPUS_ADMIN_PASSWORD: "${CAMPUS_ADMIN_PASSWORD:?请先运行 make env}"
+  CAMPUS_WORKER_REDIS_DB: "${CAMPUS_WORKER_REDIS_DB:-1}"
+  CAMPUS_WORKER_CONCURRENCY: "${CAMPUS_WORKER_CONCURRENCY:-10}"
+  CAMPUS_WORKER_POLL_INTERVAL: "${CAMPUS_WORKER_POLL_INTERVAL:-1s}"
 
 services:
   mysql:
@@ -78,6 +81,14 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+
+  worker:
+    build: *app-build
+    entrypoint: ["/app/worker"]
+    environment: *app-environment
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
 
 volumes:
   mysql-data:

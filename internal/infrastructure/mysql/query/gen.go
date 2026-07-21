@@ -16,34 +16,54 @@ import (
 )
 
 var (
-	Q      = new(Query)
-	Config *config
-	Role   *role
-	User   *user
+	Q               = new(Query)
+	Config          *config
+	Notice          *notice
+	NoticeAudience  *noticeAudience
+	NoticeDelivery  *noticeDelivery
+	NoticeRecipient *noticeRecipient
+	OutboxEvent     *outboxEvent
+	Role            *role
+	User            *user
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	Config = &Q.Config
+	Notice = &Q.Notice
+	NoticeAudience = &Q.NoticeAudience
+	NoticeDelivery = &Q.NoticeDelivery
+	NoticeRecipient = &Q.NoticeRecipient
+	OutboxEvent = &Q.OutboxEvent
 	Role = &Q.Role
 	User = &Q.User
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:     db,
-		Config: newConfig(db, opts...),
-		Role:   newRole(db, opts...),
-		User:   newUser(db, opts...),
+		db:              db,
+		Config:          newConfig(db, opts...),
+		Notice:          newNotice(db, opts...),
+		NoticeAudience:  newNoticeAudience(db, opts...),
+		NoticeDelivery:  newNoticeDelivery(db, opts...),
+		NoticeRecipient: newNoticeRecipient(db, opts...),
+		OutboxEvent:     newOutboxEvent(db, opts...),
+		Role:            newRole(db, opts...),
+		User:            newUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Config config
-	Role   role
-	User   user
+	Config          config
+	Notice          notice
+	NoticeAudience  noticeAudience
+	NoticeDelivery  noticeDelivery
+	NoticeRecipient noticeRecipient
+	OutboxEvent     outboxEvent
+	Role            role
+	User            user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -52,10 +72,15 @@ func (q *Query) UnderlyingDB() *gorm.DB { return q.db }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:     db,
-		Config: q.Config.clone(db),
-		Role:   q.Role.clone(db),
-		User:   q.User.clone(db),
+		db:              db,
+		Config:          q.Config.clone(db),
+		Notice:          q.Notice.clone(db),
+		NoticeAudience:  q.NoticeAudience.clone(db),
+		NoticeDelivery:  q.NoticeDelivery.clone(db),
+		NoticeRecipient: q.NoticeRecipient.clone(db),
+		OutboxEvent:     q.OutboxEvent.clone(db),
+		Role:            q.Role.clone(db),
+		User:            q.User.clone(db),
 	}
 }
 
@@ -69,24 +94,39 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:     db,
-		Config: q.Config.replaceDB(db),
-		Role:   q.Role.replaceDB(db),
-		User:   q.User.replaceDB(db),
+		db:              db,
+		Config:          q.Config.replaceDB(db),
+		Notice:          q.Notice.replaceDB(db),
+		NoticeAudience:  q.NoticeAudience.replaceDB(db),
+		NoticeDelivery:  q.NoticeDelivery.replaceDB(db),
+		NoticeRecipient: q.NoticeRecipient.replaceDB(db),
+		OutboxEvent:     q.OutboxEvent.replaceDB(db),
+		Role:            q.Role.replaceDB(db),
+		User:            q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Config IConfigDo
-	Role   IRoleDo
-	User   IUserDo
+	Config          IConfigDo
+	Notice          INoticeDo
+	NoticeAudience  INoticeAudienceDo
+	NoticeDelivery  INoticeDeliveryDo
+	NoticeRecipient INoticeRecipientDo
+	OutboxEvent     IOutboxEventDo
+	Role            IRoleDo
+	User            IUserDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Config: q.Config.WithContext(ctx),
-		Role:   q.Role.WithContext(ctx),
-		User:   q.User.WithContext(ctx),
+		Config:          q.Config.WithContext(ctx),
+		Notice:          q.Notice.WithContext(ctx),
+		NoticeAudience:  q.NoticeAudience.WithContext(ctx),
+		NoticeDelivery:  q.NoticeDelivery.WithContext(ctx),
+		NoticeRecipient: q.NoticeRecipient.WithContext(ctx),
+		OutboxEvent:     q.OutboxEvent.WithContext(ctx),
+		Role:            q.Role.WithContext(ctx),
+		User:            q.User.WithContext(ctx),
 	}
 }
 

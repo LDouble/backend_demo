@@ -16,6 +16,8 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/logger"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/redisclient"
+	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
+	noticeinfra "github.com/weouc-plus/campus-platform/internal/modules/notice/infrastructure"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -29,6 +31,7 @@ type Runtime struct {
 	Router      *gin.Engine
 	Users       *user.Service
 	Permissions *permission.Service
+	Notices     *noticeapp.Manager
 }
 
 // Build initializes all runtime dependencies.
@@ -60,16 +63,17 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	}
 	configService := configcenter.NewService(mysql.NewConfigRepository(db), cipher)
 	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
+	noticeService := noticeapp.NewManager(noticeinfra.NewNoticeStore(db))
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, fmt.Errorf("get sql db: %w", err)
 	}
-	h := httpapi.New(authService, userService, permissionService, configService, sqlDB.PingContext, func(c context.Context) error { return rdb.Ping(c).Err() }, log)
+	h := httpapi.New(authService, userService, permissionService, configService, sqlDB.PingContext, func(c context.Context) error { return rdb.Ping(c).Err() }, log).WithNotices(noticeService)
 	router, err := h.Router()
 	if err != nil {
 		return nil, err
 	}
-	return &Runtime{Config: cfg, DB: db, Redis: rdb, Logger: log, Router: router, Users: userService, Permissions: permissionService}, nil
+	return &Runtime{Config: cfg, DB: db, Redis: rdb, Logger: log, Router: router, Users: userService, Permissions: permissionService, Notices: noticeService}, nil
 }
 
 // Close releases runtime resources.

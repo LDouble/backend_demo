@@ -1,6 +1,6 @@
 # 校园应用平台后端
 
-阶段 1 提供用户认证、Redis 会话、Casbin RBAC、配置中心、数据库迁移和健康检查。阶段 2 增加 Schema 驱动的模块生成器、`campusctl` 编排和 AI 开发规范。
+平台提供用户认证、Redis 会话、Casbin RBAC、配置中心、数据库迁移和健康检查，并已加入通知中心、Schema v2 多实体生成及 Asynq 异步投递。
 
 ## 本地启动
 
@@ -44,6 +44,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 go run ./cmd/campusctl migration up
 go run ./cmd/campusctl admin bootstrap
 go run ./cmd/server
+go run ./cmd/worker
 ```
 
 ## 验证
@@ -83,7 +84,7 @@ MySQL Repository 必须使用生成字段执行普通 CRUD，并通过 `WithCont
 
 ## 业务模块生成
 
-模块以版本化 YAML Schema 为输入。活动示例可用于校验流程，但不会自动写入业务目录：
+模块以版本化 YAML Schema 为输入。v1 兼容单实体，v2 支持多实体、联合索引和表间依赖。活动示例可用于校验流程，通知模块则可直接重新生成：
 
 ```bash
 go run ./cmd/campusctl module validate schemas/examples/activity.yaml
@@ -91,7 +92,13 @@ rm -rf /tmp/campus-generator-example
 go run ./cmd/campusctl generate module schemas/examples/activity.yaml --root /tmp/campus-generator-example
 go run ./cmd/campusctl generate module schemas/examples/activity.yaml --check --root /tmp/campus-generator-example
 make generate-module SCHEMA=schemas/activity.yaml
+go run ./cmd/campusctl module validate schemas/notice.yaml
+make generate-module SCHEMA=schemas/notice.yaml
 go run ./cmd/campusctl module list
 ```
 
-首次生成会创建 Domain、Application、GORM Query Repository、Handler、OpenAPI 片段、迁移草案和权限清单，并将模块实体登记到共享 GORM Gen。随后执行 `make generate-check` 生成类型安全 Query。`.gen.go` 可重复生成；`domain/rule.go` 与测试骨架只在不存在时创建。模块迁移必须审核并编号后才能进入主迁移目录，生成器不会自动执行迁移或注册路由。完整约束见 [`.agent/architecture.md`](.agent/architecture.md) 和 [`.agent/rules.md`](.agent/rules.md)。
+首次生成会创建 Domain、Application、GORM Query Repository、Handler、OpenAPI 片段、迁移草案和权限清单，并将所有模块实体登记到共享 GORM Gen。随后执行 `make generate-check` 生成类型安全 Query。`.gen.go` 可重复生成；`domain/rule.go` 与测试骨架只在不存在时创建。模块迁移必须审核并编号后才能进入主迁移目录，生成器不会自动执行迁移或注册路由。完整约束见 [`.agent/architecture.md`](.agent/architecture.md) 和 [`.agent/rules.md`](.agent/rules.md)。
+
+## 通知中心
+
+Compose 会同时启动 API 和长期运行的 `worker`。管理员通知接口位于 `/api/v1/admin/notices`，个人收件箱位于 `/api/v1/notices`。发布时由 Worker 快照收件人；`push` 首版由日志 Provider 模拟，日志只包含通知 ID、用户 ID 和状态，不记录正文。Worker 使用 Redis DB 1，可通过 `CAMPUS_WORKER_REDIS_DB`、`CAMPUS_WORKER_CONCURRENCY` 和 `CAMPUS_WORKER_POLL_INTERVAL` 覆盖默认值。

@@ -51,7 +51,7 @@ func TestRBACLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	roles, err := svc.GetUserRoles(ctx, 2)
-	if err != nil || len(roles) != 1 || roles[0] != "config_reader" {
+	if err != nil || len(roles) != 2 || roles[0] != "config_reader" || roles[1] != model.MemberRole {
 		t.Fatalf("roles=%v err=%v", roles, err)
 	}
 	allowed, _ = svc.Enforce(ctx, 2, "/api/v1/configs", "GET")
@@ -120,6 +120,47 @@ func TestSuperAdminProtection(t *testing.T) {
 	if err = svc.SetPermissions(ctx, superID, nil); err == nil {
 		t.Fatal("super admin permissions must not change")
 	}
+}
+
+func TestMemberRoleIsBuiltInAndAlwaysAssigned(t *testing.T) {
+	ctx := context.Background()
+	svc := testService(t)
+	if _, err := svc.CreateRole(ctx, model.MemberRole, "legacy member", false); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.EnsureMemberForUser(ctx, 42); err != nil {
+		t.Fatal(err)
+	}
+	allowed, err := svc.Enforce(ctx, 42, "/api/v1/notices/9/read", "PUT")
+	if err != nil || !allowed {
+		t.Fatalf("member notice permission allowed=%v err=%v", allowed, err)
+	}
+	if err = svc.SetUserRoles(ctx, 42, nil); err != nil {
+		t.Fatal(err)
+	}
+	roles, err := svc.GetUserRoles(ctx, 42)
+	if err != nil || len(roles) != 1 || roles[0] != model.MemberRole {
+		t.Fatalf("roles=%v err=%v", roles, err)
+	}
+	rows, _, err := svc.ListRoles(ctx, 1, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, role := range rows {
+		if role.Name == model.MemberRole {
+			if !role.Builtin {
+				t.Fatal("member role must be built in")
+			}
+			if err = svc.DeleteRole(ctx, role.ID); err == nil {
+				t.Fatal("member role must not be deleted")
+			}
+			if err = svc.SetPermissions(ctx, role.ID, nil); err == nil {
+				t.Fatal("member permissions must not be changed")
+			}
+			return
+		}
+	}
+	t.Fatal("member role not found")
 }
 
 func TestPermissionValidation(t *testing.T) {

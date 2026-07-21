@@ -36,7 +36,7 @@ make env && make compose-up
 
 ## 模块生成规范
 
-新增业务模块先定义 `schemas/<module>.yaml`，再执行 `campusctl module validate` 和 `campusctl generate module`。允许重新生成 `.gen.go`、模块 OpenAPI、权限清单和迁移草案；禁止覆盖 `domain/rule.go` 等人工扩展点。生成迁移经评审、编号后才能移入主迁移序列，生成器不得自动执行迁移或注册路由。
+新增业务模块先定义 `schemas/<module>.yaml`，再执行 `campusctl module validate` 和 `campusctl generate module`。v1 用于单实体兼容，新增多实体模块使用 v2，并声明联合索引、主实体及外键依赖。允许重新生成 `.gen.go`、模块 OpenAPI、权限清单和迁移草案；禁止覆盖 `domain/rule.go` 等人工扩展点。生成迁移经评审、编号后才能移入主迁移序列，生成器不得自动执行迁移或注册路由。
 
 ## Go 风格与测试
 

@@ -6,3 +6,7 @@ redis:
   address: "127.0.0.1:6379"
   password: ""
   db: 0
+worker:
+  redis_db: 1
+  concurrency: 10
+  poll_interval: 1s

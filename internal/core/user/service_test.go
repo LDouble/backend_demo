@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/weouc-plus/campus-platform/internal/core/model"
@@ -13,6 +14,17 @@ type fakeRepo struct {
 	next  uint64
 }
 type fakeGuard struct{ allowed bool }
+
+type assigningGuard struct {
+	assigned uint64
+	err      error
+}
+
+func (g *assigningGuard) CanDisable(context.Context, uint64) (bool, error) { return true, nil }
+func (g *assigningGuard) EnsureMemberForUser(_ context.Context, id uint64) error {
+	g.assigned = id
+	return g.err
+}
 
 func (g fakeGuard) CanDisable(context.Context, uint64) (bool, error) { return g.allowed, nil }
 
@@ -74,6 +86,20 @@ func TestCreateAndPassword(t *testing.T) {
 func TestHashPasswordLength(t *testing.T) {
 	if _, err := HashPassword("too-short"); err == nil {
 		t.Fatal("expected short password rejection")
+	}
+}
+
+func TestCreateAssignsMemberRole(t *testing.T) {
+	repo := newFakeRepo()
+	guard := &assigningGuard{}
+	svc := NewService(repo, guard)
+	user, err := svc.Create(context.Background(), "new.member", "initial-password-123")
+	if err != nil || guard.assigned != user.ID {
+		t.Fatalf("user=%+v assigned=%d err=%v", user, guard.assigned, err)
+	}
+	guard.err = errors.New("casbin unavailable")
+	if _, err = svc.Create(context.Background(), "other.member", "initial-password-123"); err == nil {
+		t.Fatal("assignment failure must be returned")
 	}
 }
 

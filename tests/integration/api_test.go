@@ -115,6 +115,45 @@ func TestGeneratedQueryManagementLifecycle(t *testing.T) {
 	assertStatus(t, request(t, client, http.MethodDelete, fmt.Sprintf("%s/api/v1/roles/%d", base, createdRole.ID), token, nil), http.StatusOK)
 }
 
+func TestNoticeLifecycleThroughWorker(t *testing.T) {
+	base, adminToken := integrationAdmin(t)
+	client := http.Client{}
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	username := "notice_user_" + suffix
+	password := "integration-password"
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{"username": username, "password": password}), &resource{})
+	userToken := loginWithCredentials(t, base, username, password)
+	created := resource{}
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/admin/notices", adminToken, map[string]any{
+		"title": "Worker 通知", "summary": "异步闭环", "body": "Markdown 正文", "category": "campus", "priority": "important", "action_path": "/pages/notices/detail", "channels": []string{"in_app", "push"}, "audience": map[string]any{"all": true, "roles": []string{}, "user_ids": []uint64{}},
+	}), &created)
+	published := resource{}
+	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/notices/%d/publish", base, created.ID), adminToken, map[string]any{"expected_version": created.Version}), &published)
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		response := request(t, client, http.MethodGet, base+"/api/v1/notices", userToken, nil)
+		var page struct {
+			Items []resource `json:"items"`
+		}
+		decodeData(t, response, &page)
+		if len(page.Items) > 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("worker did not publish notice before deadline")
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/notices/unread-count", userToken, nil), http.StatusOK)
+	assertStatus(t, request(t, client, http.MethodPut, fmt.Sprintf("%s/api/v1/notices/%d/read", base, created.ID), userToken, nil), http.StatusOK)
+	var adminDetail struct {
+		Notice resource `json:"notice"`
+	}
+	decodeData(t, request(t, client, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/notices/%d", base, created.ID), adminToken, nil), &adminDetail)
+	assertStatus(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/notices/%d/revoke", base, created.ID), adminToken, map[string]any{"expected_version": adminDetail.Notice.Version}), http.StatusOK)
+	assertStatus(t, request(t, client, http.MethodGet, fmt.Sprintf("%s/api/v1/notices/%d", base, created.ID), userToken, nil), http.StatusNotFound)
+}
+
 func assertEncryptedAtRest(t *testing.T, id uint64, plaintext string) {
 	t.Helper()
 	dsn := os.Getenv("CAMPUS_INTEGRATION_MYSQL_DSN")

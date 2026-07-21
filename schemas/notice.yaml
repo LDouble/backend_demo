@@ -1,0 +1,84 @@
+version: 2
+module: notice
+entities:
+  - name: Notice
+    table: notices
+    primary: true
+    fields:
+      - {name: title, type: string, size: 200, required: true}
+      - {name: summary, type: string, size: 500, required: true}
+      - {name: body, type: text, required: true}
+      - {name: category, type: string, size: 64, required: true, index: true}
+      - {name: priority, type: string, size: 16, required: true}
+      - {name: status, type: string, size: 16, required: true, index: true}
+      - {name: action_path, type: string, size: 512}
+      - {name: push_enabled, type: bool, required: true}
+      - {name: publish_at, type: datetime, index: true}
+      - {name: published_at, type: datetime}
+      - {name: revoked_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+      - {name: created_by, type: uint64, required: true}
+      - {name: updated_by, type: uint64, required: true}
+  - name: NoticeAudience
+    table: notice_audiences
+    fields:
+      - {name: notice_id, type: uint64, required: true}
+      - {name: audience_type, type: string, size: 16, required: true}
+      - {name: audience_value, type: string, size: 64, required: true}
+    indexes:
+      - {name: uk_notice_audience, fields: [notice_id, audience_type, audience_value], unique: true}
+    foreign_keys:
+      - {field: notice_id, references: notices.id, on_delete: CASCADE}
+  - name: NoticeRecipient
+    table: notice_recipients
+    fields:
+      - {name: notice_id, type: uint64, required: true}
+      - {name: user_id, type: uint64, required: true}
+      - {name: read_at, type: datetime}
+    indexes:
+      - {name: uk_notice_recipient, fields: [notice_id, user_id], unique: true}
+      - {name: idx_recipient_inbox, fields: [user_id, read_at, notice_id]}
+    foreign_keys:
+      - {field: notice_id, references: notices.id, on_delete: CASCADE}
+  - name: NoticeDelivery
+    table: notice_deliveries
+    fields:
+      - {name: notice_id, type: uint64, required: true}
+      - {name: user_id, type: uint64, required: true}
+      - {name: channel, type: string, size: 16, required: true}
+      - {name: status, type: string, size: 16, required: true, index: true}
+      - {name: attempts, type: int64, required: true}
+      - {name: idempotency_key, type: string, size: 128, required: true, unique: true}
+      - {name: provider_message_id, type: string, size: 128}
+      - {name: last_error, type: string, size: 1000}
+    indexes:
+      - {name: idx_delivery_notice, fields: [notice_id, status]}
+    foreign_keys:
+      - {field: notice_id, references: notices.id, on_delete: CASCADE}
+  - name: OutboxEvent
+    table: outbox_events
+    fields:
+      - {name: aggregate_type, type: string, size: 64, required: true}
+      - {name: aggregate_id, type: uint64, required: true}
+      - {name: event_type, type: string, size: 64, required: true}
+      - {name: payload, type: json, required: true}
+      - {name: status, type: string, size: 16, required: true, index: true}
+      - {name: available_at, type: datetime, required: true, index: true}
+      - {name: locked_at, type: datetime}
+      - {name: attempts, type: int64, required: true}
+      - {name: last_error, type: string, size: 1000}
+    indexes:
+      - {name: idx_outbox_dispatch, fields: [status, available_at, locked_at]}
+crud: [create, get, list, update, delete]
+permissions:
+  - {name: notice:manage, path: /api/v1/admin/notices, methods: [GET, POST]}
+  - {name: notice:manage_item, path: /api/v1/admin/notices/:id, methods: [GET, PATCH, DELETE]}
+  - {name: notice:publish, path: /api/v1/admin/notices/:id/publish, methods: [POST]}
+  - {name: notice:revoke, path: /api/v1/admin/notices/:id/revoke, methods: [POST]}
+  - {name: notice:deliveries, path: /api/v1/admin/notices/:id/deliveries, methods: [GET]}
+  - {name: notice:retry, path: /api/v1/admin/notices/:id/deliveries/retry, methods: [POST]}
+  - {name: notice:read, path: /api/v1/notices, methods: [GET]}
+  - {name: notice:read_item, path: /api/v1/notices/:id, methods: [GET]}
+  - {name: notice:mark_read, path: /api/v1/notices/:id/read, methods: [PUT]}
+  - {name: notice:read_all, path: /api/v1/notices/read-all, methods: [PUT]}
+  - {name: notice:unread, path: /api/v1/notices/unread-count, methods: [GET]}
