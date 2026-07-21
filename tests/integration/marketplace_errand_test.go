@@ -139,6 +139,9 @@ type acceptedErrand struct {
 
 func createIntegrationUser(t *testing.T, client http.Client, base, adminToken, username string) integrationUser {
 	t.Helper()
+	if len(username) > 32 {
+		username = username[:32]
+	}
 	created := resource{}
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{"username": username, "password": "integration-password"}), &created)
 	return integrationUser{id: created.ID, token: loginWithCredentials(t, base, username, "integration-password")}
