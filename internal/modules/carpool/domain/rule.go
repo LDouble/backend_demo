@@ -1,3 +1,4 @@
+// Package domain contains carpool trip rules.
 package domain
 
 import (
@@ -7,25 +8,35 @@ import (
 )
 
 const (
-	TripOpen          = "open"
-	TripFull          = "full"
-	TripCompleted     = "completed"
-	TripCancelled     = "cancelled"
+	// TripOpen and the following constants define the trip lifecycle.
+	TripOpen = "open"
+	// TripFull means the trip has no remaining seats.
+	TripFull = "full"
+	// TripCompleted means the departure time has passed or the trip was completed.
+	TripCompleted = "completed"
+	// TripCancelled means the organizer cancelled the trip.
+	TripCancelled = "cancelled"
+	// ParticipantJoined marks an active participant row.
 	ParticipantJoined = "joined"
-	ParticipantLeft   = "left"
+	// ParticipantLeft marks a participant that has left the trip.
+	ParticipantLeft = "left"
 )
 
+// TripInput is the user-controlled portion of a trip.
 type TripInput struct {
 	Title, Origin, Destination, ContactType, Contact string
 	DepartureAt                                      time.Time
 	TotalSeats                                       int64
 }
+
+// Search contains public trip search filters.
 type Search struct {
 	Origin, Destination string
 	DepartureDate       *time.Time
 	SeatsNeeded         int64
 }
 
+// ValidateTripInput validates a trip before persistence.
 func ValidateTripInput(in TripInput, now time.Time) error {
 	if strings.TrimSpace(in.Title) == "" || len(in.Title) > 200 || strings.TrimSpace(in.Origin) == "" || strings.TrimSpace(in.Destination) == "" {
 		return fmt.Errorf("标题、出发地和目的地不能为空")

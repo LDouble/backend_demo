@@ -1,3 +1,4 @@
+// Package infrastructure persists carpool aggregates with row-level locking.
 package infrastructure
 
 import (
@@ -23,12 +24,16 @@ type Store struct {
 	cipher *configcenter.Cipher
 }
 
+// NewStore creates a carpool persistence adapter.
 func NewStore(db *gorm.DB, cipher *configcenter.Cipher) *Store { return &Store{db: db, cipher: cipher} }
+
+// RevealContact decrypts the organizer contact for internal use.
 func (s *Store) RevealContact(trip *domain.Trip) (string, error) {
 	return s.cipher.Decrypt(trip.ContactCiphertext, contactAAD(trip.ID))
 }
 
-func (s *Store) CreateTrip(ctx context.Context, organizer uint64, in domain.TripInput, now time.Time) (*domain.Trip, error) {
+// CreateTrip inserts a new trip and encrypts the organizer contact.
+func (s *Store) CreateTrip(ctx context.Context, organizer uint64, in domain.TripInput, _ time.Time) (*domain.Trip, error) {
 	trip := &domain.Trip{Title: strings.TrimSpace(in.Title), Origin: strings.TrimSpace(in.Origin), Destination: strings.TrimSpace(in.Destination), DepartureAt: in.DepartureAt.UTC(), TotalSeats: in.TotalSeats, Status: domain.TripOpen, OrganizerId: organizer, ContactType: strings.TrimSpace(in.ContactType), Version: 1}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(trip).Error; err != nil {
@@ -46,6 +51,8 @@ func (s *Store) CreateTrip(ctx context.Context, organizer uint64, in domain.Trip
 	})
 	return trip, err
 }
+
+// GetTrip returns one trip and whether the viewer may see plaintext contact.
 func (s *Store) GetTrip(ctx context.Context, id, viewer uint64) (*domain.Trip, bool, error) {
 	var trip domain.Trip
 	if err := s.db.WithContext(ctx).First(&trip, id).Error; err != nil {
@@ -59,6 +66,8 @@ func (s *Store) GetTrip(ctx context.Context, id, viewer uint64) (*domain.Trip, b
 	}
 	return &trip, visible, nil
 }
+
+// SearchTrips returns public trips that have not departed.
 func (s *Store) SearchTrips(ctx context.Context, search domain.Search, page, size int, now time.Time) ([]domain.Trip, int64, error) {
 	rows := []domain.Trip{}
 	base := s.db.WithContext(ctx).Model(&domain.Trip{}).Where("status IN ? AND departure_at > ?", []string{domain.TripOpen, domain.TripFull}, now)
@@ -84,6 +93,8 @@ func (s *Store) SearchTrips(ctx context.Context, search domain.Search, page, siz
 	}
 	return rows, total, nil
 }
+
+// Join adds a participant and reserves one seat atomically.
 func (s *Store) Join(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
 	var trip domain.Trip
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -136,9 +147,13 @@ func (s *Store) Join(ctx context.Context, id, user, version uint64, now time.Tim
 	})
 	return &trip, err
 }
+
+// Leave removes a participant and releases one occupied seat.
 func (s *Store) Leave(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
 	return s.changeParticipant(ctx, id, user, version, now, false)
 }
+
+// Cancel marks an organizer-owned trip as cancelled.
 func (s *Store) Cancel(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
 	var trip domain.Trip
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -193,6 +208,8 @@ func (s *Store) changeParticipant(ctx context.Context, id, user, version uint64,
 	})
 	return &trip, err
 }
+
+// CompleteDue marks departed active trips completed.
 func (s *Store) CompleteDue(ctx context.Context, now time.Time) (int64, error) {
 	var rows []domain.Trip
 	if err := s.db.WithContext(ctx).Where("status IN ? AND departure_at <= ?", []string{domain.TripOpen, domain.TripFull}, now).Find(&rows).Error; err != nil {
