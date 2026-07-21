@@ -1,9 +1,8 @@
 package httpapi
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"go.uber.org/zap"
 	"net/http"
@@ -12,19 +11,57 @@ import (
 	"time"
 )
 
+const maxRequestIDLength = 36
+
 func requestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := strings.TrimSpace(c.GetHeader("X-Request-ID"))
-		if id == "" {
-			b := make([]byte, 16)
-			if _, err := rand.Read(b); err == nil {
-				id = hex.EncodeToString(b)
-			} else {
-				id = "unavailable"
-			}
+		if !validRequestID(id) {
+			id = uuid.NewString()
 		}
 		c.Set(requestIDKey, id)
 		c.Header("X-Request-ID", id)
+		c.Next()
+	}
+}
+
+func validRequestID(value string) bool {
+	if value == "" || len(value) > maxRequestIDLength {
+		return false
+	}
+	if _, err := uuid.Parse(value); err == nil {
+		return true
+	}
+	if len(value) != 26 {
+		return false
+	}
+	const ulidAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+	for _, char := range strings.ToUpper(value) {
+		if !strings.ContainsRune(ulidAlphabet, char) {
+			return false
+		}
+	}
+	return true
+}
+
+func requestLimits(maxBodyBytes int64, maxHeaderBytes int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		headerBytes := 0
+		for name, values := range c.Request.Header {
+			headerBytes += len(name)
+			for _, value := range values {
+				headerBytes += len(value)
+			}
+		}
+		if headerBytes > maxHeaderBytes {
+			failure(c, apperror.New(http.StatusRequestHeaderFieldsTooLarge, "headers_too_large", "请求头过大"))
+			return
+		}
+		if c.Request.ContentLength > maxBodyBytes {
+			failure(c, apperror.New(http.StatusRequestEntityTooLarge, "body_too_large", "请求体过大"))
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodyBytes)
 		c.Next()
 	}
 }

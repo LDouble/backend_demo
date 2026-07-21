@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -19,7 +20,7 @@ func TestComposePersistenceSeed(t *testing.T) {
 	base, adminToken := integrationAdmin(t)
 	client := http.Client{}
 	username := "persist_" + runID
-	roleName := "reader_" + runID
+	roleName := "reader_" + strings.ReplaceAll(runID, "-", "_")
 
 	createdUser := resource{}
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{
@@ -39,7 +40,8 @@ func TestComposePersistenceSeed(t *testing.T) {
 	rolesURL := fmt.Sprintf("%s/api/v1/users/%d/roles", base, createdUser.ID)
 	assertStatus(t, request(t, client, http.MethodPut, rolesURL, adminToken, map[string]any{"roles": []string{roleName}}), http.StatusOK)
 
-	// 同一 Access Token 在授权变更后立即生效。
+	// 高权限变更会撤销目标用户的所有会话，重新认证后应立即看到新授权。
+	userToken = loginWithCredentials(t, base, username, persistencePassword)
 	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/configs", userToken, nil), http.StatusOK)
 	assertStatus(t, request(t, client, http.MethodPost, base+"/api/v1/configs", userToken, map[string]any{
 		"group": "forbidden", "key": "write", "value": "denied",

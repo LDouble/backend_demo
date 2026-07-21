@@ -7,110 +7,272 @@ info:
 paths:
   /api/v1/admin/notices:
     get:
-      operationId: notice_manage_get
+      operationId: ListAdminNotices
       tags: [notice]
+      summary: "管理端查询通知"
+      x-generated-module: notice
       x-permission: notice:manage
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices:
     post:
-      operationId: notice_manage_post
+      operationId: CreateNotice
       tags: [notice]
+      summary: "创建通知草稿"
+      x-generated-module: notice
       x-permission: notice:manage
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoticeRequest"
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
-  /api/v1/admin/notices/:id:
+        "201":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}:
     delete:
-      operationId: notice_manage_item_delete
+      operationId: DeleteNotice
       tags: [notice]
+      summary: "删除通知草稿"
+      x-generated-module: notice
       x-permission: notice:manage_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+        - name: expected_version
+          in: query
+          required: true
+          schema: {type: integer, format: uint64}
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}:
     get:
-      operationId: notice_manage_item_get
+      operationId: GetAdminNotice
       tags: [notice]
+      summary: "查询通知详情"
+      x-generated-module: notice
       x-permission: notice:manage_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}:
     patch:
-      operationId: notice_manage_item_patch
+      operationId: UpdateNotice
       tags: [notice]
+      summary: "更新通知草稿"
+      x-generated-module: notice
       x-permission: notice:manage_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoticeRequest"
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
-  /api/v1/admin/notices/:id/deliveries:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/deliveries:
     get:
-      operationId: notice_deliveries_get
+      operationId: ListNoticeDeliveries
       tags: [notice]
+      summary: "查询通知投递"
+      x-generated-module: notice
       x-permission: notice:deliveries
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
-  /api/v1/admin/notices/:id/deliveries/retry:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/deliveries/retry:
     post:
-      operationId: notice_retry_post
+      operationId: RetryNoticeDeliveries
       tags: [notice]
+      summary: "重试失败投递"
+      x-generated-module: notice
       x-permission: notice:retry
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
-  /api/v1/admin/notices/:id/publish:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/publish:
     post:
-      operationId: notice_publish_post
+      operationId: PublishNotice
       tags: [notice]
+      summary: "发布通知"
+      x-generated-module: notice
       x-permission: notice:publish
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishNoticeRequest"
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
-  /api/v1/admin/notices/:id/revoke:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/revoke:
     post:
-      operationId: notice_revoke_post
+      operationId: RevokeNotice
       tags: [notice]
+      summary: "撤回通知"
+      x-generated-module: notice
       x-permission: notice:revoke
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionRequest"
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/notices:
     get:
-      operationId: notice_read_get
+      operationId: ListMyNotices
       tags: [notice]
+      summary: "查询我的通知"
+      x-generated-module: notice
       x-permission: notice:read
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: unread
+          in: query
+          required: false
+          schema: {type: boolean}
+        - name: category
+          in: query
+          required: false
+          schema: {type: string}
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
-  /api/v1/notices/:id:
-    get:
-      operationId: notice_read_item_get
-      tags: [notice]
-      x-permission: notice:read_item
-      responses:
-        "501":
-          description: Generated operation awaiting domain implementation
-  /api/v1/notices/:id/read:
-    put:
-      operationId: notice_mark_read_put
-      tags: [notice]
-      x-permission: notice:mark_read
-      responses:
-        "501":
-          description: Generated operation awaiting domain implementation
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/notices/read-all:
     put:
-      operationId: notice_read_all_put
+      operationId: ReadAllNotices
       tags: [notice]
+      summary: "全部标记已读"
+      x-generated-module: notice
       x-permission: notice:read_all
+      security: [{bearerAuth: []}]
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/notices/unread-count:
     get:
-      operationId: notice_unread_get
+      operationId: GetUnreadNoticeCount
       tags: [notice]
+      summary: "查询未读数量"
+      x-generated-module: notice
       x-permission: notice:unread
+      security: [{bearerAuth: []}]
       responses:
-        "501":
-          description: Generated operation awaiting domain implementation
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/notices/{id}:
+    get:
+      operationId: GetMyNotice
+      tags: [notice]
+      summary: "查询我的通知详情"
+      x-generated-module: notice
+      x-permission: notice:read_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/notices/{id}/read:
+    put:
+      operationId: ReadNotice
+      tags: [notice]
+      summary: "标记通知已读"
+      x-generated-module: notice
+      x-permission: notice:mark_read
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"

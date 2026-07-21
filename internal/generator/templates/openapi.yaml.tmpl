@@ -36,6 +36,9 @@ paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
 {{- if .Maximum}}
             maximum: {{.Maximum}}
 {{- end}}
+{{- if .MaxLength}}
+            maxLength: {{.MaxLength}}
+{{- end}}
 {{- end}}
 {{- range .Query}}
         - name: {{.Name}}
@@ -50,6 +53,9 @@ paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
         content:
           application/json:
             schema:
+{{- if .Body.Ref}}
+              $ref: "#/components/schemas/{{.Body.Ref}}"
+{{- else}}
               type: object
 {{- $hasRequired := false}}
 {{- range .Body.Fields}}{{if .Required}}{{$hasRequired = true}}{{end}}{{end}}
@@ -74,6 +80,7 @@ paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
 {{- end}}
 {{- if .Maximum}}
                   maximum: {{.Maximum}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}

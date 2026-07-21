@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/auth"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
@@ -36,6 +38,27 @@ type handlerFixture struct {
 	adminToken   string
 	userPassword string
 }
+
+type casbinRule struct {
+	ID                     uint64 `gorm:"primaryKey;autoIncrement"`
+	Ptype                  string
+	V0, V1, V2, V3, V4, V5 string
+	Managed                bool
+}
+
+func (casbinRule) TableName() string { return "casbin_rule" }
+
+type permissionPolicyOutbox struct {
+	ID           uint64 `gorm:"primaryKey;autoIncrement"`
+	Version      string `gorm:"uniqueIndex"`
+	Attempts     int64
+	DispatchedAt *time.Time
+	LockedAt     *time.Time
+	LockedBy     string
+	CreatedAt    time.Time
+}
+
+func (permissionPolicyOutbox) TableName() string { return "permission_policy_outbox" }
 
 type memorySessionStore struct {
 	mu      sync.Mutex
@@ -70,6 +93,13 @@ func (s *memorySessionStore) Delete(_ context.Context, sid string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.session, sid)
+	return nil
+}
+
+func (s *memorySessionStore) DeleteUser(_ context.Context, _ uint64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.session = make(map[string]string)
 	return nil
 }
 
@@ -233,7 +263,16 @@ func TestActivityHTTPFlow(t *testing.T) {
 		t.Fatalf("bystander detail contact=%q", bystanderDetail.Contact)
 	}
 
-	registerResponse := perform(t, fixture.router, http.MethodPost, "/api/v1/activities/"+strconv.FormatUint(approved.ID, 10)+"/registrations", participantToken, nil)
+	registrationKey := "activity-registration-flow"
+	registerResponse := perform(
+		t,
+		fixture.router,
+		http.MethodPost,
+		"/api/v1/activities/"+strconv.FormatUint(approved.ID, 10)+"/registrations",
+		participantToken,
+		nil,
+		registrationKey,
+	)
 	assertStatusCode(t, registerResponse, http.StatusCreated)
 	registration := decodeRegistrationResult(t, registerResponse)
 	if registration.Registration.Status != activitydomain.RegistrationStatusActive || registration.Activity.RegisteredCount != 1 {
@@ -266,6 +305,77 @@ func TestActivityHTTPFlow(t *testing.T) {
 	if afterCancelDetail.Contact == "owner_wechat_42" || afterCancelDetail.Contact == "" {
 		t.Fatalf("after cancel contact=%q", afterCancelDetail.Contact)
 	}
+
+	replayKey := "activity-registration-replay"
+	reactivateResponse := perform(
+		t,
+		fixture.router,
+		http.MethodPost,
+		"/api/v1/activities/"+strconv.FormatUint(approved.ID, 10)+"/registrations",
+		participantToken,
+		nil,
+		replayKey,
+	)
+	assertStatusCode(t, reactivateResponse, http.StatusCreated)
+	reactivated := decodeRegistrationResult(t, reactivateResponse)
+	if reactivated.Registration.Status != activitydomain.RegistrationStatusActive || reactivated.Activity.RegisteredCount != 1 {
+		t.Fatalf("reactivated registration result=%+v", reactivated)
+	}
+
+	cancelActivityResponse := performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(approved.ID, 10)+"/cancel", ownerToken, map[string]any{
+		"expected_version": reactivated.Activity.Version,
+	})
+	assertStatusCode(t, cancelActivityResponse, http.StatusOK)
+
+	replayResponse := perform(
+		t,
+		fixture.router,
+		http.MethodPost,
+		"/api/v1/activities/"+strconv.FormatUint(approved.ID, 10)+"/registrations",
+		participantToken,
+		nil,
+		replayKey,
+	)
+	assertStatusCode(t, replayResponse, http.StatusCreated)
+	replayed := decodeRegistrationResult(t, replayResponse)
+	if replayed.Registration.ID != reactivated.Registration.ID || replayed.Activity.RegisteredCount != 1 {
+		t.Fatalf("replayed registration result=%+v", replayed)
+	}
+}
+
+func TestActivityIdempotencyReplayPrecedesCurrentState(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	ownerToken, _, _ := fixture.createUserWithPermissions(t, "idempotent_owner", activityAdminPermissions(), activityUserPermissions())
+	now := time.Now().UTC()
+	body := map[string]any{
+		"title": "Stable replay", "summary": "summary", "body": "body", "location": "field",
+		"signup_start_at": now.Add(-time.Hour).Format(time.RFC3339),
+		"signup_end_at":   now.Add(time.Hour).Format(time.RFC3339),
+		"start_at":        now.Add(2 * time.Hour).Format(time.RFC3339),
+		"end_at":          now.Add(3 * time.Hour).Format(time.RFC3339),
+		"capacity":        2, "contact_type": "wechat", "contact": "stable",
+	}
+	created := decodeActivityView(t, perform(t, fixture.router, http.MethodPost, "/api/v1/admin/activities", ownerToken, mustJSON(t, body), "create-stable"))
+	submitBody := map[string]any{"expected_version": created.Version}
+	path := "/api/v1/admin/activities/" + strconv.FormatUint(created.ID, 10) + "/submit-review"
+	first := perform(t, fixture.router, http.MethodPost, path, ownerToken, mustJSON(t, submitBody), "submit-stable")
+	assertStatusCode(t, first, http.StatusOK)
+	second := perform(t, fixture.router, http.MethodPost, path, ownerToken, mustJSON(t, submitBody), "submit-stable")
+	if second.Code != first.Code || second.Body.String() != first.Body.String() {
+		t.Fatalf("replay differs: first=%d %s second=%d %s", first.Code, first.Body.String(), second.Code, second.Body.String())
+	}
+	submitBody["expected_version"] = created.Version + 1
+	conflict := perform(t, fixture.router, http.MethodPost, path, ownerToken, mustJSON(t, submitBody), "submit-stable")
+	assertErrorEnvelope(t, conflict, http.StatusConflict, "idempotency_key_reused")
+}
+
+func mustJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }
 
 func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
@@ -325,11 +435,15 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 	published := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/publish", ownerToken, map[string]any{
 		"expected_version": approved.Version,
 	}))
-	finished := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/finish", ownerToken, map[string]any{
+	earlyFinish := performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/finish", ownerToken, map[string]any{
+		"expected_version": published.Version,
+	})
+	assertStatusCode(t, earlyFinish, http.StatusConflict)
+	earlyCancelled := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/cancel", ownerToken, map[string]any{
 		"expected_version": published.Version,
 	}))
-	if finished.Status != activitydomain.ActivityStatusFinished || finished.Contact == "99887766" {
-		t.Fatalf("finished activity=%+v", finished)
+	if earlyCancelled.Status != activitydomain.ActivityStatusCancelled || earlyCancelled.Contact == "99887766" {
+		t.Fatalf("cancelled activity=%+v", earlyCancelled)
 	}
 
 	second := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities", ownerToken, map[string]any{
@@ -362,6 +476,34 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 	}
 }
 
+func TestCoreManagementWriteIdempotency(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	key := "core-role-replay"
+	body := []byte(`{"name":"idempotent_role","description":"first"}`)
+	first := perform(t, fixture.router, http.MethodPost, "/api/v1/roles", fixture.adminToken, body, key)
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first status=%d body=%s", first.Code, first.Body.String())
+	}
+	second := perform(t, fixture.router, http.MethodPost, "/api/v1/roles", fixture.adminToken, body, key)
+	if second.Code != first.Code || second.Body.String() != first.Body.String() {
+		t.Fatalf("replay status=%d body=%s", second.Code, second.Body.String())
+	}
+	if first.Header().Get("Content-Type") != "application/json; charset=utf-8" || second.Header().Get("Content-Type") != first.Header().Get("Content-Type") {
+		t.Fatalf("replay content types first=%q second=%q", first.Header().Get("Content-Type"), second.Header().Get("Content-Type"))
+	}
+	conflict := perform(t, fixture.router, http.MethodPost, "/api/v1/roles", fixture.adminToken, []byte(`{"name":"different_role"}`), key)
+	assertErrorEnvelope(t, conflict, http.StatusConflict, "idempotency_key_reused")
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/roles", bytes.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+fixture.adminToken)
+	response := httptest.NewRecorder()
+	fixture.router.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("missing idempotency key status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
 func newHandlerFixture(t *testing.T) *handlerFixture {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -369,7 +511,7 @@ func newHandlerFixture(t *testing.T) *handlerFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}, &activitydomain.Activity{}, &activitydomain.ActivityRegistration{}, &domainevent.Event{}); err != nil {
+	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}, &casbinRule{}, &permissionPolicyOutbox{}, &idempotency.Record{}, &activitydomain.Activity{}, &activitydomain.ActivityRegistration{}, &domainevent.Event{}); err != nil {
 		t.Fatal(err)
 	}
 	permissions, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
@@ -393,6 +535,7 @@ func newHandlerFixture(t *testing.T) *handlerFixture {
 	authService := auth.NewService(platformmysql.NewUserRepository(db), sessions, "test", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
 	activities := activityapp.NewManager(activityinfra.NewStore(db, cipher))
 	handler := httpapi.New(authService, users, permissions, configcenter.NewService(platformmysql.NewConfigRepository(db), cipher), func(context.Context) error { return nil }, func(context.Context) error { return nil }, zap.NewNop()).
+		WithDatabase(db).
 		WithActivities(activities)
 	router, err := handler.Router()
 	if err != nil {
@@ -423,7 +566,9 @@ func performJSON(t *testing.T, router http.Handler, method, path, token string, 
 	return perform(t, router, method, path, token, raw)
 }
 
-func perform(t *testing.T, router http.Handler, method, path, token string, body []byte) *httptest.ResponseRecorder {
+var testIdempotencySequence atomic.Uint64
+
+func perform(t *testing.T, router http.Handler, method, path, token string, body []byte, idempotencyKeys ...string) *httptest.ResponseRecorder {
 	t.Helper()
 	request := httptest.NewRequest(method, path, bytes.NewReader(body))
 	if body != nil {
@@ -431,6 +576,13 @@ func perform(t *testing.T, router http.Handler, method, path, token string, body
 	}
 	if token != "" {
 		request.Header.Set("Authorization", "Bearer "+token)
+	}
+	if method != http.MethodGet && method != http.MethodHead && method != http.MethodOptions {
+		key := "test-" + strconv.FormatUint(testIdempotencySequence.Add(1), 10)
+		if len(idempotencyKeys) > 0 {
+			key = idempotencyKeys[0]
+		}
+		request.Header.Set("Idempotency-Key", key)
 	}
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)

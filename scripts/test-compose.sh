@@ -17,7 +17,10 @@ export CAMPUS_INTEGRATION_BASE_URL="http://127.0.0.1:${CAMPUS_HTTP_PORT}"
 export CAMPUS_INTEGRATION_REDIS_ADDRESS="127.0.0.1:${CAMPUS_REDIS_PORT}"
 export CAMPUS_INTEGRATION_MYSQL_ADMIN_DSN="root:${CAMPUS_MYSQL_ROOT_PASSWORD}@tcp(127.0.0.1:${CAMPUS_MYSQL_PORT})/?charset=utf8mb4&parseTime=true&loc=Local"
 export CAMPUS_INTEGRATION_MYSQL_DSN="${CAMPUS_MYSQL_USER}:${CAMPUS_MYSQL_PASSWORD}@tcp(127.0.0.1:${CAMPUS_MYSQL_PORT})/${CAMPUS_MYSQL_DATABASE}?charset=utf8mb4&parseTime=true&loc=Local"
-export CAMPUS_INTEGRATION_RUN_ID="$(date +%s)"
+export CAMPUS_INTEGRATION_RUN_ID="$(date +%s)-$$"
+# Keep destructive compose cleanup scoped to this test run. Never reuse the
+# default development project or its named volumes.
+export COMPOSE_PROJECT_NAME="campus-test-${CAMPUS_INTEGRATION_RUN_ID}"
 
 cleanup() {
 	docker compose down -v >/dev/null 2>&1 || true

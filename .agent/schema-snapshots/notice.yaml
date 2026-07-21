@@ -1,0 +1,515 @@
+version: 2
+module: notice
+entity:
+    name: Notice
+    table: notices
+    primary: true
+    fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: summary
+          type: string
+          required: true
+          size: 500
+        - name: body
+          type: text
+          required: true
+        - name: category
+          type: string
+          required: true
+          size: 64
+          index: true
+        - name: priority
+          type: string
+          required: true
+          size: 16
+        - name: status
+          type: string
+          required: true
+          size: 16
+          index: true
+        - name: action_path
+          type: string
+          required: false
+          size: 512
+        - name: push_enabled
+          type: bool
+          required: true
+        - name: publish_at
+          type: datetime
+          required: false
+          index: true
+        - name: published_at
+          type: datetime
+          required: false
+        - name: revoked_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+        - name: created_by
+          type: uint64
+          required: true
+        - name: updated_by
+          type: uint64
+          required: true
+entities:
+    - name: Notice
+      table: notices
+      primary: true
+      fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: summary
+          type: string
+          required: true
+          size: 500
+        - name: body
+          type: text
+          required: true
+        - name: category
+          type: string
+          required: true
+          size: 64
+          index: true
+        - name: priority
+          type: string
+          required: true
+          size: 16
+        - name: status
+          type: string
+          required: true
+          size: 16
+          index: true
+        - name: action_path
+          type: string
+          required: false
+          size: 512
+        - name: push_enabled
+          type: bool
+          required: true
+        - name: publish_at
+          type: datetime
+          required: false
+          index: true
+        - name: published_at
+          type: datetime
+          required: false
+        - name: revoked_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+        - name: created_by
+          type: uint64
+          required: true
+        - name: updated_by
+          type: uint64
+          required: true
+    - name: NoticeAudience
+      table: notice_audiences
+      fields:
+        - name: notice_id
+          type: uint64
+          required: true
+        - name: audience_type
+          type: string
+          required: true
+          size: 16
+        - name: audience_value
+          type: string
+          required: true
+          size: 64
+      indexes:
+        - name: uk_notice_audience
+          fields:
+            - notice_id
+            - audience_type
+            - audience_value
+          unique: true
+      foreign_keys:
+        - field: notice_id
+          references: notices.id
+          on_delete: CASCADE
+    - name: NoticeRecipient
+      table: notice_recipients
+      fields:
+        - name: notice_id
+          type: uint64
+          required: true
+        - name: user_id
+          type: uint64
+          required: true
+        - name: read_at
+          type: datetime
+          required: false
+      indexes:
+        - name: uk_notice_recipient
+          fields:
+            - notice_id
+            - user_id
+          unique: true
+        - name: idx_recipient_inbox
+          fields:
+            - user_id
+            - read_at
+            - notice_id
+      foreign_keys:
+        - field: notice_id
+          references: notices.id
+          on_delete: CASCADE
+    - name: NoticeDelivery
+      table: notice_deliveries
+      fields:
+        - name: notice_id
+          type: uint64
+          required: true
+        - name: user_id
+          type: uint64
+          required: true
+        - name: channel
+          type: string
+          required: true
+          size: 16
+        - name: status
+          type: string
+          required: true
+          size: 16
+          index: true
+        - name: attempts
+          type: int64
+          required: true
+        - name: locked_at
+          type: datetime
+          required: false
+        - name: idempotency_key
+          type: string
+          required: true
+          size: 128
+          unique: true
+        - name: provider_message_id
+          type: string
+          required: false
+          size: 128
+        - name: last_error
+          type: string
+          required: false
+          size: 1000
+      indexes:
+        - name: idx_delivery_notice
+          fields:
+            - notice_id
+            - status
+        - name: idx_delivery_lease
+          fields:
+            - status
+            - locked_at
+      foreign_keys:
+        - field: notice_id
+          references: notices.id
+          on_delete: CASCADE
+    - name: OutboxEvent
+      table: outbox_events
+      fields:
+        - name: aggregate_type
+          type: string
+          required: true
+          size: 64
+        - name: aggregate_id
+          type: uint64
+          required: true
+        - name: event_type
+          type: string
+          required: true
+          size: 64
+        - name: payload
+          type: json
+          required: true
+        - name: status
+          type: string
+          required: true
+          size: 16
+          index: true
+        - name: available_at
+          type: datetime
+          required: true
+          index: true
+        - name: locked_at
+          type: datetime
+          required: false
+        - name: attempts
+          type: int64
+          required: true
+        - name: last_error
+          type: string
+          required: false
+          size: 1000
+      indexes:
+        - name: idx_outbox_dispatch
+          fields:
+            - status
+            - available_at
+            - locked_at
+crud:
+    - create
+    - delete
+    - get
+    - list
+    - update
+permissions:
+    - name: notice:deliveries
+      path: /api/v1/admin/notices/:id/deliveries
+      methods:
+        - GET
+    - name: notice:manage
+      path: /api/v1/admin/notices
+      methods:
+        - GET
+        - POST
+    - name: notice:manage_item
+      path: /api/v1/admin/notices/:id
+      methods:
+        - DELETE
+        - GET
+        - PATCH
+    - name: notice:mark_read
+      path: /api/v1/notices/:id/read
+      methods:
+        - PUT
+    - name: notice:publish
+      path: /api/v1/admin/notices/:id/publish
+      methods:
+        - POST
+    - name: notice:read
+      path: /api/v1/notices
+      methods:
+        - GET
+    - name: notice:read_all
+      path: /api/v1/notices/read-all
+      methods:
+        - PUT
+    - name: notice:read_item
+      path: /api/v1/notices/:id
+      methods:
+        - GET
+    - name: notice:retry
+      path: /api/v1/admin/notices/:id/deliveries/retry
+      methods:
+        - POST
+    - name: notice:revoke
+      path: /api/v1/admin/notices/:id/revoke
+      methods:
+        - POST
+    - name: notice:unread
+      path: /api/v1/notices/unread-count
+      methods:
+        - GET
+operations:
+    - operation_id: ListAdminNotices
+      method: GET
+      path: /api/v1/admin/notices
+      permission: notice:manage
+      summary: 管理端查询通知
+      query:
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: CreateNotice
+      method: POST
+      path: /api/v1/admin/notices
+      permission: notice:manage
+      idempotency: required
+      summary: 创建通知草稿
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        ref: CreateNoticeRequest
+        fields: []
+      responses:
+        - status: 201
+          kind: success
+    - operation_id: DeleteNotice
+      method: DELETE
+      path: /api/v1/admin/notices/{id}
+      permission: notice:manage_item
+      idempotency: required
+      summary: 删除通知草稿
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      query:
+        - name: expected_version
+          type: integer
+          required: true
+          format: uint64
+          minimum: 1
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: GetAdminNotice
+      method: GET
+      path: /api/v1/admin/notices/{id}
+      permission: notice:manage_item
+      summary: 查询通知详情
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: UpdateNotice
+      method: PATCH
+      path: /api/v1/admin/notices/{id}
+      permission: notice:manage_item
+      idempotency: required
+      summary: 更新通知草稿
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        ref: UpdateNoticeRequest
+        fields: []
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: ListNoticeDeliveries
+      method: GET
+      path: /api/v1/admin/notices/{id}/deliveries
+      permission: notice:deliveries
+      summary: 查询通知投递
+      query:
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: RetryNoticeDeliveries
+      method: POST
+      path: /api/v1/admin/notices/{id}/deliveries/retry
+      permission: notice:retry
+      idempotency: required
+      summary: 重试失败投递
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: PublishNotice
+      method: POST
+      path: /api/v1/admin/notices/{id}/publish
+      permission: notice:publish
+      idempotency: required
+      summary: 发布通知
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        ref: PublishNoticeRequest
+        fields: []
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: RevokeNotice
+      method: POST
+      path: /api/v1/admin/notices/{id}/revoke
+      permission: notice:revoke
+      idempotency: required
+      summary: 撤回通知
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        ref: VersionRequest
+        fields: []
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: ListMyNotices
+      method: GET
+      path: /api/v1/notices
+      permission: notice:read
+      summary: 查询我的通知
+      query:
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        - name: unread
+          type: boolean
+        - name: category
+          type: string
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: ReadAllNotices
+      method: PUT
+      path: /api/v1/notices/read-all
+      permission: notice:read_all
+      idempotency: inherent
+      summary: 全部标记已读
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: GetUnreadNoticeCount
+      method: GET
+      path: /api/v1/notices/unread-count
+      permission: notice:unread
+      summary: 查询未读数量
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: GetMyNotice
+      method: GET
+      path: /api/v1/notices/{id}
+      permission: notice:read_item
+      summary: 查询我的通知详情
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: ReadNotice
+      method: PUT
+      path: /api/v1/notices/{id}/read
+      permission: notice:mark_read
+      idempotency: inherent
+      summary: 标记通知已读
+      responses:
+        - status: 200
+          kind: success

@@ -32,6 +32,8 @@ func TestMarketplaceAndErrandHTTPFlows(t *testing.T) {
 	runner := createIntegrationUser(t, client, base, adminToken, "runner_"+suffix)
 	roleID := grantMarketplaceErrandPermissions(t, client, base, adminToken, suffix, requester.id, runner.id)
 	_ = roleID
+	requester.token = loginWithCredentials(t, base, requester.username, integrationPassword)
+	runner.token = loginWithCredentials(t, base, runner.username, integrationPassword)
 
 	listing := struct{ ID, Version uint64 }{}
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/marketplace/listings", requester.token, map[string]any{
@@ -120,9 +122,13 @@ func TestMarketplaceAndErrandConcurrentReservations(t *testing.T) {
 }
 
 type integrationUser struct {
-	id    uint64
-	token string
+	id       uint64
+	token    string
+	username string
 }
+
+const integrationPassword = "integration-password"
+
 type errandTask struct {
 	ID      uint64 `json:"id"`
 	Version uint64 `json:"version"`
@@ -143,8 +149,8 @@ func createIntegrationUser(t *testing.T, client http.Client, base, adminToken, u
 		username = username[:32]
 	}
 	created := resource{}
-	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{"username": username, "password": "integration-password"}), &created)
-	return integrationUser{id: created.ID, token: loginWithCredentials(t, base, username, "integration-password")}
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{"username": username, "password": integrationPassword}), &created)
+	return integrationUser{id: created.ID, token: loginWithCredentials(t, base, username, integrationPassword), username: username}
 }
 func grantMarketplaceErrandPermissions(t *testing.T, client http.Client, base, adminToken, suffix string, userIDs ...uint64) uint64 {
 	t.Helper()

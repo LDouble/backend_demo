@@ -13,7 +13,7 @@ type ActivityRegistration struct {
 	Status         string     `gorm:"column:status;not null;index" json:"status"`
 	RegisteredAt   time.Time  `gorm:"column:registered_at;not null" json:"registered_at"`
 	CancelledAt    *time.Time `gorm:"column:cancelled_at" json:"cancelled_at"`
-	IdempotencyKey string     `gorm:"column:idempotency_key;not null;size:128" json:"idempotency_key"`
+	IdempotencyKey string     `gorm:"column:idempotency_key;not null" json:"idempotency_key"`
 	Version        uint64     `gorm:"column:version;not null" json:"version"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`

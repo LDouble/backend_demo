@@ -33,7 +33,12 @@ func run() error {
 		return err
 	}
 	defer func() { _ = runtime.Close() }()
-	server := &http.Server{Addr: cfg.Server.Address, Handler: runtime.Router, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{
+		Addr: cfg.Server.Address, Handler: runtime.Router,
+		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second,
+		WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second,
+		MaxHeaderBytes: cfg.Server.MaxHeaderBytes,
+	}
 	errCh := make(chan error, 1)
 	go func() {
 		runtime.Logger.Info("server started", zap.String("address", cfg.Server.Address))

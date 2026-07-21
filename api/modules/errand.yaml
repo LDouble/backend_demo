@@ -33,6 +33,13 @@ paths:
       x-generated-module: errand
       x-permission: errand:create
       security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -118,6 +125,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -176,6 +189,7 @@ paths:
           required: true
           schema:
             type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -204,6 +218,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -232,6 +252,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -260,6 +286,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -288,6 +320,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:

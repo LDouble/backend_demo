@@ -2,3 +2,108 @@
 // Source: schemas/notice.yaml
 
 package httpapi
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/weouc-plus/campus-platform/internal/api/generated"
+)
+
+// ListAdminNotices adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListAdminNotices(c *gin.Context, params generated.ListAdminNoticesParams) {
+	setGeneratedParams(c, "ListAdminNotices", params)
+	h.listAdminNotices(c)
+}
+
+// CreateNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) CreateNotice(c *gin.Context, params generated.CreateNoticeParams) {
+	setGeneratedParams(c, "CreateNotice", params)
+	h.idempotent(c, "CreateNotice", func() {
+		h.createNotice(c)
+	})
+}
+
+// DeleteNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) DeleteNotice(c *gin.Context, id uint64, params generated.DeleteNoticeParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "DeleteNotice", params)
+	h.idempotent(c, "DeleteNotice", func() {
+		h.deleteNotice(c)
+	})
+}
+
+// GetAdminNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) GetAdminNotice(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
+	h.getAdminNotice(c)
+}
+
+// UpdateNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) UpdateNotice(c *gin.Context, id uint64, params generated.UpdateNoticeParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "UpdateNotice", params)
+	h.idempotent(c, "UpdateNotice", func() {
+		h.updateNotice(c)
+	})
+}
+
+// ListNoticeDeliveries adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListNoticeDeliveries(c *gin.Context, id uint64, params generated.ListNoticeDeliveriesParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "ListNoticeDeliveries", params)
+	h.listNoticeDeliveries(c)
+}
+
+// RetryNoticeDeliveries adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) RetryNoticeDeliveries(c *gin.Context, id uint64, params generated.RetryNoticeDeliveriesParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "RetryNoticeDeliveries", params)
+	h.idempotent(c, "RetryNoticeDeliveries", func() {
+		h.retryNoticeDeliveries(c)
+	})
+}
+
+// PublishNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) PublishNotice(c *gin.Context, id uint64, params generated.PublishNoticeParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "PublishNotice", params)
+	h.idempotent(c, "PublishNotice", func() {
+		h.publishNotice(c)
+	})
+}
+
+// RevokeNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) RevokeNotice(c *gin.Context, id uint64, params generated.RevokeNoticeParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "RevokeNotice", params)
+	h.idempotent(c, "RevokeNotice", func() {
+		h.revokeNotice(c)
+	})
+}
+
+// ListMyNotices adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListMyNotices(c *gin.Context, params generated.ListMyNoticesParams) {
+	setGeneratedParams(c, "ListMyNotices", params)
+	h.listMyNotices(c)
+}
+
+// ReadAllNotices adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ReadAllNotices(c *gin.Context) {
+	h.readAllNotices(c)
+}
+
+// GetUnreadNoticeCount adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) GetUnreadNoticeCount(c *gin.Context) {
+	h.getUnreadNoticeCount(c)
+}
+
+// GetMyNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) GetMyNotice(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
+	h.getMyNotice(c)
+}
+
+// ReadNotice adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ReadNotice(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
+	h.readNotice(c)
+}

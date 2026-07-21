@@ -39,6 +39,7 @@ type Result struct {
 	Entity  string
 	Files   int
 	Changed []string
+	Managed []string
 }
 
 type outputFile struct {
@@ -113,6 +114,13 @@ func Generate(ctx context.Context, schema Schema, options Options) (Result, erro
 		if file.preserve && exists {
 			continue
 		}
+		if !file.preserve {
+			rel, relErr := filepath.Rel(root, file.path)
+			if relErr != nil {
+				return Result{}, fmt.Errorf("format managed path: %w", relErr)
+			}
+			result.Managed = append(result.Managed, filepath.ToSlash(rel))
+		}
 		if exists && bytes.Equal(current, file.content) {
 			continue
 		}
@@ -122,6 +130,7 @@ func Generate(ctx context.Context, schema Schema, options Options) (Result, erro
 		}
 		result.Changed = append(result.Changed, filepath.ToSlash(rel))
 	}
+	sort.Strings(result.Managed)
 	sort.Strings(result.Changed)
 	if options.Check {
 		if len(result.Changed) > 0 {
@@ -153,6 +162,7 @@ func ListModules(ctx context.Context, root string) ([]ModuleInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	// #nosec G304 -- safeJoin confines the registry to the repository root.
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return []ModuleInfo{}, nil
@@ -169,6 +179,74 @@ func ListModules(ctx context.Context, root string) ([]ModuleInfo, error) {
 	}
 	sort.Slice(value.Modules, func(i, j int) bool { return value.Modules[i].Name < value.Modules[j].Name })
 	return value.Modules, nil
+}
+
+// DiscoverModules builds the module registry from schemas/*.yaml, making schema
+// presence the source of truth for additions, renames and deletions.
+func DiscoverModules(ctx context.Context, root string) ([]ModuleInfo, error) {
+	directory, err := safeJoin(root, "schemas")
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, fmt.Errorf("read schema directory: %w", err)
+	}
+	modules := make([]ModuleInfo, 0, len(entries))
+	seen := map[string]string{}
+	for _, entry := range entries {
+		if err = ctx.Err(); err != nil {
+			return nil, err
+		}
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" {
+			continue
+		}
+		relative := filepath.ToSlash(filepath.Join("schemas", entry.Name()))
+		schema, loadErr := Load(ctx, filepath.Join(directory, entry.Name()))
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if previous, ok := seen[schema.Module]; ok {
+			return nil, fmt.Errorf("module %q is declared by both %s and %s", schema.Module, previous, relative)
+		}
+		seen[schema.Module] = relative
+		entities := []string{schema.Entity.Name}
+		if schema.Version == SchemaVersion {
+			entities = make([]string, len(schema.Entities))
+			for index := range schema.Entities {
+				entities[index] = schema.Entities[index].Name
+			}
+		}
+		modules = append(modules, ModuleInfo{Name: schema.Module, Entity: schema.Entity.Name, Entities: entities, Schema: relative})
+	}
+	sort.Slice(modules, func(i, j int) bool { return modules[i].Name < modules[j].Name })
+	return modules, nil
+}
+
+// SyncModuleRegistry atomically writes or checks an exact discovered registry.
+func SyncModuleRegistry(ctx context.Context, root string, modules []ModuleInfo, check bool) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	path, err := safeJoin(root, ".agent/modules.json")
+	if err != nil {
+		return err
+	}
+	modules = append([]ModuleInfo(nil), modules...)
+	sort.Slice(modules, func(i, j int) bool { return modules[i].Name < modules[j].Name })
+	content, err := json.MarshalIndent(registry{Version: RegistryVersion, Modules: modules}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode module registry: %w", err)
+	}
+	content = append(content, '\n')
+	current, readErr := os.ReadFile(path) // #nosec G304 -- safeJoin confines the registry to the repository root.
+	if check {
+		if readErr != nil || !bytes.Equal(current, content) {
+			return fmt.Errorf("%w: .agent/modules.json", ErrDrift)
+		}
+		return nil
+	}
+	return atomicWrite(path, content)
 }
 
 func plan(root string, schema Schema, options Options) ([]outputFile, error) {
@@ -195,8 +273,6 @@ func plan(root string, schema Schema, options Options) ([]outputFile, error) {
 		{"module.go.tmpl", "internal/modules/" + schema.Module + "/module.go", false, true},
 		{"module_test.go.tmpl", "internal/modules/" + schema.Module + "/domain/rule_test.go", true, true},
 		{"openapi.yaml.tmpl", "api/modules/" + schema.Module + ".yaml", false, false},
-		{"migration.up.sql.tmpl", "migrations/modules/" + schema.Module + ".up.sql", false, false},
-		{"migration.down.sql.tmpl", "migrations/modules/" + schema.Module + ".down.sql", false, false},
 		{"gorm_modules.go.tmpl", "internal/infrastructure/mysql/generator/modules.gen.go", false, true},
 	}
 	outputs := make([]outputFile, 0, len(specs)+2)
@@ -265,6 +341,7 @@ func planRegistry(root string, schema Schema, source string) (registry, outputFi
 		return registry{}, outputFile{}, err
 	}
 	value := registry{Version: RegistryVersion, Modules: []ModuleInfo{}}
+	// #nosec G304 -- safeJoin confines the registry to the repository root.
 	if data, readErr := os.ReadFile(path); readErr == nil {
 		if err = json.Unmarshal(data, &value); err != nil {
 			return registry{}, outputFile{}, fmt.Errorf("decode module registry: %w", err)
@@ -383,7 +460,7 @@ func safeJoin(root, relative string) (string, error) {
 }
 
 func atomicWrite(path string, content []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return fmt.Errorf("create generated directory: %w", err)
 	}
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".campus-generate-*")

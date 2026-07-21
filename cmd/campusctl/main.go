@@ -34,21 +34,7 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	}
 	switch args[0] {
 	case "migration":
-		if len(args) < 2 {
-			return usage()
-		}
-		cfg, err := bootstrap.Load(configPath())
-		if err != nil {
-			return err
-		}
-		steps := 0
-		if len(args) > 2 {
-			steps, err = strconv.Atoi(args[2])
-			if err != nil {
-				return fmt.Errorf("invalid steps: %w", err)
-			}
-		}
-		return migration.Run(ctx, cfg.MySQL.DSN, args[1], steps)
+		return runMigration(ctx, args[1:], output)
 	case "admin":
 		if len(args) != 2 || args[1] != "bootstrap" {
 			return usage()
@@ -67,7 +53,112 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	}
 }
 func usage() error {
-	return errors.New("usage: campusctl migration up|down [steps] | campusctl admin bootstrap | campusctl module validate <schema> | campusctl module list [--root path] | campusctl generate module <schema> [--check] [--root path] | campusctl generate modules [--check] [--root path] | campusctl generate openapi [--check] [--root path]")
+	return errors.New("usage: campusctl migration up|down [steps] | plan <module> | new <name> --module <module> | promote <draft> | snapshot <module> | check | list")
+}
+
+func runMigration(ctx context.Context, args []string, output io.Writer) error {
+	if len(args) == 0 {
+		return usage()
+	}
+	if args[0] == "up" || args[0] == "down" {
+		cfg, err := bootstrap.Load(configPath())
+		if err != nil {
+			return err
+		}
+		steps := 0
+		if len(args) > 2 {
+			return usage()
+		}
+		if len(args) == 2 {
+			steps, err = strconv.Atoi(args[1])
+			if err != nil {
+				return fmt.Errorf("invalid steps: %w", err)
+			}
+		}
+		return migration.Run(ctx, cfg.MySQL.DSN, args[0], steps)
+	}
+	flags := flag.NewFlagSet("migration "+args[0], flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	root := flags.String("root", repositoryRoot(), "repository root")
+	switch args[0] {
+	case "plan":
+		if len(args) < 2 {
+			return usage()
+		}
+		module := args[1]
+		if err := flags.Parse(args[2:]); err != nil || flags.NArg() != 0 {
+			return usage()
+		}
+		plan, err := migration.Plan(ctx, *root, module)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(output, "module=%s destructive=%d\n%s", plan.Module, len(plan.Destructive), plan.UpSQL)
+		return err
+	case "new":
+		if len(args) < 2 {
+			return usage()
+		}
+		name := args[1]
+		module := flags.String("module", "", "module name")
+		if err := flags.Parse(args[2:]); err != nil || flags.NArg() != 0 || *module == "" {
+			return usage()
+		}
+		draft, err := migration.NewDraft(ctx, *root, name, *module)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(output, "draft=%s up=%s down=%s\n", draft.Name, draft.Up, draft.Down)
+		return err
+	case "promote":
+		if len(args) < 2 {
+			return usage()
+		}
+		draft := args[1]
+		if err := flags.Parse(args[2:]); err != nil || flags.NArg() != 0 {
+			return usage()
+		}
+		promoted, err := migration.Promote(ctx, *root, draft, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(output, "version=%s name=%s\n", promoted.Version, promoted.Name)
+		return err
+	case "snapshot":
+		if len(args) < 2 {
+			return usage()
+		}
+		module := args[1]
+		if err := flags.Parse(args[2:]); err != nil || flags.NArg() != 0 {
+			return usage()
+		}
+		if err := migration.Snapshot(ctx, *root, module); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintf(output, "snapshotted module=%s\n", module)
+		return err
+	case "check":
+		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
+			return usage()
+		}
+		return migration.Check(ctx, *root)
+	case "list":
+		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
+			return usage()
+		}
+		rows, err := migration.List(*root)
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			if _, err = fmt.Fprintf(output, "%s\t%s\n", row.Version, row.Name); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return usage()
+	}
 }
 func configPath() string {
 	if v := os.Getenv("CAMPUS_BOOTSTRAP_FILE"); v != "" {
@@ -172,21 +263,64 @@ func runGenerate(ctx context.Context, args []string, output io.Writer) error {
 		flags := flag.NewFlagSet("generate modules", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		check := flags.Bool("check", false, "check all generated modules")
+		prune := flags.Bool("prune", false, "remove stale managed generated files")
 		root := flags.String("root", repositoryRoot(), "repository root")
-		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
+		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 || (*check && *prune) {
 			return usage()
 		}
-		modules, err := generator.ListModules(ctx, *root)
+		modules, err := generator.DiscoverModules(ctx, *root)
 		if err != nil {
 			return err
 		}
+		globalManaged, err := generator.GlobalManagedFiles(ctx, *root, modules)
+		if err != nil {
+			return err
+		}
+		if *check {
+			if err = generator.SyncModuleRegistry(ctx, *root, modules, true); err != nil {
+				return err
+			}
+		} else {
+			// Render the complete plan in an isolated root before touching the worktree.
+			temporaryRoot, tempErr := os.MkdirTemp("", "campus-generate-plan-*")
+			if tempErr != nil {
+				return fmt.Errorf("create generation plan root: %w", tempErr)
+			}
+			defer func() { _ = os.RemoveAll(temporaryRoot) }()
+			if tempErr = generator.SyncModuleRegistry(ctx, temporaryRoot, modules, false); tempErr != nil {
+				return tempErr
+			}
+			plannedManaged := append([]string{".agent/modules.json"}, globalManaged...)
+			for _, module := range modules {
+				schema, loadErr := generator.Load(ctx, filepath.Join(*root, filepath.FromSlash(module.Schema)))
+				if loadErr != nil {
+					return loadErr
+				}
+				var planned generator.Result
+				if planned, tempErr = generator.Generate(ctx, schema, generator.Options{Root: temporaryRoot, Source: module.Schema}); tempErr != nil {
+					return tempErr
+				}
+				plannedManaged = append(plannedManaged, planned.Managed...)
+			}
+			stale, staleErr := generator.FindStaleManagedFiles(*root, plannedManaged)
+			if staleErr != nil {
+				return staleErr
+			}
+			if len(stale) > 0 && !*prune {
+				return fmt.Errorf("%w: %s", generator.ErrStaleArtifacts, strings.Join(stale, ", "))
+			}
+			if err = generator.SyncModuleRegistry(ctx, *root, modules, false); err != nil {
+				return err
+			}
+		}
+		managed := append([]string{".agent/modules.json"}, globalManaged...)
 		for _, module := range modules {
 			schemaPath := filepath.Join(*root, filepath.FromSlash(module.Schema))
 			schema, loadErr := generator.Load(ctx, schemaPath)
 			if loadErr != nil {
 				return loadErr
 			}
-			_, generateErr := generator.Generate(ctx, schema, generator.Options{
+			result, generateErr := generator.Generate(ctx, schema, generator.Options{
 				Root:   *root,
 				Source: module.Schema,
 				Check:  *check,
@@ -194,8 +328,13 @@ func runGenerate(ctx context.Context, args []string, output io.Writer) error {
 			if generateErr != nil {
 				return generateErr
 			}
+			managed = append(managed, result.Managed...)
 		}
-		_, err = fmt.Fprintf(output, "generated modules count=%d checked=%t\n", len(modules), *check)
+		stale, err := generator.ReconcileManagedFiles(ctx, *root, managed, *check, *prune)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(output, "generated modules count=%d checked=%t pruned=%d\n", len(modules), *check, len(stale))
 		return err
 	}
 	if len(args) > 0 && args[0] == "openapi" {

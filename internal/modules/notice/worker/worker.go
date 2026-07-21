@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -136,6 +137,13 @@ func (p *Processor) Handle(ctx context.Context, task *asynq.Task) error {
 }
 
 func (p *Processor) deliver(ctx context.Context, id uint64) error {
+	claimed, err := p.store.ClaimDelivery(ctx, id, time.Now().UTC(), 30*time.Second)
+	if err != nil {
+		return err
+	}
+	if !claimed {
+		return nil
+	}
 	delivery, notice, user, err := p.store.LoadDelivery(ctx, id)
 	if err != nil {
 		return err
@@ -146,7 +154,7 @@ func (p *Processor) deliver(ctx context.Context, id uint64) error {
 	if notice.Status == domain.StatusRevoked {
 		return p.store.FailDelivery(ctx, id, errors.New("notice revoked"), true)
 	}
-	providerID, err := p.provider.Send(ctx, user, notice, delivery.Channel, delivery.IdempotencyKey)
+	providerID, err := p.provider.Send(ctx, user, notice, delivery.Channel, strconv.FormatUint(delivery.ID, 10))
 	if err == nil {
 		return p.store.CompleteDelivery(ctx, id, providerID)
 	}

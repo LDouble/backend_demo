@@ -11,6 +11,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -34,7 +35,7 @@ func (s *Store) RevealContact(trip *domain.Trip) (string, error) {
 // CreateTrip inserts a new trip and encrypts the organizer contact.
 func (s *Store) CreateTrip(ctx context.Context, organizer uint64, in domain.TripInput, _ time.Time) (*domain.Trip, error) {
 	trip := &domain.Trip{Title: strings.TrimSpace(in.Title), Origin: strings.TrimSpace(in.Origin), Destination: strings.TrimSpace(in.Destination), DepartureAt: in.DepartureAt.UTC(), TotalSeats: in.TotalSeats, Status: domain.TripOpen, OrganizerId: organizer, ContactType: strings.TrimSpace(in.ContactType), Version: 1}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(trip).Error; err != nil {
 			return err
 		}
@@ -54,13 +55,16 @@ func (s *Store) CreateTrip(ctx context.Context, organizer uint64, in domain.Trip
 // GetTrip returns one trip and whether the viewer may see plaintext contact.
 func (s *Store) GetTrip(ctx context.Context, id, viewer uint64) (*domain.Trip, bool, error) {
 	var trip domain.Trip
-	if err := s.db.WithContext(ctx).First(&trip, id).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).First(&trip, id).Error; err != nil {
 		return nil, false, notFound(err)
 	}
 	visible := trip.OrganizerId == viewer
 	if !visible && trip.Status != domain.TripCancelled && trip.Status != domain.TripCompleted {
 		var p domain.Participant
-		err := s.db.WithContext(ctx).Where("trip_id = ? AND user_id = ? AND status = ?", id, viewer, domain.ParticipantJoined).First(&p).Error
+		err := idempotency.DB(ctx, s.db).Where("trip_id = ? AND user_id = ? AND status = ?", id, viewer, domain.ParticipantJoined).First(&p).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, false, err
+		}
 		visible = err == nil
 	}
 	return &trip, visible, nil
@@ -69,7 +73,7 @@ func (s *Store) GetTrip(ctx context.Context, id, viewer uint64) (*domain.Trip, b
 // SearchTrips returns public trips that have not departed.
 func (s *Store) SearchTrips(ctx context.Context, search domain.Search, page, size int, now time.Time) ([]domain.Trip, int64, error) {
 	rows := []domain.Trip{}
-	base := s.db.WithContext(ctx).Model(&domain.Trip{}).Where("status IN ? AND departure_at > ?", []string{domain.TripOpen, domain.TripFull}, now)
+	base := idempotency.DB(ctx, s.db).Model(&domain.Trip{}).Where("status IN ? AND departure_at > ?", []string{domain.TripOpen, domain.TripFull}, now)
 	if v := strings.TrimSpace(search.Origin); v != "" {
 		base = base.Where("origin LIKE ?", "%"+v+"%")
 	}
@@ -96,7 +100,7 @@ func (s *Store) SearchTrips(ctx context.Context, search domain.Search, page, siz
 // Join adds a participant and reserves one seat atomically.
 func (s *Store) Join(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
 	var trip domain.Trip
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&trip, id).Error; err != nil {
 			return notFound(err)
 		}
@@ -155,7 +159,7 @@ func (s *Store) Leave(ctx context.Context, id, user, version uint64, now time.Ti
 // Cancel marks an organizer-owned trip as cancelled.
 func (s *Store) Cancel(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
 	var trip domain.Trip
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&trip, id).Error; err != nil {
 			return notFound(err)
 		}
@@ -179,7 +183,7 @@ func (s *Store) Cancel(ctx context.Context, id, user, version uint64, now time.T
 }
 func (s *Store) changeParticipant(ctx context.Context, id, user, version uint64, now time.Time, _ bool) (*domain.Trip, error) {
 	var trip domain.Trip
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&trip, id).Error; err != nil {
 			return notFound(err)
 		}
@@ -211,12 +215,13 @@ func (s *Store) changeParticipant(ctx context.Context, id, user, version uint64,
 // CompleteDue marks departed active trips completed.
 func (s *Store) CompleteDue(ctx context.Context, now time.Time) (int64, error) {
 	var rows []domain.Trip
-	if err := s.db.WithContext(ctx).Where("status IN ? AND departure_at <= ?", []string{domain.TripOpen, domain.TripFull}, now).Find(&rows).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).Where("status IN ? AND departure_at <= ?", []string{domain.TripOpen, domain.TripFull}, now).Find(&rows).Error; err != nil {
 		return 0, err
 	}
 	var completed int64
 	for _, row := range rows {
-		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		changed := false
+		err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 			var trip domain.Trip
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&trip, row.ID).Error; err != nil {
 				return err
@@ -229,11 +234,17 @@ func (s *Store) CompleteDue(ctx context.Context, now time.Time) (int64, error) {
 			if err := tx.Save(&trip).Error; err != nil {
 				return err
 			}
-			completed++
-			return event(tx, &trip, "carpool.completed")
+			if err := event(tx, &trip, "carpool.completed"); err != nil {
+				return err
+			}
+			changed = true
+			return nil
 		})
 		if err != nil {
 			return completed, err
+		}
+		if changed {
+			completed++
 		}
 	}
 	return completed, nil

@@ -3,11 +3,14 @@ package generator
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -32,6 +35,7 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 	if err != nil {
 		return false, err
 	}
+	// #nosec G304 -- safeJoin confines the generated contract path to the repository root.
 	current, err := os.ReadFile(contractPath)
 	if err != nil {
 		return false, fmt.Errorf("read public OpenAPI contract: %w", err)
@@ -55,6 +59,7 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 		if joinErr != nil {
 			return false, joinErr
 		}
+		// #nosec G304 -- safeJoin confines generated module fragments to the repository root.
 		fragmentData, readErr := os.ReadFile(fragmentPath)
 		if errors.Is(readErr, fs.ErrNotExist) {
 			return false, fmt.Errorf("module OpenAPI fragment missing: %s", fragmentPath)
@@ -81,19 +86,87 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 	if err != nil {
 		return false, err
 	}
-	changed := !bytes.Equal(current, content)
+	permissionPath, err := safeJoin(root, "permissions/modules/core.json")
+	if err != nil {
+		return false, err
+	}
+	permissionContent, err := corePermissionManifest(paths)
+	if err != nil {
+		return false, err
+	}
+	currentPermissions, permissionReadErr := os.ReadFile(permissionPath) // #nosec G304 -- safeJoin confines this generated output.
+	if permissionReadErr != nil && !errors.Is(permissionReadErr, fs.ErrNotExist) {
+		return false, fmt.Errorf("read core permission manifest: %w", permissionReadErr)
+	}
+	contractChanged := !bytes.Equal(current, content)
+	permissionsChanged := permissionReadErr != nil || !bytes.Equal(currentPermissions, permissionContent)
+	changed := contractChanged || permissionsChanged
 	if options.Check {
-		if changed {
+		if contractChanged {
 			return true, fmt.Errorf("%w: api/openapi.yaml", ErrDrift)
+		}
+		if permissionsChanged {
+			return true, fmt.Errorf("%w: permissions/modules/core.json", ErrDrift)
 		}
 		return false, nil
 	}
-	if changed {
+	if contractChanged {
 		if err := atomicWrite(contractPath, content); err != nil {
 			return false, err
 		}
 	}
+	if permissionsChanged {
+		if err := atomicWrite(permissionPath, permissionContent); err != nil {
+			return false, err
+		}
+	}
 	return changed, nil
+}
+
+func corePermissionManifest(paths *yaml.Node) ([]byte, error) {
+	permissions := []Permission{}
+	httpMethods := map[string]struct{}{"get": {}, "post": {}, "put": {}, "patch": {}, "delete": {}}
+	for i := 0; i < len(paths.Content); i += 2 {
+		path := paths.Content[i].Value
+		if !strings.HasPrefix(path, "/api/v1/") {
+			continue
+		}
+		item := paths.Content[i+1]
+		for j := 0; j < len(item.Content); j += 2 {
+			method := strings.ToLower(item.Content[j].Value)
+			if _, ok := httpMethods[method]; !ok {
+				continue
+			}
+			operation := item.Content[j+1]
+			if mappingHas(operation, "x-generated-module") {
+				continue
+			}
+			operationID := scalarMappingValue(operation, "operationId")
+			if operationID == "" || (strings.HasPrefix(path, "/api/v1/auth/") && operationID != "GetMe") {
+				continue
+			}
+			pattern := path
+			for strings.Contains(pattern, "{") {
+				start := strings.IndexByte(pattern, '{')
+				end := strings.IndexByte(pattern[start:], '}')
+				if end < 0 {
+					return nil, fmt.Errorf("invalid core permission path %q", path)
+				}
+				end += start
+				pattern = pattern[:start] + ":" + pattern[start+1:end] + pattern[end+1:]
+			}
+			permissions = append(permissions, Permission{Name: "core:" + strings.ToLower(operationID), Path: pattern, Methods: []string{strings.ToUpper(method)}})
+		}
+	}
+	sort.Slice(permissions, func(i, j int) bool { return permissions[i].Name < permissions[j].Name })
+	data, err := json.MarshalIndent(struct {
+		Module      string       `json:"module"`
+		Permissions []Permission `json:"permissions"`
+	}{Module: "core", Permissions: permissions}, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode core permission manifest: %w", err)
+	}
+	return append(data, '\n'), nil
 }
 
 func decodeYAMLDocument(data []byte) (*yaml.Node, error) {
@@ -132,15 +205,17 @@ func mappingValue(document *yaml.Node, key string) (*yaml.Node, error) {
 }
 
 func removeGeneratedOperations(paths *yaml.Node) {
-	for i := 0; i < len(paths.Content); i += 2 {
+	for i := len(paths.Content) - 2; i >= 0; i -= 2 {
 		pathItem := paths.Content[i+1]
 		for j := len(pathItem.Content) - 2; j >= 0; j -= 2 {
 			operation := pathItem.Content[j+1]
 			isCurrentGenerated := mappingHas(operation, "x-generated-module")
-			isLegacyGenerated := mappingEntry(mappingEntry(operation, "responses"), "501") != nil
-			if isCurrentGenerated || isLegacyGenerated {
+			if isCurrentGenerated {
 				pathItem.Content = append(pathItem.Content[:j], pathItem.Content[j+2:]...)
 			}
+		}
+		if len(pathItem.Content) == 0 {
+			paths.Content = append(paths.Content[:i], paths.Content[i+2:]...)
 		}
 	}
 }

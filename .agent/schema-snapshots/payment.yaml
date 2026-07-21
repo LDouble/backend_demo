@@ -1,0 +1,264 @@
+version: 2
+module: payment
+entity:
+    name: PaymentIntent
+    table: payment_intents
+    primary: true
+    fields:
+        - name: intent_no
+          type: string
+          required: true
+          size: 40
+          unique: true
+        - name: resource_type
+          type: string
+          required: true
+          size: 64
+        - name: resource_id
+          type: uint64
+          required: true
+        - name: payer_id
+          type: uint64
+          required: true
+          index: true
+        - name: payee_id
+          type: uint64
+          required: true
+          index: true
+        - name: amount_cents
+          type: int64
+          required: true
+        - name: currency
+          type: string
+          required: true
+          size: 3
+        - name: method
+          type: string
+          required: true
+          size: 32
+        - name: provider
+          type: string
+          required: true
+          size: 32
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: idempotency_key
+          type: string
+          required: true
+          size: 128
+        - name: provider_intent_id
+          type: string
+          required: false
+          size: 128
+        - name: expires_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+    indexes:
+        - name: uk_payment_payer_idempotency
+          fields:
+            - payer_id
+            - idempotency_key
+          unique: true
+        - name: idx_payment_resource
+          fields:
+            - resource_type
+            - resource_id
+entities:
+    - name: PaymentIntent
+      table: payment_intents
+      primary: true
+      fields:
+        - name: intent_no
+          type: string
+          required: true
+          size: 40
+          unique: true
+        - name: resource_type
+          type: string
+          required: true
+          size: 64
+        - name: resource_id
+          type: uint64
+          required: true
+        - name: payer_id
+          type: uint64
+          required: true
+          index: true
+        - name: payee_id
+          type: uint64
+          required: true
+          index: true
+        - name: amount_cents
+          type: int64
+          required: true
+        - name: currency
+          type: string
+          required: true
+          size: 3
+        - name: method
+          type: string
+          required: true
+          size: 32
+        - name: provider
+          type: string
+          required: true
+          size: 32
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: idempotency_key
+          type: string
+          required: true
+          size: 128
+        - name: provider_intent_id
+          type: string
+          required: false
+          size: 128
+        - name: expires_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+      indexes:
+        - name: uk_payment_payer_idempotency
+          fields:
+            - payer_id
+            - idempotency_key
+          unique: true
+        - name: idx_payment_resource
+          fields:
+            - resource_type
+            - resource_id
+    - name: PaymentTransaction
+      table: payment_transactions
+      fields:
+        - name: intent_id
+          type: uint64
+          required: true
+        - name: attempt_no
+          type: int64
+          required: true
+        - name: provider
+          type: string
+          required: true
+          size: 32
+        - name: provider_transaction_id
+          type: string
+          required: false
+          size: 128
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: failure_code
+          type: string
+          required: false
+          size: 64
+        - name: failure_message
+          type: string
+          required: false
+          size: 500
+        - name: paid_at
+          type: datetime
+          required: false
+      indexes:
+        - name: uk_payment_attempt
+          fields:
+            - intent_id
+            - attempt_no
+          unique: true
+      foreign_keys:
+        - field: intent_id
+          references: payment_intents.id
+          on_delete: RESTRICT
+    - name: PaymentRefund
+      table: payment_refunds
+      fields:
+        - name: intent_id
+          type: uint64
+          required: true
+        - name: refund_no
+          type: string
+          required: true
+          size: 40
+          unique: true
+        - name: amount_cents
+          type: int64
+          required: true
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: reason
+          type: string
+          required: true
+          size: 500
+        - name: provider_refund_id
+          type: string
+          required: false
+          size: 128
+        - name: idempotency_key
+          type: string
+          required: true
+          size: 128
+          unique: true
+        - name: refunded_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+      foreign_keys:
+        - field: intent_id
+          references: payment_intents.id
+          on_delete: RESTRICT
+    - name: PaymentCallback
+      table: payment_callbacks
+      fields:
+        - name: provider
+          type: string
+          required: true
+          size: 32
+        - name: provider_event_id
+          type: string
+          required: true
+          size: 128
+        - name: payload_digest
+          type: string
+          required: true
+          size: 64
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: processed_at
+          type: datetime
+          required: false
+        - name: last_error
+          type: string
+          required: false
+          size: 500
+      indexes:
+        - name: uk_payment_callback_event
+          fields:
+            - provider
+            - provider_event_id
+          unique: true
+crud:
+    - create
+    - get
+    - list
+    - update
+permissions: []

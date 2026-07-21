@@ -42,6 +42,7 @@ paths:
     post:
       operationId: CreateUser
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody: {$ref: "#/components/requestBodies/CreateUser"}
       responses: {"201": {$ref: "#/components/responses/Success"}}
   /api/v1/users/{id}:
@@ -53,6 +54,7 @@ paths:
     patch:
       operationId: UpdateUser
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody: {$ref: "#/components/requestBodies/UpdateUser"}
       responses: {"200": {$ref: "#/components/responses/Success"}}
   /api/v1/users/{id}/status:
@@ -60,6 +62,7 @@ paths:
     patch:
       operationId: SetUserStatus
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/UserStatusRequest"}}}
@@ -73,6 +76,7 @@ paths:
     put:
       operationId: SetUserRoles
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/UserRolesRequest"}}}
@@ -86,6 +90,7 @@ paths:
     post:
       operationId: CreateRole
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/CreateRoleRequest"}}}
@@ -95,6 +100,7 @@ paths:
     patch:
       operationId: UpdateRole
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/UpdateRoleRequest"}}}
@@ -102,6 +108,7 @@ paths:
     delete:
       operationId: DeleteRole
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       responses: {"200": {$ref: "#/components/responses/Success"}}
   /api/v1/roles/{id}/permissions:
     parameters: [{$ref: "#/components/parameters/ID"}]
@@ -112,6 +119,7 @@ paths:
     put:
       operationId: SetPermissions
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/PermissionsRequest"}}}
@@ -125,6 +133,7 @@ paths:
     post:
       operationId: CreateConfig
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/CreateConfigRequest"}}}
@@ -138,6 +147,7 @@ paths:
     put:
       operationId: UpdateConfig
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/UpdateConfigRequest"}}}
@@ -145,238 +155,43 @@ paths:
     delete:
       operationId: DeleteConfig
       security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/admin/notices:
+  /api/v1/activities:
     get:
-      operationId: ListAdminNotices
-      security: [{bearerAuth: []}]
-      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PageSize"}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-    post:
-      operationId: CreateNotice
-      security: [{bearerAuth: []}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateNoticeRequest"}}}}
-      responses: {"201": {$ref: "#/components/responses/Success"}}
-  /api/v1/admin/notices/{id}:
-    parameters: [{$ref: "#/components/parameters/ID"}]
-    get:
-      operationId: GetAdminNotice
-      security: [{bearerAuth: []}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-    patch:
-      operationId: UpdateNotice
-      security: [{bearerAuth: []}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateNoticeRequest"}}}}
-      responses: {"200": {$ref: "#/components/responses/Success"}, "409": {$ref: "#/components/responses/Error"}}
-    delete:
-      operationId: DeleteNotice
-      security: [{bearerAuth: []}]
-      parameters: [{name: expected_version, in: query, required: true, schema: {type: integer, format: uint64, minimum: 1}}]
-      responses: {"200": {$ref: "#/components/responses/Success"}, "409": {$ref: "#/components/responses/Error"}}
-  /api/v1/admin/notices/{id}/publish:
-    parameters: [{$ref: "#/components/parameters/ID"}]
-    post:
-      operationId: PublishNotice
-      security: [{bearerAuth: []}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/PublishNoticeRequest"}}}}
-      responses: {"200": {$ref: "#/components/responses/Success"}, "409": {$ref: "#/components/responses/Error"}}
-  /api/v1/admin/notices/{id}/revoke:
-    parameters: [{$ref: "#/components/parameters/ID"}]
-    post:
-      operationId: RevokeNotice
-      security: [{bearerAuth: []}]
-      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/VersionRequest"}}}}
-      responses: {"200": {$ref: "#/components/responses/Success"}, "409": {$ref: "#/components/responses/Error"}}
-  /api/v1/admin/notices/{id}/deliveries:
-    parameters: [{$ref: "#/components/parameters/ID"}]
-    get:
-      operationId: ListNoticeDeliveries
-      security: [{bearerAuth: []}]
-      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PageSize"}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/admin/notices/{id}/deliveries/retry:
-    parameters: [{$ref: "#/components/parameters/ID"}]
-    post:
-      operationId: RetryNoticeDeliveries
-      security: [{bearerAuth: []}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/notices:
-    get:
-      operationId: ListMyNotices
+      operationId: ListActivities
+      tags: [activity]
+      summary: "用户侧浏览已发布活动"
+      x-generated-module: activity
+      x-permission: activity:list
       security: [{bearerAuth: []}]
       parameters:
-        - {$ref: "#/components/parameters/Page"}
-        - {$ref: "#/components/parameters/PageSize"}
-        - {name: unread, in: query, schema: {type: boolean, default: false}}
-        - {name: category, in: query, schema: {type: string, maxLength: 64}}
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/notices/unread-count:
-    get:
-      operationId: GetUnreadNoticeCount
-      security: [{bearerAuth: []}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/notices/read-all:
-    put:
-      operationId: ReadAllNotices
-      security: [{bearerAuth: []}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/notices/{id}:
-    parameters: [{$ref: "#/components/parameters/ID"}]
-    get:
-      operationId: GetMyNotice
-      security: [{bearerAuth: []}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/notices/{id}/read:
-    parameters: [{$ref: "#/components/parameters/ID"}]
-    put:
-      operationId: ReadNotice
-      security: [{bearerAuth: []}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
-  /api/v1/marketplace/listings:
-    post:
-      operationId: CreateMarketplaceListing
-      tags: [marketplace]
-      summary: "创建二手商品草稿"
-      x-generated-module: marketplace
-      x-permission: marketplace:create
-      security: [{bearerAuth: []}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - title
-                - description
-                - price_cents
-                - contact_type
-                - contact
-              properties:
-                title:
-                  type: string
-                description:
-                  type: string
-                price_cents:
-                  type: integer
-                  format: int64
-                  minimum: 1
-                contact_type:
-                  type: string
-                contact:
-                  type: string
-                image_urls:
-                  type: array
-                  items: {type: string}
-      responses:
-        "201":
-          $ref: "#/components/responses/Success"
-        "400":
-          $ref: "#/components/responses/Error"
-  /api/v1/marketplace/listings/{id}/submit:
-    post:
-      operationId: SubmitMarketplaceListing
-      tags: [marketplace]
-      summary: "提交商品审核"
-      x-generated-module: marketplace
-      x-permission: marketplace:submit
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
+        - name: keyword
+          in: query
+          required: false
+          schema: {type: string}
+        - name: start_date
+          in: query
+          required: false
+          schema: {type: string, format: date}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
       responses:
         "200":
           $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/marketplace/listings/{id}/withdraw:
-    post:
-      operationId: WithdrawMarketplaceListing
-      tags: [marketplace]
-      summary: "撤回商品"
-      x-generated-module: marketplace
-      x-permission: marketplace:withdraw
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/marketplace/orders:
-    post:
-      operationId: CreateMarketplaceOrder
-      tags: [marketplace]
-      summary: "原子保留商品并创建订单"
-      x-generated-module: marketplace
-      x-permission: marketplace:order_create
-      security: [{bearerAuth: []}]
-      parameters:
-        - name: Idempotency-Key
-          in: header
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - listing_id
-              properties:
-                listing_id:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "201":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/marketplace/orders/{id}/cancel: {}
-  /api/v1/marketplace/orders/{id}/complete: {}
-  /api/v1/admin/notices/:id: {}
-  /api/v1/admin/notices/:id/deliveries: {}
-  /api/v1/admin/notices/:id/deliveries/retry: {}
-  /api/v1/admin/notices/:id/publish: {}
-  /api/v1/admin/notices/:id/revoke: {}
-  /api/v1/notices/:id: {}
-  /api/v1/notices/:id/read: {}
-  /api/v1/orders:
+  /api/v1/activities/registrations/mine:
     get:
-      operationId: ListMyTradeOrders
-      tags: [trade]
-      summary: "查询我的交易订单"
-      x-generated-module: trade
-      x-permission: trade:read
+      operationId: ListMyActivityRegistrations
+      tags: [activity]
+      summary: "查看我的活动报名"
+      x-generated-module: activity
+      x-permission: activity:registration_mine
       security: [{bearerAuth: []}]
       parameters:
         - name: page
@@ -390,13 +205,13 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Success"
-  /api/v1/orders/{id}:
+  /api/v1/activities/{id}:
     get:
-      operationId: GetMyTradeOrder
-      tags: [trade]
-      summary: "查询交易订单详情"
-      x-generated-module: trade
-      x-permission: trade:read_item
+      operationId: GetActivity
+      tags: [activity]
+      summary: "用户侧查看活动详情"
+      x-generated-module: activity
+      x-permission: activity:read
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -405,16 +220,43 @@ paths:
           $ref: "#/components/responses/Success"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/orders/{id}/cancel:
+  /api/v1/activities/{id}/registrations:
     post:
-      operationId: CancelTradeOrder
-      tags: [trade]
-      summary: "取消交易订单"
-      x-generated-module: trade
-      x-permission: trade:cancel
+      operationId: CreateActivityRegistration
+      tags: [activity]
+      summary: "报名活动"
+      x-generated-module: activity
+      x-permission: activity:register
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/activities/{id}/registrations/me:
+    delete:
+      operationId: CancelMyActivityRegistration
+      tags: [activity]
+      summary: "取消我的活动报名"
+      x-generated-module: activity
+      x-permission: activity:registration_cancel
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -433,16 +275,245 @@ paths:
           $ref: "#/components/responses/Success"
         "409":
           $ref: "#/components/responses/Error"
-  /api/v1/orders/{id}/complete:
+  /api/v1/admin/activities:
+    get:
+      operationId: ListAdminActivities
+      tags: [activity]
+      summary: "管理端查询活动列表"
+      x-generated-module: activity
+      x-permission: activity:admin_list
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          schema: {type: string}
+        - name: status
+          in: query
+          required: false
+          schema: {type: string}
+        - name: review_status
+          in: query
+          required: false
+          schema: {type: string}
+        - name: start_date
+          in: query
+          required: false
+          schema: {type: string, format: date}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
     post:
-      operationId: CompleteTradeOrder
-      tags: [trade]
-      summary: "确认交易完成"
-      x-generated-module: trade
-      x-permission: trade:complete
+      operationId: CreateAdminActivity
+      tags: [activity]
+      summary: "管理端创建活动草稿"
+      x-generated-module: activity
+      x-permission: activity:admin_create
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - summary
+                - body
+                - location
+                - signup_start_at
+                - signup_end_at
+                - start_at
+                - end_at
+                - capacity
+                - contact_type
+                - contact
+              properties:
+                title:
+                  type: string
+                summary:
+                  type: string
+                body:
+                  type: string
+                location:
+                  type: string
+                signup_start_at:
+                  type: string
+                  format: date-time
+                signup_end_at:
+                  type: string
+                  format: date-time
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                capacity:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                contact_type:
+                  type: string
+                contact:
+                  type: string
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/activities/{id}:
+    get:
+      operationId: GetAdminActivity
+      tags: [activity]
+      summary: "管理端查看活动详情"
+      x-generated-module: activity
+      x-permission: activity:admin_read
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: UpdateAdminActivity
+      tags: [activity]
+      summary: "管理端修改活动草稿"
+      x-generated-module: activity
+      x-permission: activity:admin_update
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - summary
+                - body
+                - location
+                - signup_start_at
+                - signup_end_at
+                - start_at
+                - end_at
+                - capacity
+                - expected_version
+              properties:
+                title:
+                  type: string
+                summary:
+                  type: string
+                body:
+                  type: string
+                location:
+                  type: string
+                signup_start_at:
+                  type: string
+                  format: date-time
+                signup_end_at:
+                  type: string
+                  format: date-time
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                capacity:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                contact_type:
+                  type: string
+                contact:
+                  type: string
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/activities/{id}/approve:
+    post:
+      operationId: ApproveAdminActivity
+      tags: [activity]
+      summary: "审核通过活动"
+      x-generated-module: activity
+      x-permission: activity:admin_approve
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+                review_comment:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/activities/{id}/cancel:
+    post:
+      operationId: CancelAdminActivity
+      tags: [activity]
+      summary: "取消活动"
+      x-generated-module: activity
+      x-permission: activity:admin_cancel
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -461,6 +532,341 @@ paths:
           $ref: "#/components/responses/Success"
         "409":
           $ref: "#/components/responses/Error"
+  /api/v1/admin/activities/{id}/finish:
+    post:
+      operationId: FinishAdminActivity
+      tags: [activity]
+      summary: "结束活动"
+      x-generated-module: activity
+      x-permission: activity:admin_finish
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/activities/{id}/publish:
+    post:
+      operationId: PublishAdminActivity
+      tags: [activity]
+      summary: "发布活动"
+      x-generated-module: activity
+      x-permission: activity:admin_publish
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/activities/{id}/reject:
+    post:
+      operationId: RejectAdminActivity
+      tags: [activity]
+      summary: "驳回活动审核"
+      x-generated-module: activity
+      x-permission: activity:admin_reject
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+                - review_comment
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+                review_comment:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/activities/{id}/submit-review:
+    post:
+      operationId: SubmitAdminActivityReview
+      tags: [activity]
+      summary: "提交活动审核"
+      x-generated-module: activity
+      x-permission: activity:admin_submit_review
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/carpool/trips:
+    get:
+      operationId: ListCarpoolTrips
+      tags: [carpool]
+      summary: "搜索开放拼车行程"
+      x-generated-module: carpool
+      x-permission: carpool:read
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: origin
+          in: query
+          required: false
+          schema: {type: string}
+        - name: destination
+          in: query
+          required: false
+          schema: {type: string}
+        - name: departure_date
+          in: query
+          required: false
+          schema: {type: string, format: date}
+        - name: seats_needed
+          in: query
+          required: false
+          schema: {type: integer, format: int64}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      operationId: CreateCarpoolTrip
+      tags: [carpool]
+      summary: "发起拼车行程"
+      x-generated-module: carpool
+      x-permission: carpool:create
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - origin
+                - destination
+                - departure_at
+                - total_seats
+                - contact_type
+                - contact
+              properties:
+                title:
+                  type: string
+                origin:
+                  type: string
+                destination:
+                  type: string
+                departure_at:
+                  type: string
+                  format: date-time
+                total_seats:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                contact_type:
+                  type: string
+                contact:
+                  type: string
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+  /api/v1/carpool/trips/{id}:
+    get:
+      operationId: GetCarpoolTrip
+      tags: [carpool]
+      summary: "查看拼车行程"
+      x-generated-module: carpool
+      x-permission: carpool:read_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/carpool/trips/{id}/cancel:
+    post:
+      operationId: CancelCarpoolTrip
+      tags: [carpool]
+      summary: "取消拼车行程"
+      x-generated-module: carpool
+      x-permission: carpool:cancel
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/carpool/trips/{id}/join:
+    post:
+      operationId: JoinCarpoolTrip
+      tags: [carpool]
+      summary: "原子加入拼车行程"
+      x-generated-module: carpool
+      x-permission: carpool:join
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/carpool/trips/{id}/leave:
+    post:
+      operationId: LeaveCarpoolTrip
+      tags: [carpool]
+      summary: "退出拼车行程"
+      x-generated-module: carpool
+      x-permission: carpool:leave
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/errands:
     get:
       operationId: ListErrands
@@ -488,6 +894,13 @@ paths:
       x-generated-module: errand
       x-permission: errand:create
       security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -572,6 +985,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -630,6 +1049,7 @@ paths:
           required: true
           schema:
             type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -658,6 +1078,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -686,6 +1112,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -714,6 +1146,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -742,289 +1180,12 @@ paths:
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/carpool/trips:
-    get:
-      operationId: ListCarpoolTrips
-      tags: [carpool]
-      summary: "搜索开放拼车行程"
-      x-generated-module: carpool
-      x-permission: carpool:read
-      security: [{bearerAuth: []}]
-      parameters:
-        - name: origin
-          in: query
-          required: false
-          schema: {type: string}
-        - name: destination
-          in: query
-          required: false
-          schema: {type: string}
-        - name: departure_date
-          in: query
-          required: false
-          schema: {type: string, format: date}
-        - name: seats_needed
-          in: query
-          required: false
-          schema: {type: integer, format: int64}
-        - name: page
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-        - name: page_size
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-    post:
-      operationId: CreateCarpoolTrip
-      tags: [carpool]
-      summary: "发起拼车行程"
-      x-generated-module: carpool
-      x-permission: carpool:create
-      security: [{bearerAuth: []}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - title
-                - origin
-                - destination
-                - departure_at
-                - total_seats
-                - contact_type
-                - contact
-              properties:
-                title:
-                  type: string
-                origin:
-                  type: string
-                destination:
-                  type: string
-                departure_at:
-                  type: string
-                  format: date-time
-                total_seats:
-                  type: integer
-                  format: int64
-                  minimum: 1
-                contact_type:
-                  type: string
-                contact:
-                  type: string
-      responses:
-        "201":
-          $ref: "#/components/responses/Success"
-  /api/v1/carpool/trips/{id}:
-    get:
-      operationId: GetCarpoolTrip
-      tags: [carpool]
-      summary: "查看拼车行程"
-      x-generated-module: carpool
-      x-permission: carpool:read_item
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-  /api/v1/carpool/trips/{id}/cancel:
-    post:
-      operationId: CancelCarpoolTrip
-      tags: [carpool]
-      summary: "取消拼车行程"
-      x-generated-module: carpool
-      x-permission: carpool:cancel
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-  /api/v1/carpool/trips/{id}/depart: {}
-  /api/v1/carpool/trips/{id}/join:
-    post:
-      operationId: JoinCarpoolTrip
-      tags: [carpool]
-      summary: "原子加入拼车行程"
-      x-generated-module: carpool
-      x-permission: carpool:join
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/carpool/trips/{id}/leave:
-    post:
-      operationId: LeaveCarpoolTrip
-      tags: [carpool]
-      summary: "退出拼车行程"
-      x-generated-module: carpool
-      x-permission: carpool:leave
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-  /api/v1/activities:
-    get:
-      operationId: ListActivities
-      tags: [activity]
-      summary: "用户侧浏览已发布活动"
-      x-generated-module: activity
-      x-permission: activity:list
-      security: [{bearerAuth: []}]
-      parameters:
-        - name: keyword
-          in: query
-          required: false
-          schema: {type: string}
-        - name: start_date
-          in: query
-          required: false
-          schema: {type: string, format: date}
-        - name: page
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-        - name: page_size
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-  /api/v1/activities/registrations/mine:
-    get:
-      operationId: ListMyActivityRegistrations
-      tags: [activity]
-      summary: "查看我的活动报名"
-      x-generated-module: activity
-      x-permission: activity:registration_mine
-      security: [{bearerAuth: []}]
-      parameters:
-        - name: page
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-        - name: page_size
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-  /api/v1/activities/{id}:
-    get:
-      operationId: GetActivity
-      tags: [activity]
-      summary: "用户侧查看活动详情"
-      x-generated-module: activity
-      x-permission: activity:read
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "404":
-          $ref: "#/components/responses/Error"
-  /api/v1/activities/{id}/registrations:
-    post:
-      operationId: CreateActivityRegistration
-      tags: [activity]
-      summary: "报名活动"
-      x-generated-module: activity
-      x-permission: activity:register
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
         - name: Idempotency-Key
           in: header
-          required: false
+          required: true
           schema:
             type: string
-      responses:
-        "201":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/activities/{id}/registrations/me:
-    delete:
-      operationId: CancelMyActivityRegistration
-      tags: [activity]
-      summary: "取消我的活动报名"
-      x-generated-module: activity
-      x-permission: activity:registration_cancel
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -1043,49 +1204,21 @@ paths:
           $ref: "#/components/responses/Success"
         "409":
           $ref: "#/components/responses/Error"
-  /api/v1/admin/activities:
-    get:
-      operationId: ListAdminActivities
-      tags: [activity]
-      summary: "管理端查询活动列表"
-      x-generated-module: activity
-      x-permission: activity:admin_list
+  /api/v1/marketplace/listings:
+    post:
+      operationId: CreateMarketplaceListing
+      tags: [marketplace]
+      summary: "创建二手商品草稿"
+      x-generated-module: marketplace
+      x-permission: marketplace:create
       security: [{bearerAuth: []}]
       parameters:
-        - name: keyword
-          in: query
-          required: false
-          schema: {type: string}
-        - name: status
-          in: query
-          required: false
-          schema: {type: string}
-        - name: review_status
-          in: query
-          required: false
-          schema: {type: string}
-        - name: start_date
-          in: query
-          required: false
-          schema: {type: string, format: date}
-        - name: page
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-        - name: page_size
-          in: query
-          required: false
-          schema: {type: integer, format: int32}
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-    post:
-      operationId: CreateAdminActivity
-      tags: [activity]
-      summary: "管理端创建活动草稿"
-      x-generated-module: activity
-      x-permission: activity:admin_create
-      security: [{bearerAuth: []}]
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -1094,38 +1227,16 @@ paths:
               type: object
               required:
                 - title
-                - summary
-                - body
-                - location
-                - signup_start_at
-                - signup_end_at
-                - start_at
-                - end_at
-                - capacity
+                - description
+                - price_cents
                 - contact_type
                 - contact
               properties:
                 title:
                   type: string
-                summary:
+                description:
                   type: string
-                body:
-                  type: string
-                location:
-                  type: string
-                signup_start_at:
-                  type: string
-                  format: date-time
-                signup_end_at:
-                  type: string
-                  format: date-time
-                start_at:
-                  type: string
-                  format: date-time
-                end_at:
-                  type: string
-                  format: date-time
-                capacity:
+                price_cents:
                   type: integer
                   format: int64
                   minimum: 1
@@ -1133,18 +1244,410 @@ paths:
                   type: string
                 contact:
                   type: string
+                image_urls:
+                  type: array
+                  items: {type: string}
       responses:
         "201":
           $ref: "#/components/responses/Success"
         "400":
           $ref: "#/components/responses/Error"
-  /api/v1/admin/activities/{id}:
+  /api/v1/marketplace/listings/{id}/submit:
+    post:
+      operationId: SubmitMarketplaceListing
+      tags: [marketplace]
+      summary: "提交商品审核"
+      x-generated-module: marketplace
+      x-permission: marketplace:submit
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/marketplace/listings/{id}/withdraw:
+    post:
+      operationId: WithdrawMarketplaceListing
+      tags: [marketplace]
+      summary: "撤回商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:withdraw
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/marketplace/orders:
+    post:
+      operationId: CreateMarketplaceOrder
+      tags: [marketplace]
+      summary: "原子保留商品并创建订单"
+      x-generated-module: marketplace
+      x-permission: marketplace:order_create
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - listing_id
+              properties:
+                listing_id:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/notices:
     get:
-      operationId: GetAdminActivity
-      tags: [activity]
-      summary: "管理端查看活动详情"
-      x-generated-module: activity
-      x-permission: activity:admin_read
+      operationId: ListAdminNotices
+      tags: [notice]
+      summary: "管理端查询通知"
+      x-generated-module: notice
+      x-permission: notice:manage
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    post:
+      operationId: CreateNotice
+      tags: [notice]
+      summary: "创建通知草稿"
+      x-generated-module: notice
+      x-permission: notice:manage
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoticeRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}:
+    delete:
+      operationId: DeleteNotice
+      tags: [notice]
+      summary: "删除通知草稿"
+      x-generated-module: notice
+      x-permission: notice:manage_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+        - name: expected_version
+          in: query
+          required: true
+          schema: {type: integer, format: uint64}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    get:
+      operationId: GetAdminNotice
+      tags: [notice]
+      summary: "查询通知详情"
+      x-generated-module: notice
+      x-permission: notice:manage_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    patch:
+      operationId: UpdateNotice
+      tags: [notice]
+      summary: "更新通知草稿"
+      x-generated-module: notice
+      x-permission: notice:manage_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoticeRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/deliveries:
+    get:
+      operationId: ListNoticeDeliveries
+      tags: [notice]
+      summary: "查询通知投递"
+      x-generated-module: notice
+      x-permission: notice:deliveries
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/deliveries/retry:
+    post:
+      operationId: RetryNoticeDeliveries
+      tags: [notice]
+      summary: "重试失败投递"
+      x-generated-module: notice
+      x-permission: notice:retry
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/publish:
+    post:
+      operationId: PublishNotice
+      tags: [notice]
+      summary: "发布通知"
+      x-generated-module: notice
+      x-permission: notice:publish
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishNoticeRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/notices/{id}/revoke:
+    post:
+      operationId: RevokeNotice
+      tags: [notice]
+      summary: "撤回通知"
+      x-generated-module: notice
+      x-permission: notice:revoke
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/notices:
+    get:
+      operationId: ListMyNotices
+      tags: [notice]
+      summary: "查询我的通知"
+      x-generated-module: notice
+      x-permission: notice:read
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: unread
+          in: query
+          required: false
+          schema: {type: boolean}
+        - name: category
+          in: query
+          required: false
+          schema: {type: string}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/notices/read-all:
+    put:
+      operationId: ReadAllNotices
+      tags: [notice]
+      summary: "全部标记已读"
+      x-generated-module: notice
+      x-permission: notice:read_all
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/notices/unread-count:
+    get:
+      operationId: GetUnreadNoticeCount
+      tags: [notice]
+      summary: "查询未读数量"
+      x-generated-module: notice
+      x-permission: notice:unread
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/notices/{id}:
+    get:
+      operationId: GetMyNotice
+      tags: [notice]
+      summary: "查询我的通知详情"
+      x-generated-module: notice
+      x-permission: notice:read_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/notices/{id}/read:
+    put:
+      operationId: ReadNotice
+      tags: [notice]
+      summary: "标记通知已读"
+      x-generated-module: notice
+      x-permission: notice:mark_read
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/orders:
+    get:
+      operationId: ListMyTradeOrders
+      tags: [trade]
+      summary: "查询我的交易订单"
+      x-generated-module: trade
+      x-permission: trade:read
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/orders/{id}:
+    get:
+      operationId: GetMyTradeOrder
+      tags: [trade]
+      summary: "查询交易订单详情"
+      x-generated-module: trade
+      x-permission: trade:read_item
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1153,110 +1656,22 @@ paths:
           $ref: "#/components/responses/Success"
         "404":
           $ref: "#/components/responses/Error"
-    patch:
-      operationId: UpdateAdminActivity
-      tags: [activity]
-      summary: "管理端修改活动草稿"
-      x-generated-module: activity
-      x-permission: activity:admin_update
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - title
-                - summary
-                - body
-                - location
-                - signup_start_at
-                - signup_end_at
-                - start_at
-                - end_at
-                - capacity
-                - expected_version
-              properties:
-                title:
-                  type: string
-                summary:
-                  type: string
-                body:
-                  type: string
-                location:
-                  type: string
-                signup_start_at:
-                  type: string
-                  format: date-time
-                signup_end_at:
-                  type: string
-                  format: date-time
-                start_at:
-                  type: string
-                  format: date-time
-                end_at:
-                  type: string
-                  format: date-time
-                capacity:
-                  type: integer
-                  format: int64
-                  minimum: 1
-                contact_type:
-                  type: string
-                contact:
-                  type: string
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/admin/activities/{id}/approve:
+  /api/v1/orders/{id}/cancel:
     post:
-      operationId: ApproveAdminActivity
-      tags: [activity]
-      summary: "审核通过活动"
-      x-generated-module: activity
-      x-permission: activity:admin_approve
+      operationId: CancelTradeOrder
+      tags: [trade]
+      summary: "取消交易订单"
+      x-generated-module: trade
+      x-permission: trade:cancel
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-                review_comment:
-                  type: string
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/admin/activities/{id}/cancel:
-    post:
-      operationId: CancelAdminActivity
-      tags: [activity]
-      summary: "取消活动"
-      x-generated-module: activity
-      x-permission: activity:admin_cancel
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -1275,103 +1690,22 @@ paths:
           $ref: "#/components/responses/Success"
         "409":
           $ref: "#/components/responses/Error"
-  /api/v1/admin/activities/{id}/finish:
+  /api/v1/orders/{id}/complete:
     post:
-      operationId: FinishAdminActivity
-      tags: [activity]
-      summary: "结束活动"
-      x-generated-module: activity
-      x-permission: activity:admin_finish
+      operationId: CompleteTradeOrder
+      tags: [trade]
+      summary: "确认交易完成"
+      x-generated-module: trade
+      x-permission: trade:complete
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/admin/activities/{id}/publish:
-    post:
-      operationId: PublishAdminActivity
-      tags: [activity]
-      summary: "发布活动"
-      x-generated-module: activity
-      x-permission: activity:admin_publish
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/admin/activities/{id}/reject:
-    post:
-      operationId: RejectAdminActivity
-      tags: [activity]
-      summary: "驳回活动审核"
-      x-generated-module: activity
-      x-permission: activity:admin_reject
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - expected_version
-                - review_comment
-              properties:
-                expected_version:
-                  type: integer
-                  format: uint64
-                  minimum: 1
-                review_comment:
-                  type: string
-      responses:
-        "200":
-          $ref: "#/components/responses/Success"
-        "409":
-          $ref: "#/components/responses/Error"
-  /api/v1/admin/activities/{id}/submit-review:
-    post:
-      operationId: SubmitAdminActivityReview
-      tags: [activity]
-      summary: "提交活动审核"
-      x-generated-module: activity
-      x-permission: activity:admin_submit_review
-      security: [{bearerAuth: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -1395,6 +1729,7 @@ components:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   parameters:
     ID: {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 1, maxLength: 128}}
     Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
     PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
     Group: {name: group, in: query, schema: {type: string, maxLength: 64}}

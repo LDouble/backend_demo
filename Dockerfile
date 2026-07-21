@@ -14,7 +14,7 @@ FROM alpine:3.22
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /out/server /out/campusctl /out/worker ./
-COPY migrations ./migrations
+COPY --chown=65532:65532 migrations ./migrations
 EXPOSE 8080
 USER 65532:65532
 ENTRYPOINT ["/app/server"]

@@ -14,6 +14,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/privacy"
 	"github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
@@ -39,7 +40,7 @@ func NewStore(db *gorm.DB, ciphers ...*configcenter.Cipher) *Store {
 // CreateListing creates a listing and its ordered images atomically.
 func (s *Store) CreateListing(ctx context.Context, ownerID uint64, input domain.ListingInput) (*domain.Listing, error) {
 	listing := &domain.Listing{Title: strings.TrimSpace(input.Title), Description: strings.TrimSpace(input.Description), PriceCents: input.PriceCents, Currency: domain.CurrencyCNY, Status: domain.ListingDraft, OwnerId: ownerID, ContactType: strings.TrimSpace(input.Contact.Type), Version: 1}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(listing).Error; err != nil {
 			return err
 		}
@@ -68,10 +69,26 @@ func (s *Store) UpdateListing(ctx context.Context, id, ownerID, version uint64, 
 			}
 			listing.ContactType, listing.ContactCiphertext = strings.TrimSpace(input.Contact.Type), ciphertext
 		}
-		if err := tx.Save(listing).Error; err != nil {
+		result := tx.Model(&domain.Listing{}).
+			Where("id = ? AND version = ?", listing.ID, version).
+			Updates(map[string]any{
+				"title": listing.Title, "description": listing.Description,
+				"price_cents": listing.PriceCents, "status": listing.Status,
+				"rejection_reason": listing.RejectionReason,
+				"contact_type":     listing.ContactType, "contact_ciphertext": listing.ContactCiphertext,
+				"version": gorm.Expr("version + 1"),
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return apperror.New(http.StatusConflict, "version_conflict", "商品已被其他请求更新")
+		}
+		listing.Version++
+		if err := replaceImages(tx, listing.ID, input.ImageURLs); err != nil {
 			return err
 		}
-		return replaceImages(tx, listing.ID, input.ImageURLs)
+		return nil
 	})
 	return listing, err
 }
@@ -90,7 +107,7 @@ func (s *Store) Contact(ctx context.Context, listing *domain.Listing, viewerID u
 			return domain.ContactDetails{Type: listing.ContactType, Value: value}, nil
 		}
 		var count int64
-		if err := s.db.WithContext(ctx).Model(&tradedomain.Order{}).Where(
+		if err := idempotency.DB(ctx, s.db).Model(&tradedomain.Order{}).Where(
 			"resource_type = ? AND resource_id = ? AND buyer_id = ? AND trade_status = ?",
 			tradedomain.ResourceListing,
 			listing.ID,
@@ -162,33 +179,59 @@ func (s *Store) Review(ctx context.Context, id, adminID, version uint64, approve
 	})
 }
 
-// Remove administratively removes a listing and cancels open reservations.
+// Remove administratively removes a listing and cancels an open reservation.
+// When an order exists, all paths use order -> reservation -> listing locking.
 func (s *Store) Remove(ctx context.Context, id, adminID, version uint64, now time.Time) (*domain.Listing, error) {
-	return s.mutateListing(ctx, id, 0, version, []string{domain.ListingPendingReview, domain.ListingPublished, domain.ListingReserved}, func(tx *gorm.DB, listing *domain.Listing) error {
-		listing.Status, listing.Version = domain.ListingRemoved, listing.Version+1
-		if err := tx.Save(listing).Error; err != nil {
-			return err
-		}
+	var listing domain.Listing
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		var reservation domain.MarketplaceReservation
-		err := tx.Where("listing_id = ? AND status = ?", listing.ID, domain.ReservationActive).First(&reservation).Error
+		err := tx.Where("listing_id = ? AND status = ?", id, domain.ReservationActive).First(&reservation).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
+		var order tradedomain.Order
+		hasReservation := err == nil
 		if err == nil {
-			if updateErr := closeReservation(tx, &reservation, tradedomain.StatusCancelled, adminID, "admin_removed", now); updateErr != nil {
-				return updateErr
+			if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, reservation.TradeOrderId).Error; err != nil {
+				return err
 			}
-			var order tradedomain.Order
-			if findErr := tx.First(&order, reservation.TradeOrderId).Error; findErr != nil {
-				return findErr
+			err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("id = ? AND status = ?", reservation.ID, domain.ReservationActive).
+				First(&reservation).Error
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				hasReservation = false
+			} else if err != nil {
+				return err
 			}
-			key := fmt.Sprintf("order.cancelled:%d:%d", order.ID, order.Version)
-			if eventErr := writeEvent(tx, "order", order.ID, "order.cancelled", key, order); eventErr != nil {
-				return eventErr
+		}
+		if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&listing, id).Error; err != nil {
+			return notFound(err, "listing_not_found", "商品不存在")
+		}
+		if listing.Version != version {
+			return apperror.New(409, "version_conflict", "商品已被其他请求更新")
+		}
+		if listing.Status != domain.ListingPendingReview && listing.Status != domain.ListingPublished && listing.Status != domain.ListingReserved {
+			return apperror.New(409, "invalid_listing_state", "商品当前状态不允许此操作")
+		}
+		listing.Status, listing.Version = domain.ListingRemoved, listing.Version+1
+		if err = tx.Save(&listing).Error; err != nil {
+			return err
+		}
+		if hasReservation {
+			changed, closeErr := closeReservationWithOrder(tx, &reservation, &order, tradedomain.StatusCancelled, adminID, "admin_removed", now)
+			if closeErr != nil {
+				return closeErr
+			}
+			if changed {
+				key := fmt.Sprintf("order.cancelled:%d:%d", order.ID, order.Version)
+				if eventErr := writeEvent(tx, "order", order.ID, "order.cancelled", key, order); eventErr != nil {
+					return eventErr
+				}
 			}
 		}
 		return writeEvent(tx, "listing", listing.ID, "listing.removed", fmt.Sprintf("listing.removed:%d:%d", listing.ID, listing.Version), map[string]uint64{"listing_id": listing.ID, "admin_id": adminID})
 	})
+	return &listing, err
 }
 
 // Reserve locks a listing and idempotently creates its buyer order.
@@ -197,7 +240,7 @@ func (s *Store) Reserve(ctx context.Context, listingID, buyerID uint64, key stri
 		return nil, apperror.New(400, "invalid_idempotency_key", "Idempotency-Key 无效")
 	}
 	var order tradedomain.Order
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("buyer_id = ? AND idempotency_key = ?", buyerID, key).First(&order).Error; err == nil {
 			if order.ResourceType != tradedomain.ResourceListing || order.ResourceId != listingID {
 				return apperror.New(409, "idempotency_key_reused", "幂等键已用于其他请求")
@@ -257,7 +300,7 @@ func (s *Store) Complete(ctx context.Context, orderID, sellerID, version uint64,
 
 func (s *Store) finishOrder(ctx context.Context, orderID, actorID, version uint64, target string, now time.Time) (*tradedomain.Order, error) {
 	var order tradedomain.Order
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, orderID).Error; err != nil {
 			return notFound(err, "order_not_found", "订单不存在")
 		}
@@ -295,11 +338,15 @@ func (s *Store) finishOrder(ctx context.Context, orderID, actorID, version uint6
 		if err := tx.Save(&reservation).Error; err != nil {
 			return err
 		}
+		var listing domain.Listing
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&listing, reservation.ListingId).Error; err != nil {
+			return err
+		}
 		listingStatus := domain.ListingSold
 		if target == tradedomain.StatusCancelled {
 			listingStatus = domain.ListingPublished
 		}
-		if err := tx.Model(&domain.Listing{}).Where("id = ? AND status = ?", reservation.ListingId, domain.ListingReserved).Updates(map[string]any{"status": listingStatus, "version": gorm.Expr("version + 1")}).Error; err != nil {
+		if err := tx.Model(&listing).Where("status = ?", domain.ListingReserved).Updates(map[string]any{"status": listingStatus, "version": gorm.Expr("version + 1")}).Error; err != nil {
 			return err
 		}
 		transitionKey := fmt.Sprintf("order.%s:%d:%d", target, order.ID, order.Version)
@@ -314,9 +361,9 @@ func (s *Store) finishOrder(ctx context.Context, orderID, actorID, version uint6
 // ExpireReservations claims and expires due reservations transactionally.
 func (s *Store) ExpireReservations(ctx context.Context, now time.Time) (int64, error) {
 	var count int64
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		var reservations []domain.MarketplaceReservation
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).Where("status = ? AND expires_at <= ?", domain.ReservationActive, now).Find(&reservations).Error; err != nil {
+		if err := tx.Where("status = ? AND expires_at <= ?", domain.ReservationActive, now).Order("id").Limit(100).Find(&reservations).Error; err != nil {
 			return err
 		}
 		for i := range reservations {
@@ -324,13 +371,25 @@ func (s *Store) ExpireReservations(ctx context.Context, now time.Time) (int64, e
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, reservations[i].TradeOrderId).Error; err != nil {
 				return err
 			}
-			if err := closeReservation(tx, &reservations[i], tradedomain.StatusExpired, 0, "reservation_expired", now); err != nil {
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("id = ? AND status = ? AND expires_at <= ?", reservations[i].ID, domain.ReservationActive, now).
+				First(&reservations[i]).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			} else if err != nil {
 				return err
 			}
-			if err := tx.First(&order, order.ID).Error; err != nil {
+			var listing domain.Listing
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&listing, reservations[i].ListingId).Error; err != nil {
 				return err
 			}
-			if err := tx.Model(&domain.Listing{}).Where("id = ? AND status = ?", reservations[i].ListingId, domain.ListingReserved).Updates(map[string]any{"status": domain.ListingPublished, "version": gorm.Expr("version + 1")}).Error; err != nil {
+			changed, closeErr := closeReservationWithOrder(tx, &reservations[i], &order, tradedomain.StatusExpired, 0, "reservation_expired", now)
+			if closeErr != nil {
+				return closeErr
+			}
+			if !changed {
+				continue
+			}
+			if err := tx.Model(&listing).Where("status = ?", domain.ListingReserved).Updates(map[string]any{"status": domain.ListingPublished, "version": gorm.Expr("version + 1")}).Error; err != nil {
 				return err
 			}
 			if err := writeEvent(tx, "order", order.ID, "order.expired", fmt.Sprintf("order.expired:%d", order.ID), order); err != nil {
@@ -345,7 +404,7 @@ func (s *Store) ExpireReservations(ctx context.Context, now time.Time) (int64, e
 
 func (s *Store) mutateListing(ctx context.Context, id, ownerID, version uint64, states []string, mutate func(*gorm.DB, *domain.Listing) error) (*domain.Listing, error) {
 	var listing domain.Listing
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&listing, id).Error; err != nil {
 			return notFound(err, "listing_not_found", "商品不存在")
 		}
@@ -384,35 +443,35 @@ func replaceImages(tx *gorm.DB, listingID uint64, urls []string) error {
 	return tx.Create(&rows).Error
 }
 
-func closeReservation(
+func closeReservationWithOrder(
 	tx *gorm.DB,
 	reservation *domain.MarketplaceReservation,
+	order *tradedomain.Order,
 	target string,
 	actorID uint64,
 	reason string,
 	now time.Time,
-) error {
-	var order tradedomain.Order
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, reservation.TradeOrderId).Error; err != nil {
-		return err
-	}
+) (bool, error) {
 	if !tradedomain.CanTransition(order.TradeStatus, target) {
-		return nil
+		return false, nil
 	}
 	from := order.TradeStatus
 	order.TradeStatus, order.Version = target, order.Version+1
 	if target == tradedomain.StatusCancelled {
 		order.CancelledAt = &now
 	}
-	if err := tx.Save(&order).Error; err != nil {
-		return err
+	if err := tx.Save(order).Error; err != nil {
+		return false, err
 	}
 	reservation.Status, reservation.Version = reservationStatus(target), reservation.Version+1
 	if err := tx.Save(reservation).Error; err != nil {
-		return err
+		return false, err
 	}
 	key := fmt.Sprintf("order.%s:%d:%d", target, order.ID, order.Version)
-	return createTransition(tx, &order, from, target, actorID, reason, key)
+	if err := createTransition(tx, order, from, target, actorID, reason, key); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func createTransition(

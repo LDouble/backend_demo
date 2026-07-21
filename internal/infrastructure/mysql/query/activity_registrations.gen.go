@@ -47,17 +47,17 @@ func newActivityRegistration(db *gorm.DB, opts ...gen.DOOption) activityRegistra
 type activityRegistration struct {
 	activityRegistrationDo activityRegistrationDo
 
-	ALL             field.Asterisk
-	ID              field.Uint64
-	ActivityId      field.Uint64
-	UserId          field.Uint64
-	Status          field.String
-	RegisteredAt    field.Time
-	CancelledAt     field.Time
-	IdempotencyKey  field.String
-	Version         field.Uint64
-	CreatedAt       field.Time
-	UpdatedAt       field.Time
+	ALL            field.Asterisk
+	ID             field.Uint64
+	ActivityId     field.Uint64
+	UserId         field.Uint64
+	Status         field.String
+	RegisteredAt   field.Time
+	CancelledAt    field.Time
+	IdempotencyKey field.String
+	Version        field.Uint64
+	CreatedAt      field.Time
+	UpdatedAt      field.Time
 
 	fieldMap map[string]field.Expr
 }

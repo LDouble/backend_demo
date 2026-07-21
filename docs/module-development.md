@@ -4,7 +4,7 @@
 
 新增业务模块使用 `schemas/<module>.yaml` v2。Schema 同时声明持久化实体与 HTTP operations：
 
-- `entities` 生成领域实体、Repository、迁移草案和 GORM Query 登记；
+- `entities` 生成领域实体、Repository 和 GORM Query 登记；迁移由独立 lifecycle 命令根据 Schema 快照规划；
 - `operations` 生成模块 OpenAPI、Casbin 权限清单和全局 HTTP adapter；
 - 全部模块 OpenAPI 确定性汇总到 `api/openapi.yaml`，再由 oapi-codegen 生成 DTO、`ServerInterface` 和 Gin 路由。
 
@@ -18,9 +18,9 @@ go run ./cmd/campusctl generate module schemas/<module>.yaml
 make generate
 ```
 
-首次生成会登记 `.agent/modules.json`，并创建模块目录、OpenAPI 片段、权限清单、HTTP adapter 和迁移草案。`domain/rule.go` 与测试骨架只在不存在时创建。
+首次生成会由 `schemas/*.yaml` 重建 `.agent/modules.json`，并创建模块目录、OpenAPI 片段、权限清单和 HTTP adapter。`domain/rule.go` 与测试骨架只在不存在时创建。
 
-审核 `migrations/modules/<module>.up.sql` 和 `.down.sql` 后，为迁移分配连续版本号并复制到 `migrations/`。生成器不会执行迁移，也不会修改已编号迁移。
+使用 `campusctl migration plan <module>` 查看变更，随后通过 `migration new` 创建草案、审核 SQL，并用 `migration promote` 分配 UTC 时间戳版本和更新快照。生成器不会创建或执行正式迁移，也不会覆盖已 promote 文件。
 
 ## 声明业务操作
 
@@ -32,9 +32,8 @@ operations:
     method: POST
     path: /api/v1/marketplace/orders
     permission: marketplace:order_create
+    idempotency: required
     summary: 原子保留商品并创建订单
-    headers:
-      - {name: Idempotency-Key, type: string, required: true}
     body:
       fields:
         - {name: listing_id, type: integer, format: uint64, required: true, minimum: 1}
@@ -43,7 +42,7 @@ operations:
       - {status: 409, kind: error}
 ```
 
-生成器会校验重复 `operation_id`、重复 method/path、非法权限名、参数类型和响应状态。路径中的 `{id}` 自动生成必填 `uint64` path 参数；Header、query 和 JSON body 会进入 OpenAPI 请求校验。
+生成器会校验重复 `operation_id`、重复 method/path、非法权限名、参数类型和响应状态。所有认证写 operation 必须显式声明 `idempotency: required|inherent|none`；`required` 自动生成最长 128 字符的必填 `Idempotency-Key`。路径中的 `{id}` 自动生成必填 `uint64` path 参数；Header、query 和 JSON body 会进入 OpenAPI 请求校验，并由生成 adapter 传递 typed params。
 
 生成的 adapter 将 `CreateMarketplaceOrder` 转发到同包的手写 `createMarketplaceOrder`。开发者只实现该业务方法，并调用 Application Manager；不得直接在 Handler 中实现数据库事务或资源所有权规则。
 
@@ -57,9 +56,11 @@ make generate
 
 该命令依次执行：
 
-1. `campusctl generate modules`：刷新所有已登记模块产物；
+1. `campusctl generate modules`：从 `schemas/*.yaml` 发现模块，在临时 root 完整预渲染后刷新产物；
 2. `campusctl generate openapi`：移除旧模块 operation 并重新汇总全局契约；
 3. `go generate ./...`：生成 oapi-codegen DTO/路由及 GORM Query。
+
+生成计划记录在 `.agent/generated-files.json`。删除或重命名 Schema 后，普通生成会报告 stale artifact；确认后使用 `campusctl generate modules --prune` 清理，`--check` 始终只读且不会修改工作树。
 
 不要手工修改以下文件：
 
@@ -74,6 +75,7 @@ make generate
 
 ```bash
 make generate-check
+make migration-check
 make test-generator
 make test-race
 make vet

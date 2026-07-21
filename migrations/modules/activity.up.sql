@@ -33,7 +33,7 @@ CREATE TABLE activities (
     KEY idx_activities_created_by (created_by),
     KEY idx_activities_updated_by (updated_by),
     KEY idx_activity_public_list (status, review_status, start_at),
-    KEY idx_activity_admin_list (review_status, status, start_at)
+    KEY idx_activity_admin_list (status, review_status, start_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE activity_registrations (
@@ -43,7 +43,7 @@ CREATE TABLE activity_registrations (
     status VARCHAR(16) NOT NULL,
     registered_at DATETIME(3) NOT NULL,
     cancelled_at DATETIME(3) NULL,
-    idempotency_key VARCHAR(128) NOT NULL DEFAULT '',
+    idempotency_key VARCHAR(128) NOT NULL,
     version BIGINT UNSIGNED NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),

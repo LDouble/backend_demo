@@ -66,12 +66,13 @@ type ForeignKey struct {
 
 // Field describes a generated entity and database column.
 type Field struct {
-	Name     string `yaml:"name"`
-	Type     string `yaml:"type"`
-	Required bool   `yaml:"required"`
-	Size     int    `yaml:"size,omitempty"`
-	Unique   bool   `yaml:"unique,omitempty"`
-	Index    bool   `yaml:"index,omitempty"`
+	Name       string `yaml:"name"`
+	RenameFrom string `yaml:"rename_from,omitempty"`
+	Type       string `yaml:"type"`
+	Required   bool   `yaml:"required"`
+	Size       int    `yaml:"size,omitempty"`
+	Unique     bool   `yaml:"unique,omitempty"`
+	Index      bool   `yaml:"index,omitempty"`
 
 	GoName   string `yaml:"-"`
 	GoType   string `yaml:"-"`
@@ -93,6 +94,7 @@ type APIOperation struct {
 	Method      string         `yaml:"method"`
 	Path        string         `yaml:"path"`
 	Permission  string         `yaml:"permission"`
+	Idempotency string         `yaml:"idempotency,omitempty"`
 	Summary     string         `yaml:"summary,omitempty"`
 	Headers     []APIParameter `yaml:"headers,omitempty"`
 	Query       []APIParameter `yaml:"query,omitempty"`
@@ -102,16 +104,18 @@ type APIOperation struct {
 
 // APIParameter declares a generated header or query parameter.
 type APIParameter struct {
-	Name     string `yaml:"name"`
-	Type     string `yaml:"type"`
-	Required bool   `yaml:"required,omitempty"`
-	Format   string `yaml:"format,omitempty"`
-	Minimum  *int64 `yaml:"minimum,omitempty"`
-	Maximum  *int64 `yaml:"maximum,omitempty"`
+	Name      string `yaml:"name"`
+	Type      string `yaml:"type"`
+	Required  bool   `yaml:"required,omitempty"`
+	Format    string `yaml:"format,omitempty"`
+	Minimum   *int64 `yaml:"minimum,omitempty"`
+	Maximum   *int64 `yaml:"maximum,omitempty"`
+	MaxLength *int64 `yaml:"max_length,omitempty"`
 }
 
 // APIObject declares an inline JSON request object.
 type APIObject struct {
+	Ref    string     `yaml:"ref,omitempty"`
 	Fields []APIField `yaml:"fields"`
 }
 
@@ -137,6 +141,7 @@ func Load(ctx context.Context, path string) (Schema, error) {
 	if err := ctx.Err(); err != nil {
 		return Schema{}, err
 	}
+	// #nosec G304 -- callers resolve this explicit schema input; all generated outputs remain repository-scoped.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Schema{}, fmt.Errorf("read module schema: %w", err)
@@ -379,6 +384,7 @@ func (s *Schema) normalizeAPIOperations() error {
 		op.Method = strings.ToUpper(strings.TrimSpace(op.Method))
 		op.Path = strings.TrimSpace(op.Path)
 		op.Permission = strings.TrimSpace(op.Permission)
+		op.Idempotency = strings.ToLower(strings.TrimSpace(op.Idempotency))
 		if !typePattern.MatchString(op.OperationID) {
 			return fmt.Errorf("invalid operation_id %q", op.OperationID)
 		}
@@ -400,15 +406,12 @@ func (s *Schema) normalizeAPIOperations() error {
 			return fmt.Errorf("duplicate operation route %q", routeKey)
 		}
 		seenRoutes[routeKey] = struct{}{}
-		// Constraint: every state-changing operation (POST / PATCH / DELETE)
-		// MUST declare an `Idempotency-Key` header with `required: true`. This
-		// makes retry-safe semantics a first-class contract and stops the
-		// review-finding "handler advertises idempotency, store ignores it"
-		// pattern from sneaking back in. read-side endpoints (GET) are exempt.
-		if op.Method == "POST" || op.Method == "PATCH" || op.Method == "DELETE" || op.Method == "PUT" {
-			if !hasIdempotencyHeader(op.Headers) {
-				return fmt.Errorf("operation %q (%s %s) must declare Idempotency-Key header (required: true); see platformwide idempotency contract", op.OperationID, op.Method, op.Path)
+		if isWriteMethod(op.Method) {
+			if err := normalizeIdempotency(op); err != nil {
+				return err
 			}
+		} else if op.Idempotency != "" {
+			return fmt.Errorf("read operation %q must not declare idempotency", op.OperationID)
 		}
 		for j := range op.Headers {
 			if err := normalizeAPIParameter(&op.Headers[j]); err != nil {
@@ -421,6 +424,12 @@ func (s *Schema) normalizeAPIOperations() error {
 			}
 		}
 		if op.Body != nil {
+			if op.Body.Ref != "" && len(op.Body.Fields) > 0 {
+				return fmt.Errorf("operation %q body cannot declare both ref and fields", op.OperationID)
+			}
+			if op.Body.Ref != "" && !typePattern.MatchString(op.Body.Ref) {
+				return fmt.Errorf("operation %q body has invalid ref %q", op.OperationID, op.Body.Ref)
+			}
 			for j := range op.Body.Fields {
 				if err := normalizeAPIField(&op.Body.Fields[j]); err != nil {
 					return fmt.Errorf("operation %q body: %w", op.OperationID, err)
@@ -454,8 +463,57 @@ func normalizeAPIParameter(parameter *APIParameter) error {
 	if parameter.Name == "" || !validAPIType(parameter.Type) {
 		return fmt.Errorf("invalid parameter %q", parameter.Name)
 	}
+	if parameter.MaxLength != nil && (*parameter.MaxLength < 1 || parameter.Type != "string") {
+		return fmt.Errorf("parameter %q has invalid max_length", parameter.Name)
+	}
 	return nil
 }
+
+func isWriteMethod(method string) bool {
+	switch method {
+	case "POST", "PUT", "PATCH", "DELETE":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeIdempotency(operation *APIOperation) error {
+	switch operation.Idempotency {
+	case "required":
+		const maxKeyLength int64 = 128
+		for i := range operation.Headers {
+			header := &operation.Headers[i]
+			if !strings.EqualFold(header.Name, "Idempotency-Key") {
+				continue
+			}
+			if !header.Required || strings.ToLower(strings.TrimSpace(header.Type)) != "string" {
+				return fmt.Errorf("operation %q Idempotency-Key must be a required string", operation.OperationID)
+			}
+			header.Name = "Idempotency-Key"
+			header.MaxLength = pointer(maxKeyLength)
+			return nil
+		}
+		operation.Headers = append(operation.Headers, APIParameter{
+			Name:      "Idempotency-Key",
+			Type:      "string",
+			Required:  true,
+			MaxLength: pointer(maxKeyLength),
+		})
+		return nil
+	case "inherent", "none":
+		if hasIdempotencyHeader(operation.Headers) {
+			return fmt.Errorf("operation %q with idempotency %q must not require Idempotency-Key", operation.OperationID, operation.Idempotency)
+		}
+		return nil
+	case "":
+		return fmt.Errorf("write operation %q must declare idempotency: required|inherent|none", operation.OperationID)
+	default:
+		return fmt.Errorf("operation %q has invalid idempotency %q", operation.OperationID, operation.Idempotency)
+	}
+}
+
+func pointer[T any](value T) *T { return &value }
 
 func normalizeAPIField(field *APIField) error {
 	field.Name = strings.TrimSpace(field.Name)
@@ -481,10 +539,11 @@ func validAPIType(value string) bool {
 func permissionsFromOperations(operations []APIOperation) []Permission {
 	byKey := map[string]*Permission{}
 	for _, operation := range operations {
-		key := operation.Permission + "\x00" + operation.Path
+		permissionPath := openAPIPathToCasbin(operation.Path)
+		key := operation.Permission + "\x00" + permissionPath
 		permission, ok := byKey[key]
 		if !ok {
-			permission = &Permission{Name: operation.Permission, Path: operation.Path, Methods: []string{}}
+			permission = &Permission{Name: operation.Permission, Path: permissionPath, Methods: []string{}}
 			byKey[key] = permission
 		}
 		permission.Methods = append(permission.Methods, operation.Method)
@@ -503,8 +562,13 @@ func permissionsFromOperations(operations []APIOperation) []Permission {
 	return result
 }
 
+func openAPIPathToCasbin(path string) string {
+	return regexp.MustCompile(`\{([A-Za-z][A-Za-z0-9_]*)\}`).ReplaceAllString(path, `:$1`)
+}
+
 func normalizeField(field *Field, seen map[string]struct{}) error {
 	field.Name = strings.TrimSpace(field.Name)
+	field.RenameFrom = strings.TrimSpace(field.RenameFrom)
 	if !tablePattern.MatchString(field.Name) || field.Name == "id" || field.Name == "created_at" || field.Name == "updated_at" {
 		return fmt.Errorf("invalid or reserved name %q", field.Name)
 	}
@@ -512,6 +576,9 @@ func normalizeField(field *Field, seen map[string]struct{}) error {
 		return fmt.Errorf("duplicate name %q", field.Name)
 	}
 	seen[field.Name] = struct{}{}
+	if field.RenameFrom != "" && !tablePattern.MatchString(field.RenameFrom) {
+		return fmt.Errorf("invalid rename_from %q", field.RenameFrom)
+	}
 	field.Type = strings.ToLower(strings.TrimSpace(field.Type))
 	field.GoType, field.SQLType = fieldTypes(field.Type, field.Size)
 	if field.GoType == "" {

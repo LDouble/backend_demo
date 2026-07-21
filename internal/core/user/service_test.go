@@ -15,6 +15,27 @@ type fakeRepo struct {
 }
 type fakeGuard struct{ allowed bool }
 
+type atomicGuard struct {
+	disabled uint64
+	err      error
+}
+
+func (g *atomicGuard) CanDisable(context.Context, uint64) (bool, error) { return true, nil }
+func (g *atomicGuard) DisableUser(_ context.Context, userID uint64) error {
+	g.disabled = userID
+	return g.err
+}
+
+type fakeRevoker struct {
+	users []uint64
+	err   error
+}
+
+func (r *fakeRevoker) RevokeUser(_ context.Context, userID uint64) error {
+	r.users = append(r.users, userID)
+	return r.err
+}
+
 type assigningGuard struct {
 	assigned uint64
 	err      error
@@ -106,7 +127,8 @@ func TestCreateAssignsMemberRole(t *testing.T) {
 func TestUserManagement(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeRepo()
-	svc := NewService(repo, fakeGuard{allowed: true})
+	revoker := &fakeRevoker{}
+	svc := NewService(repo, fakeGuard{allowed: true}).WithSessionRevoker(revoker)
 	u, err := svc.Create(ctx, "first.user", "initial-password-123")
 	if err != nil {
 		t.Fatal(err)
@@ -129,6 +151,9 @@ func TestUserManagement(t *testing.T) {
 	if err != nil || disabled.Status != model.UserDisabled {
 		t.Fatalf("disabled=%v err=%v", disabled, err)
 	}
+	if len(revoker.users) != 2 || revoker.users[0] != u.ID || revoker.users[1] != u.ID {
+		t.Fatalf("revoked users=%v", revoker.users)
+	}
 	if _, err = svc.SetStatus(ctx, u.ID, "bad"); err == nil {
 		t.Fatal("invalid status must fail")
 	}
@@ -138,6 +163,24 @@ func TestUserManagement(t *testing.T) {
 	}
 	if _, err = svc.Get(ctx, 999); err == nil {
 		t.Fatal("missing user must fail")
+	}
+}
+
+func TestSessionRevocationFailureIsReturned(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	revoker := &fakeRevoker{err: errors.New("redis unavailable")}
+	service := NewService(repo, fakeGuard{allowed: true}).WithSessionRevoker(revoker)
+	created, err := service.Create(ctx, "secure.user", "initial-password-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	password := "changed-password-123"
+	if _, err = service.Update(ctx, created.ID, nil, &password); err == nil {
+		t.Fatal("password change ignored revocation failure")
+	}
+	if _, err = service.SetStatus(ctx, created.ID, model.UserDisabled); err == nil {
+		t.Fatal("disable ignored revocation failure")
 	}
 }
 func TestLastAdminCannotDisable(t *testing.T) {
@@ -150,5 +193,34 @@ func TestLastAdminCannotDisable(t *testing.T) {
 	}
 	if _, err = svc.SetStatus(ctx, u.ID, model.UserDisabled); err == nil {
 		t.Fatal("last admin must be protected")
+	}
+}
+
+func TestAtomicDisableAndSessionRevocation(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	guard := &atomicGuard{}
+	revoker := &fakeRevoker{}
+	service := NewService(repo, guard).WithSessionRevoker(revoker)
+	created, err := service.Create(ctx, "atomic.admin", "initial-password-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	disabled, err := service.SetStatus(ctx, created.ID, model.UserDisabled)
+	if err != nil || disabled.Status != model.UserDisabled || guard.disabled != created.ID {
+		t.Fatalf("disabled=%+v guard=%d err=%v", disabled, guard.disabled, err)
+	}
+	if len(revoker.users) != 1 || revoker.users[0] != created.ID {
+		t.Fatalf("revoked=%v", revoker.users)
+	}
+
+	guard.err = errors.New("last administrator")
+	if _, err = service.SetStatus(ctx, created.ID, model.UserDisabled); err == nil {
+		t.Fatal("atomic guard failure was ignored")
+	}
+	guard.err = nil
+	revoker.err = errors.New("redis unavailable")
+	if _, err = service.SetStatus(ctx, created.ID, model.UserDisabled); err == nil {
+		t.Fatal("atomic disable ignored session revocation failure")
 	}
 }

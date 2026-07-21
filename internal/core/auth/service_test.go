@@ -47,6 +47,9 @@ func (failingSession) Rotate(context.Context, string, string, string, time.Durat
 func (failingSession) Delete(context.Context, string) error {
 	return errors.New("session unavailable")
 }
+func (failingSession) DeleteUser(context.Context, uint64) error {
+	return errors.New("session unavailable")
+}
 
 func (m *memorySession) Create(_ context.Context, sid string, uid uint64, hash string, _ time.Duration) error {
 	m.sid = sid
@@ -67,6 +70,12 @@ func (m *memorySession) Rotate(_ context.Context, sid, oldHash, newHash string, 
 }
 func (m *memorySession) Delete(_ context.Context, sid string) error {
 	if sid == m.sid {
+		m.exists = false
+	}
+	return nil
+}
+func (m *memorySession) DeleteUser(_ context.Context, uid uint64) error {
+	if m.uid == uid {
 		m.exists = false
 	}
 	return nil
@@ -96,6 +105,9 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 	if _, err = svc.Refresh(context.Background(), pair.RefreshToken); err == nil {
 		t.Fatal("old refresh token must be rejected")
+	}
+	if _, _, err = svc.Authenticate(context.Background(), rotated.AccessToken); err == nil {
+		t.Fatal("refresh reuse must revoke the token family")
 	}
 	if err = svc.Logout(context.Background(), sid); err != nil {
 		t.Fatal(err)
@@ -138,5 +150,66 @@ func TestSessionStoreErrors(t *testing.T) {
 	}
 	if err = service.Logout(context.Background(), "sid"); err == nil {
 		t.Fatal("session delete error must propagate")
+	}
+	if err = service.RevokeUser(context.Background(), 1); err == nil {
+		t.Fatal("session user-revoke error must propagate")
+	}
+}
+
+func TestRefreshFamilyAndUserRevocation(t *testing.T) {
+	hash, err := user.HashPassword("long-enough-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := authUsers{u: &model.User{ID: 8, Username: "member", PasswordHash: hash, Status: model.UserActive}}
+	store := &memorySession{}
+	service := NewService(
+		repository,
+		store,
+		"issuer",
+		[]byte("0123456789abcdef0123456789abcdef"),
+		time.Minute,
+		time.Hour,
+	)
+	pair, err := service.Login(context.Background(), "member", "long-enough-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	family := service.RefreshFamily(pair.RefreshToken)
+	if family == "" || family == tokenHash(pair.RefreshToken) {
+		t.Fatalf("family=%q", family)
+	}
+	if invalid := service.RefreshFamily("not-a-token"); invalid != tokenHash("not-a-token") {
+		t.Fatalf("invalid family=%q", invalid)
+	}
+	if err = service.RevokeUser(context.Background(), repository.u.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = service.Authenticate(context.Background(), pair.AccessToken); err == nil {
+		t.Fatal("revoked user session remained active")
+	}
+}
+
+func TestSessionVersionInvalidatesTokensWithoutRedisDeletion(t *testing.T) {
+	hash, err := user.HashPassword("long-enough-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := authUsers{u: &model.User{ID: 9, Username: "member", PasswordHash: hash, Status: model.UserActive, SessionVersion: 1}}
+	store := &memorySession{}
+	service := NewService(repository, store, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	pair, err := service.Login(context.Background(), "member", "long-enough-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository.u.SessionVersion++
+	if _, _, err = service.Authenticate(context.Background(), pair.AccessToken); err == nil {
+		t.Fatal("access token survived a durable session version change")
+	}
+	if _, err = service.Refresh(context.Background(), pair.RefreshToken); err == nil {
+		t.Fatal("refresh token survived a durable session version change")
+	}
+	if !store.exists {
+		t.Fatal("test requires the Redis session to remain present")
 	}
 }

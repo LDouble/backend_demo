@@ -1,37 +1,26 @@
-// Package domainevent provides the durable integration-event record shared
-// across modules. The relay polls (status='pending', available_at<=now) and
-// publishes events to downstream subscribers.
-//
-// All modules must persist events transactionally with the mutation that
-// produced them. Use Write inside the same *gorm.DB transaction as the aggregate
-// change so the event survives only if the change commits. Replaying a write
-// with the same (aggregate_type, aggregate_id, idempotency_key) tuple raises a
-// duplicate-key error, which the writer tolerates as a no-op for at-least-once
-// semantics.
+// Package domainevent provides durable integration-event records shared by modules.
+// Events must be written with the aggregate mutation's *gorm.DB transaction.
 package domainevent
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
 )
 
-// CurrentPayloadVersion is bumped when the JSON payload schema of any event
-// type changes. Consumers must gate deserialization on PayloadVersion to stay
-// forward/backward compatible.
+// CurrentPayloadVersion identifies the current event JSON contract.
 const CurrentPayloadVersion uint64 = 1
 
-// Write persists a domain event inside the supplied transaction. The
-// idempotency key is the canonical dedupe token; the caller is responsible
-// for naming it in a deterministic, retry-safe way (recommend
-// "<aggregate>.<event>:<aggregateID>:<version>" so re-emits at the same
-// version collapse on the unique index).
-//
-// A nil tx is rejected — events must commit or abort together with the
-// aggregate mutation that produced them. A nil payload is permitted and
-// encoded as JSON null.
+// ErrConflict means a deduplication key was reused for different event content.
+var ErrConflict = errors.New("domain event idempotency key conflict")
+
+// Write persists an event using aggregate version or payload content as its dedupe source.
 func Write(tx *gorm.DB, aggregateType string, aggregateID uint64, eventType string, payload any) error {
 	if tx == nil {
 		return fmt.Errorf("domainevent.Write: tx is nil")
@@ -43,28 +32,28 @@ func Write(tx *gorm.DB, aggregateType string, aggregateID uint64, eventType stri
 	if err != nil {
 		return fmt.Errorf("domainevent.Write: marshal payload: %w", err)
 	}
-	idempotencyKey := fmt.Sprintf("%s.%s:%d:%d", aggregateType, eventType, aggregateID, currentVersion(payload))
-	row := &Event{
-		AggregateType:  aggregateType,
-		AggregateID:    aggregateID,
-		EventType:      eventType,
-		PayloadVersion: CurrentPayloadVersion,
-		Payload:        data,
-		IdempotencyKey: idempotencyKey,
-		Status:         StatusPending,
-		AvailableAt:    time.Now().UTC(),
+	sourceKey := strconv.FormatUint(currentVersion(payload), 10)
+	if currentVersion(payload) == 0 {
+		sourceKey = fmt.Sprintf("%x", sha256.Sum256(data))
 	}
-	if err := tx.Create(row).Error; err != nil {
-		return fmt.Errorf("domainevent.Write: persist event: %w", err)
-	}
-	return nil
+	return persist(tx, newEvent(
+		aggregateType,
+		aggregateID,
+		eventType,
+		eventKey(aggregateType, aggregateID, eventType, sourceKey),
+		data,
+	))
 }
 
-// WriteWithKey is identical to Write but allows the caller to supply an
-// explicit idempotency key. Prefer Write when the aggregate carries its own
-// monotonic version; use WriteWithKey only when the caller has a stronger
-// dedupe token (e.g., a user-supplied header).
-func WriteWithKey(tx *gorm.DB, aggregateType string, aggregateID uint64, eventType string, idempotencyKey string, payload any) error {
+// WriteWithKey persists an event using an explicit caller-owned dedupe token.
+func WriteWithKey(
+	tx *gorm.DB,
+	aggregateType string,
+	aggregateID uint64,
+	eventType string,
+	idempotencyKey string,
+	payload any,
+) error {
 	if tx == nil {
 		return fmt.Errorf("domainevent.WriteWithKey: tx is nil")
 	}
@@ -75,26 +64,51 @@ func WriteWithKey(tx *gorm.DB, aggregateType string, aggregateID uint64, eventTy
 	if err != nil {
 		return fmt.Errorf("domainevent.WriteWithKey: marshal payload: %w", err)
 	}
-	row := &Event{
+	return persist(tx, newEvent(
+		aggregateType,
+		aggregateID,
+		eventType,
+		eventKey(aggregateType, aggregateID, eventType, idempotencyKey),
+		data,
+	))
+}
+
+func newEvent(aggregateType string, aggregateID uint64, eventType, key string, payload []byte) *Event {
+	return &Event{
 		AggregateType:  aggregateType,
 		AggregateID:    aggregateID,
 		EventType:      eventType,
 		PayloadVersion: CurrentPayloadVersion,
-		Payload:        data,
-		IdempotencyKey: idempotencyKey,
+		Payload:        payload,
+		IdempotencyKey: key,
 		Status:         StatusPending,
 		AvailableAt:    time.Now().UTC(),
 	}
-	if err := tx.Create(row).Error; err != nil {
-		return fmt.Errorf("domainevent.WriteWithKey: persist event: %w", err)
+}
+
+func eventKey(aggregateType string, aggregateID uint64, eventType, sourceKey string) string {
+	value := aggregateType + "\x00" + strconv.FormatUint(aggregateID, 10) + "\x00" + eventType + "\x00" + sourceKey
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
+}
+
+func persist(tx *gorm.DB, row *Event) error {
+	if err := tx.Create(row).Error; err == nil {
+		return nil
+	}
+	var existing Event
+	if err := tx.Where("idempotency_key = ?", row.IdempotencyKey).Take(&existing).Error; err != nil {
+		return fmt.Errorf("domainevent: persist event: %w", err)
+	}
+	sameIdentity := existing.AggregateType == row.AggregateType &&
+		existing.AggregateID == row.AggregateID &&
+		existing.EventType == row.EventType &&
+		existing.PayloadVersion == row.PayloadVersion
+	if !sameIdentity || !bytes.Equal(existing.Payload, row.Payload) {
+		return fmt.Errorf("%w: key=%s", ErrConflict, row.IdempotencyKey)
 	}
 	return nil
 }
 
-// currentVersion extracts a numeric "version" hint from the payload if present.
-// It is best-effort — when the payload struct carries no Version field the
-// hash of the payload bytes is used so the resulting idempotency key changes
-// when the payload changes. The function must be deterministic across calls.
 func currentVersion(payload any) uint64 {
 	if payload == nil {
 		return 0
@@ -102,31 +116,35 @@ func currentVersion(payload any) uint64 {
 	type versioned interface {
 		GetVersion() uint64
 	}
-	if v, ok := payload.(versioned); ok {
-		return v.GetVersion()
+	if value, ok := payload.(versioned); ok {
+		return value.GetVersion()
 	}
-	if m, ok := payload.(map[string]any); ok {
-		if raw, exists := m["version"]; exists {
-			switch n := raw.(type) {
-			case uint64:
-				return n
-			case uint32:
-				return uint64(n)
-			case uint:
-				return uint64(n)
-			case int64:
-				if n > 0 {
-					return uint64(n)
-				}
-			case int:
-				if n > 0 {
-					return uint64(n)
-				}
-			case float64:
-				if n > 0 {
-					return uint64(n)
-				}
-			}
+	values, ok := payload.(map[string]any)
+	if !ok {
+		return 0
+	}
+	raw, exists := values["version"]
+	if !exists {
+		return 0
+	}
+	switch number := raw.(type) {
+	case uint64:
+		return number
+	case uint32:
+		return uint64(number)
+	case uint:
+		return uint64(number)
+	case int64:
+		if number > 0 {
+			return uint64(number)
+		}
+	case int:
+		if number > 0 {
+			return uint64(number)
+		}
+	case float64:
+		if number > 0 {
+			return uint64(number)
 		}
 	}
 	return 0

@@ -7,29 +7,165 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	mysqldriver "github.com/go-sql-driver/mysql"
+	"github.com/weouc-plus/campus-platform/internal/core/bootstrap"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
-	"github.com/weouc-plus/campus-platform/internal/generator"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/migration"
 	platformmysql "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/redisclient"
 	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
 	noticedomain "github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
 	noticeinfra "github.com/weouc-plus/campus-platform/internal/modules/notice/infrastructure"
+	"gorm.io/gorm"
 )
+
+func TestMySQLConcurrentIdempotencyExecutesOnce(t *testing.T) {
+	dsn := requiredEnv(t, "CAMPUS_INTEGRATION_MYSQL_DSN")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	db, err := platformmysql.Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	key := "mysql-concurrent-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	hash, err := idempotency.RequestHash(map[string]string{"value": "same"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := idempotency.Request{ActorID: 9_000_001, OperationID: "IntegrationConcurrent", Key: key, RequestHash: hash}
+	t.Cleanup(func() {
+		_ = db.Where("actor_id = ? AND operation_id = ?", request.ActorID, request.OperationID).Delete(&idempotency.Record{}).Error
+	})
+	start := make(chan struct{})
+	results := make(chan idempotency.Result, 2)
+	errors := make(chan error, 2)
+	var calls atomic.Int32
+	var group sync.WaitGroup
+	for range 2 {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			<-start
+			result, executeErr := idempotency.Execute(ctx, db, request, func(*gorm.DB) (idempotency.Result, error) {
+				calls.Add(1)
+				time.Sleep(100 * time.Millisecond)
+				return idempotency.Result{HTTPStatus: 201, Body: []byte(`{"data":{"id":1}}`)}, nil
+			})
+			results <- result
+			errors <- executeErr
+		}()
+	}
+	close(start)
+	group.Wait()
+	close(results)
+	close(errors)
+	for executeErr := range errors {
+		if executeErr != nil {
+			t.Fatal(executeErr)
+		}
+	}
+	replays := 0
+	for result := range results {
+		if result.Replayed {
+			replays++
+		}
+	}
+	if calls.Load() != 1 || replays != 1 {
+		t.Fatalf("business calls=%d replayed=%d", calls.Load(), replays)
+	}
+}
+
+func TestRedisPermissionPropagationAcrossInstances(t *testing.T) {
+	dsn := requiredEnv(t, "CAMPUS_INTEGRATION_MYSQL_DSN")
+	address := requiredEnv(t, "CAMPUS_INTEGRATION_REDIS_ADDRESS")
+	password := requiredEnv(t, "CAMPUS_REDIS_PASSWORD")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	db, err := platformmysql.Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	firstRedis, err := redisclient.Open(ctx, bootstrap.RedisConfig{Address: address, Password: password}, 14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondRedis, err := redisclient.Open(ctx, bootstrap.RedisConfig{Address: address, Password: password}, 14)
+	if err != nil {
+		_ = firstRedis.Close()
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = firstRedis.Close(); _ = secondRedis.Close() })
+	writer, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer.StartSync(ctx, redisclient.NewPolicyNotifier(firstRedis))
+	reader.StartSync(ctx, redisclient.NewPolicyNotifier(secondRedis))
+	t.Cleanup(func() { writer.StopSync(); reader.StopSync() })
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	userRow := model.User{Username: "policy_" + suffix, PasswordHash: "integration", Status: model.UserActive, SessionVersion: 1}
+	if err = db.Create(&userRow).Error; err != nil {
+		t.Fatal(err)
+	}
+	role, err := writer.CreateRole(ctx, "policy_"+suffix, "integration", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = writer.SetUserRoles(context.Background(), userRow.ID, nil)
+		_ = writer.DeleteRole(context.Background(), role.ID)
+		_ = db.Delete(&userRow).Error
+	})
+	if err = writer.SetUserRoles(ctx, userRow.ID, []string{role.Name}); err != nil {
+		t.Fatal(err)
+	}
+	if err = writer.SetPermissions(ctx, role.ID, []permission.Permission{{PathPattern: "/api/v1/configs/:id", Methods: []string{"GET"}}}); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		allowed, enforceErr := reader.Enforce(ctx, userRow.ID, "/api/v1/configs/1", "GET")
+		if enforceErr != nil {
+			t.Fatal(enforceErr)
+		}
+		if allowed {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("permission change did not propagate within five seconds")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
 
 func TestRedisSessionStoreLifecycle(t *testing.T) {
 	address := requiredEnv(t, "CAMPUS_INTEGRATION_REDIS_ADDRESS")
 	password := requiredEnv(t, "CAMPUS_REDIS_PASSWORD")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err := redisclient.Open(ctx, address, password, 15)
+	client, err := redisclient.Open(ctx, bootstrap.RedisConfig{Address: address, Password: password}, 15)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +250,8 @@ func TestMigrationsUpDownUp(t *testing.T) {
 	if err = migration.Run(ctx, dsn, "down", 1); err != nil {
 		t.Fatalf("migration down: %v", err)
 	}
-	assertTableExists(t, admin, databaseName, "activities", false)
+	assertTableExists(t, admin, databaseName, "activities", true)
+	assertTableExists(t, admin, databaseName, "idempotency_records", true)
 	assertTableExists(t, admin, databaseName, "notices", true)
 	assertTableExists(t, admin, databaseName, "users", true)
 	if err = migration.Run(ctx, dsn, "up", 0); err != nil {
@@ -143,19 +280,18 @@ func TestGeneratedModuleMigrationUpDownUp(t *testing.T) {
 	if _, err = admin.Exec("CREATE DATABASE `" + databaseName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"); err != nil {
 		t.Fatal(err)
 	}
-	schema, err := generator.Load(context.Background(), filepath.Join("..", "..", "schemas", "examples", "activity.yaml"))
+	schema, err := os.ReadFile("../../schemas/examples/activity.yaml") // #nosec G304 -- fixed repository test fixture.
 	if err != nil {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	if _, err = generator.Generate(context.Background(), schema, generator.Options{Root: root, Source: "schemas/examples/activity.yaml"}); err != nil {
+	if err = os.MkdirAll(root+"/schemas", 0o750); err != nil {
 		t.Fatal(err)
 	}
-	up, err := os.ReadFile(filepath.Join(root, "migrations", "modules", "activity.up.sql"))
-	if err != nil {
+	if err = os.WriteFile(root+"/schemas/activity.yaml", schema, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	down, err := os.ReadFile(filepath.Join(root, "migrations", "modules", "activity.down.sql"))
+	plan, err := migration.Plan(context.Background(), root, "activity")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,15 +307,15 @@ func TestGeneratedModuleMigrationUpDownUp(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	if _, err = db.ExecContext(ctx, string(up)); err != nil {
+	if _, err = db.ExecContext(ctx, plan.UpSQL); err != nil {
 		t.Fatalf("generated migration up: %v", err)
 	}
 	assertTableExists(t, admin, databaseName, "activities", true)
-	if _, err = db.ExecContext(ctx, string(down)); err != nil {
+	if _, err = db.ExecContext(ctx, plan.DownSQL); err != nil {
 		t.Fatalf("generated migration down: %v", err)
 	}
 	assertTableExists(t, admin, databaseName, "activities", false)
-	if _, err = db.ExecContext(ctx, string(up)); err != nil {
+	if _, err = db.ExecContext(ctx, plan.UpSQL); err != nil {
 		t.Fatalf("generated migration second up: %v", err)
 	}
 	assertTableExists(t, admin, databaseName, "activities", true)

@@ -46,6 +46,7 @@ operations:
   - operation_id: CreateCarpoolTrip
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/carpool/trips
     permission: carpool:create
     summary: 发起拼车行程
@@ -60,6 +61,7 @@ operations:
   - operation_id: JoinCarpoolTrip
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/carpool/trips/{id}/join
     permission: carpool:join
     summary: 原子加入拼车行程
@@ -68,6 +70,7 @@ operations:
   - operation_id: LeaveCarpoolTrip
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/carpool/trips/{id}/leave
     permission: carpool:leave
     summary: 退出拼车行程
@@ -76,6 +79,7 @@ operations:
   - operation_id: CancelCarpoolTrip
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/carpool/trips/{id}/cancel
     permission: carpool:cancel
     summary: 取消拼车行程

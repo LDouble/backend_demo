@@ -62,6 +62,7 @@ operations:
   - operation_id: CreateErrand
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/errands
     permission: errand:create
     summary: 发布跑腿任务
@@ -85,6 +86,7 @@ operations:
   - operation_id: UpdateErrand
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: PATCH
+    idempotency: required
     path: /api/v1/errands/{id}
     permission: errand:update
     summary: 修改未接单的跑腿任务
@@ -102,6 +104,7 @@ operations:
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: AcceptErrand
     method: POST
+    idempotency: required
     path: /api/v1/errands/{id}/accept
     permission: errand:accept
     summary: 原子接单并创建交易订单
@@ -111,6 +114,7 @@ operations:
   - operation_id: PickupErrand
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/errands/{id}/pickup
     permission: errand:pickup
     summary: 跑腿员确认取件
@@ -119,6 +123,7 @@ operations:
   - operation_id: DeliverErrand
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/errands/{id}/deliver
     permission: errand:deliver
     summary: 跑腿员确认送达
@@ -127,6 +132,7 @@ operations:
   - operation_id: CompleteErrand
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/errands/{id}/complete
     permission: errand:complete
     summary: 发布者确认跑腿完成
@@ -135,6 +141,7 @@ operations:
   - operation_id: CancelErrand
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/errands/{id}/cancel
     permission: errand:cancel
     summary: 取消跑腿任务

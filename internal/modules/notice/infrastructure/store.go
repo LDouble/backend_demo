@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/modules/notice/application"
 	"github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
@@ -38,7 +39,7 @@ func NewNoticeStore(db *gorm.DB) *NoticeStore { return &NoticeStore{db: db} }
 func (s *NoticeStore) ValidateAudience(ctx context.Context, audience domain.Audience) error {
 	for _, role := range uniqueStrings(audience.Roles) {
 		var count int64
-		if err := s.db.WithContext(ctx).Model(&model.Role{}).Where("name = ?", role).Count(&count).Error; err != nil {
+		if err := idempotency.DB(ctx, s.db).Model(&model.Role{}).Where("name = ?", role).Count(&count).Error; err != nil {
 			return err
 		}
 		if count == 0 {
@@ -48,7 +49,7 @@ func (s *NoticeStore) ValidateAudience(ctx context.Context, audience domain.Audi
 	ids := uniqueIDs(audience.UserIDs)
 	if len(ids) > 0 {
 		var count int64
-		if err := s.db.WithContext(ctx).Model(&model.User{}).Where("id IN ? AND status = ?", ids, model.UserActive).Count(&count).Error; err != nil {
+		if err := idempotency.DB(ctx, s.db).Model(&model.User{}).Where("id IN ? AND status = ?", ids, model.UserActive).Count(&count).Error; err != nil {
 			return err
 		}
 		if count != int64(len(ids)) {
@@ -60,7 +61,7 @@ func (s *NoticeStore) ValidateAudience(ctx context.Context, audience domain.Audi
 
 // Create atomically inserts a draft and its audience declaration.
 func (s *NoticeStore) Create(ctx context.Context, notice *domain.Notice, audience []domain.NoticeAudience) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(notice).Error; err != nil {
 			return err
 		}
@@ -77,11 +78,11 @@ func (s *NoticeStore) Create(ctx context.Context, notice *domain.Notice, audienc
 // Get returns a notice and its original audience declaration.
 func (s *NoticeStore) Get(ctx context.Context, id uint64) (*domain.Notice, []domain.NoticeAudience, error) {
 	var notice domain.Notice
-	if err := s.db.WithContext(ctx).First(&notice, id).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).First(&notice, id).Error; err != nil {
 		return nil, nil, err
 	}
 	var audience []domain.NoticeAudience
-	if err := s.db.WithContext(ctx).Where("notice_id = ?", id).Order("audience_type, audience_value").Find(&audience).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).Where("notice_id = ?", id).Order("audience_type, audience_value").Find(&audience).Error; err != nil {
 		return nil, nil, err
 	}
 	return &notice, audience, nil
@@ -90,7 +91,7 @@ func (s *NoticeStore) Get(ctx context.Context, id uint64) (*domain.Notice, []dom
 // ListAdmin returns all notice states for administrators.
 func (s *NoticeStore) ListAdmin(ctx context.Context, page, size int) ([]domain.Notice, int64, error) {
 	var total int64
-	base := s.db.WithContext(ctx).Model(&domain.Notice{})
+	base := idempotency.DB(ctx, s.db).Model(&domain.Notice{})
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -102,7 +103,7 @@ func (s *NoticeStore) ListAdmin(ctx context.Context, page, size int) ([]domain.N
 // UpdateDraft applies an optimistic draft-only update.
 func (s *NoticeStore) UpdateDraft(ctx context.Context, notice *domain.Notice, expected uint64, audience []domain.NoticeAudience) (bool, error) {
 	updated := false
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		values := map[string]any{"title": notice.Title, "summary": notice.Summary, "body": notice.Body, "category": notice.Category, "priority": notice.Priority, "action_path": notice.ActionPath, "push_enabled": notice.PushEnabled, "updated_by": notice.UpdatedBy, "version": gorm.Expr("version + 1")}
 		result := tx.Model(&domain.Notice{}).Where("id = ? AND status = ? AND version = ?", notice.ID, domain.StatusDraft, expected).Updates(values)
 		if result.Error != nil {
@@ -128,14 +129,14 @@ func (s *NoticeStore) UpdateDraft(ctx context.Context, notice *domain.Notice, ex
 
 // DeleteDraft deletes only a matching draft version.
 func (s *NoticeStore) DeleteDraft(ctx context.Context, id, expected uint64) (bool, error) {
-	result := s.db.WithContext(ctx).Where("id = ? AND status = ? AND version = ?", id, domain.StatusDraft, expected).Delete(&domain.Notice{})
+	result := idempotency.DB(ctx, s.db).Where("id = ? AND status = ? AND version = ?", id, domain.StatusDraft, expected).Delete(&domain.Notice{})
 	return result.RowsAffected == 1, result.Error
 }
 
 // QueuePublish changes state and writes a publication outbox event atomically.
 func (s *NoticeStore) QueuePublish(ctx context.Context, id, actor, expected uint64, when time.Time) (bool, error) {
 	queued := false
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		status := domain.StatusPublishing
 		if when.After(time.Now().UTC()) {
 			status = domain.StatusScheduled
@@ -153,7 +154,7 @@ func (s *NoticeStore) QueuePublish(ctx context.Context, id, actor, expected uint
 // Revoke hides a notice and cancels pending work atomically.
 func (s *NoticeStore) Revoke(ctx context.Context, id, actor, expected uint64, now time.Time) (bool, error) {
 	updated := false
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&domain.Notice{}).Where("id = ? AND version = ? AND status IN ?", id, expected, []string{domain.StatusScheduled, domain.StatusPublishing, domain.StatusPublished}).Updates(map[string]any{"status": domain.StatusRevoked, "revoked_at": now, "updated_by": actor, "version": gorm.Expr("version + 1")})
 		if result.Error != nil || result.RowsAffected == 0 {
 			return result.Error
@@ -169,7 +170,7 @@ func (s *NoticeStore) Revoke(ctx context.Context, id, actor, expected uint64, no
 
 // ListInbox returns published notices scoped to one recipient.
 func (s *NoticeStore) ListInbox(ctx context.Context, userID uint64, filter application.InboxFilter) ([]domain.Notice, int64, error) {
-	base := s.db.WithContext(ctx).Model(&domain.Notice{}).Joins("JOIN notice_recipients nr ON nr.notice_id = notices.id AND nr.user_id = ?", userID).Where("notices.status = ?", domain.StatusPublished)
+	base := idempotency.DB(ctx, s.db).Model(&domain.Notice{}).Joins("JOIN notice_recipients nr ON nr.notice_id = notices.id AND nr.user_id = ?", userID).Where("notices.status = ?", domain.StatusPublished)
 	if filter.Unread {
 		base = base.Where("nr.read_at IS NULL")
 	}
@@ -188,31 +189,32 @@ func (s *NoticeStore) ListInbox(ctx context.Context, userID uint64, filter appli
 // GetInbox gets a published notice scoped to one recipient.
 func (s *NoticeStore) GetInbox(ctx context.Context, userID, noticeID uint64) (*domain.Notice, error) {
 	var notice domain.Notice
-	err := s.db.WithContext(ctx).Model(&domain.Notice{}).Joins("JOIN notice_recipients nr ON nr.notice_id = notices.id AND nr.user_id = ?", userID).Where("notices.id = ? AND notices.status = ?", noticeID, domain.StatusPublished).Select("notices.*").First(&notice).Error
+	err := idempotency.DB(ctx, s.db).Model(&domain.Notice{}).Joins("JOIN notice_recipients nr ON nr.notice_id = notices.id AND nr.user_id = ?", userID).Where("notices.id = ? AND notices.status = ?", noticeID, domain.StatusPublished).Select("notices.*").First(&notice).Error
 	return &notice, err
 }
 
 // UnreadCount counts unread published recipient rows.
 func (s *NoticeStore) UnreadCount(ctx context.Context, userID uint64) (int64, error) {
 	var count int64
-	err := s.db.WithContext(ctx).Table("notice_recipients nr").Joins("JOIN notices n ON n.id = nr.notice_id").Where("nr.user_id = ? AND nr.read_at IS NULL AND n.status = ?", userID, domain.StatusPublished).Count(&count).Error
+	err := idempotency.DB(ctx, s.db).Table("notice_recipients nr").Joins("JOIN notices n ON n.id = nr.notice_id").Where("nr.user_id = ? AND nr.read_at IS NULL AND n.status = ?", userID, domain.StatusPublished).Count(&count).Error
 	return count, err
 }
 
 // MarkRead idempotently updates one unread recipient row.
 func (s *NoticeStore) MarkRead(ctx context.Context, userID, noticeID uint64, now time.Time) error {
-	return s.db.WithContext(ctx).Model(&domain.NoticeRecipient{}).Where("user_id = ? AND notice_id = ? AND read_at IS NULL", userID, noticeID).Update("read_at", now).Error
+	return idempotency.DB(ctx, s.db).Model(&domain.NoticeRecipient{}).Where("user_id = ? AND notice_id = ? AND read_at IS NULL", userID, noticeID).Update("read_at", now).Error
 }
 
 // MarkAllRead marks all currently published recipient rows read.
 func (s *NoticeStore) MarkAllRead(ctx context.Context, userID uint64, now time.Time) (int64, error) {
-	result := s.db.WithContext(ctx).Model(&domain.NoticeRecipient{}).Where("user_id = ? AND read_at IS NULL AND notice_id IN (?)", userID, s.db.Model(&domain.Notice{}).Select("id").Where("status = ?", domain.StatusPublished)).Update("read_at", now)
+	db := idempotency.DB(ctx, s.db)
+	result := db.Model(&domain.NoticeRecipient{}).Where("user_id = ? AND read_at IS NULL AND notice_id IN (?)", userID, db.Model(&domain.Notice{}).Select("id").Where("status = ?", domain.StatusPublished)).Update("read_at", now)
 	return result.RowsAffected, result.Error
 }
 
 // ListDeliveries returns external deliveries for a notice.
 func (s *NoticeStore) ListDeliveries(ctx context.Context, noticeID uint64, page, size int) ([]domain.NoticeDelivery, int64, error) {
-	base := s.db.WithContext(ctx).Model(&domain.NoticeDelivery{}).Where("notice_id = ?", noticeID)
+	base := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).Where("notice_id = ?", noticeID)
 	var total int64
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -225,14 +227,18 @@ func (s *NoticeStore) ListDeliveries(ctx context.Context, noticeID uint64, page,
 // RetryDeliveries requeues failed deliveries with new outbox events.
 func (s *NoticeStore) RetryDeliveries(ctx context.Context, noticeID uint64, now time.Time) (int64, error) {
 	var count int64
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		var deliveries []domain.NoticeDelivery
-		if err := tx.Where("notice_id = ? AND status = ?", noticeID, "failed").Find(&deliveries).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).Where("notice_id = ? AND status = ?", noticeID, "failed").Find(&deliveries).Error; err != nil {
 			return err
 		}
 		for i := range deliveries {
-			if err := tx.Model(&deliveries[i]).Updates(map[string]any{"status": "pending", "last_error": ""}).Error; err != nil {
-				return err
+			result := tx.Model(&deliveries[i]).Where("status = ?", "failed").Updates(map[string]any{"status": "pending", "locked_at": nil, "last_error": ""})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				continue
 			}
 			if err := createOutbox(tx, noticeID, EventDelivery, map[string]uint64{"delivery_id": deliveries[i].ID}, now); err != nil {
 				return err
@@ -244,10 +250,18 @@ func (s *NoticeStore) RetryDeliveries(ctx context.Context, noticeID uint64, now 
 	return count, err
 }
 
+// ClaimDelivery obtains a conditional provider lease for one delivery.
+func (s *NoticeStore) ClaimDelivery(ctx context.Context, id uint64, now time.Time, lease time.Duration) (bool, error) {
+	result := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).
+		Where("id = ? AND (status = ? OR (status = ? AND locked_at < ?))", id, "pending", "delivering", now.Add(-lease)).
+		Updates(map[string]any{"status": "delivering", "locked_at": now})
+	return result.RowsAffected == 1, result.Error
+}
+
 // LeaseOutbox atomically claims due work using a timeout lease.
 func (s *NoticeStore) LeaseOutbox(ctx context.Context, limit int, now time.Time, lease time.Duration) ([]domain.OutboxEvent, error) {
 	var events []domain.OutboxEvent
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		query := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).Where("available_at <= ? AND (status = ? OR (status = ? AND locked_at < ?))", now, OutboxPending, OutboxLeased, now.Add(-lease)).Order("id").Limit(limit)
 		if err := query.Find(&events).Error; err != nil {
 			return err
@@ -266,7 +280,7 @@ func (s *NoticeStore) LeaseOutbox(ctx context.Context, limit int, now time.Time,
 
 // MarkOutboxDispatched releases a successfully enqueued outbox row.
 func (s *NoticeStore) MarkOutboxDispatched(ctx context.Context, id uint64) error {
-	return s.db.WithContext(ctx).Model(&domain.OutboxEvent{}).Where("id = ?", id).Updates(map[string]any{"status": OutboxDispatched, "locked_at": nil}).Error
+	return idempotency.DB(ctx, s.db).Model(&domain.OutboxEvent{}).Where("id = ?", id).Updates(map[string]any{"status": OutboxDispatched, "locked_at": nil}).Error
 }
 
 // ReleaseOutbox returns a failed relay row to the pending pool.
@@ -275,12 +289,12 @@ func (s *NoticeStore) ReleaseOutbox(ctx context.Context, id uint64, cause error,
 	if len(message) > 1000 {
 		message = message[:1000]
 	}
-	return s.db.WithContext(ctx).Model(&domain.OutboxEvent{}).Where("id = ?", id).Updates(map[string]any{"status": OutboxPending, "locked_at": nil, "available_at": now.Add(time.Second), "attempts": gorm.Expr("attempts + 1"), "last_error": message}).Error
+	return idempotency.DB(ctx, s.db).Model(&domain.OutboxEvent{}).Where("id = ?", id).Updates(map[string]any{"status": OutboxPending, "locked_at": nil, "available_at": now.Add(time.Second), "attempts": gorm.Expr("attempts + 1"), "last_error": message}).Error
 }
 
 // Publish snapshots recipients and creates external delivery events atomically.
 func (s *NoticeStore) Publish(ctx context.Context, noticeID uint64, now time.Time) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		var notice domain.Notice
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&notice, noticeID).Error; err != nil {
 			return err
@@ -324,15 +338,15 @@ func (s *NoticeStore) Publish(ctx context.Context, noticeID uint64, now time.Tim
 // LoadDelivery loads the provider input aggregate.
 func (s *NoticeStore) LoadDelivery(ctx context.Context, id uint64) (*domain.NoticeDelivery, *domain.Notice, *model.User, error) {
 	var delivery domain.NoticeDelivery
-	if err := s.db.WithContext(ctx).First(&delivery, id).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).First(&delivery, id).Error; err != nil {
 		return nil, nil, nil, err
 	}
 	var notice domain.Notice
-	if err := s.db.WithContext(ctx).First(&notice, delivery.NoticeId).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).First(&notice, delivery.NoticeId).Error; err != nil {
 		return nil, nil, nil, err
 	}
 	var user model.User
-	if err := s.db.WithContext(ctx).First(&user, delivery.UserId).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).First(&user, delivery.UserId).Error; err != nil {
 		return nil, nil, nil, err
 	}
 	return &delivery, &notice, &user, nil
@@ -340,7 +354,7 @@ func (s *NoticeStore) LoadDelivery(ctx context.Context, id uint64) (*domain.Noti
 
 // CompleteDelivery records a provider success idempotently.
 func (s *NoticeStore) CompleteDelivery(ctx context.Context, id uint64, providerID string) error {
-	return s.db.WithContext(ctx).Model(&domain.NoticeDelivery{}).Where("id = ? AND status <> ?", id, "sent").Updates(map[string]any{"status": "sent", "provider_message_id": providerID, "attempts": gorm.Expr("attempts + 1"), "last_error": ""}).Error
+	return idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).Where("id = ? AND status = ?", id, "delivering").Updates(map[string]any{"status": "sent", "locked_at": nil, "provider_message_id": providerID, "attempts": gorm.Expr("attempts + 1"), "last_error": ""}).Error
 }
 
 // FailDelivery records a retryable or final provider failure.
@@ -353,7 +367,7 @@ func (s *NoticeStore) FailDelivery(ctx context.Context, id uint64, cause error, 
 	if len(message) > 1000 {
 		message = message[:1000]
 	}
-	return s.db.WithContext(ctx).Model(&domain.NoticeDelivery{}).Where("id = ? AND status <> ?", id, "sent").Updates(map[string]any{"status": status, "attempts": gorm.Expr("attempts + 1"), "last_error": message}).Error
+	return idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).Where("id = ? AND status = ?", id, "delivering").Updates(map[string]any{"status": status, "locked_at": nil, "attempts": gorm.Expr("attempts + 1"), "last_error": message}).Error
 }
 
 func createOutbox(tx *gorm.DB, aggregateID uint64, eventType string, payload any, at time.Time) error {
@@ -403,6 +417,10 @@ func resolveRecipients(tx *gorm.DB, audience []domain.NoticeAudience) ([]uint64,
 			id, err := strconv.ParseUint(row.AudienceValue, 10, 64)
 			if err != nil {
 				return nil, err
+			}
+			var user model.User
+			if err := tx.Where("id = ? AND status = ?", id, model.UserActive).Take(&user).Error; err != nil {
+				return nil, fmt.Errorf("explicit notice recipient %d is missing or disabled: %w", id, err)
 			}
 			ids[id] = struct{}{}
 		}

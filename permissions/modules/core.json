@@ -1,0 +1,138 @@
+{
+  "module": "core",
+  "permissions": [
+    {
+      "name": "core:createconfig",
+      "path_pattern": "/api/v1/configs",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "core:createrole",
+      "path_pattern": "/api/v1/roles",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "core:createuser",
+      "path_pattern": "/api/v1/users",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "core:deleteconfig",
+      "path_pattern": "/api/v1/configs/:id",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "name": "core:deleterole",
+      "path_pattern": "/api/v1/roles/:id",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "name": "core:getconfig",
+      "path_pattern": "/api/v1/configs/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:getme",
+      "path_pattern": "/api/v1/auth/me",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:getpermissions",
+      "path_pattern": "/api/v1/roles/:id/permissions",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:getuser",
+      "path_pattern": "/api/v1/users/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:getuserroles",
+      "path_pattern": "/api/v1/users/:id/roles",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:listconfigs",
+      "path_pattern": "/api/v1/configs",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:listroles",
+      "path_pattern": "/api/v1/roles",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:listusers",
+      "path_pattern": "/api/v1/users",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "core:setpermissions",
+      "path_pattern": "/api/v1/roles/:id/permissions",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "name": "core:setuserroles",
+      "path_pattern": "/api/v1/users/:id/roles",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "name": "core:setuserstatus",
+      "path_pattern": "/api/v1/users/:id/status",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "name": "core:updateconfig",
+      "path_pattern": "/api/v1/configs/:id",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "name": "core:updaterole",
+      "path_pattern": "/api/v1/roles/:id",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "name": "core:updateuser",
+      "path_pattern": "/api/v1/users/:id",
+      "methods": [
+        "PATCH"
+      ]
+    }
+  ]
+}

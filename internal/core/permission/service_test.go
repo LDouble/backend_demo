@@ -3,6 +3,7 @@ package permission_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
@@ -11,13 +12,34 @@ import (
 	"gorm.io/gorm"
 )
 
+type casbinRule struct {
+	ID                     uint64 `gorm:"primaryKey;autoIncrement"`
+	Ptype                  string
+	V0, V1, V2, V3, V4, V5 string
+	Managed                bool
+}
+
+func (casbinRule) TableName() string { return "casbin_rule" }
+
+type permissionPolicyOutbox struct {
+	ID           uint64 `gorm:"primaryKey;autoIncrement"`
+	Version      string `gorm:"uniqueIndex"`
+	Attempts     int64
+	DispatchedAt *time.Time
+	LockedAt     *time.Time
+	LockedBy     string
+	CreatedAt    time.Time
+}
+
+func (permissionPolicyOutbox) TableName() string { return "permission_policy_outbox" }
+
 func testService(t *testing.T) *permission.Service {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{TranslateError: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = db.AutoMigrate(&model.Role{}); err != nil {
+	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &casbinRule{}, &permissionPolicyOutbox{}); err != nil {
 		t.Fatal(err)
 	}
 	svc, err := permission.NewService(db, mysql.NewRoleRepository(db))
@@ -202,7 +224,7 @@ func TestRoleMetadata(t *testing.T) {
 	if _, err = svc.GetRole(ctx, 999); err == nil {
 		t.Fatal("missing role must fail")
 	}
-	if err = svc.SetPermissions(ctx, role.ID, []permission.Permission{{PathPattern: "/api/v1/items/:id", Methods: []string{"get", "delete"}}}); err != nil {
+	if err = svc.SetPermissions(ctx, role.ID, []permission.Permission{{PathPattern: "/api/v1/configs/:id", Methods: []string{"get", "delete"}}}); err != nil {
 		t.Fatal(err)
 	}
 	allowed, _ := svc.Enforce(ctx, 42, "/api/v1/items/1", "GET")

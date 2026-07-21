@@ -4,6 +4,7 @@ package infrastructure
 import (
 	"context"
 
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	platformquery "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
 	"github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 	"gorm.io/gorm"
@@ -17,7 +18,7 @@ func NewStore(db *gorm.DB) *Store { return &Store{db: db} }
 
 // GetForUser returns an order scoped to its buyer or seller.
 func (s *Store) GetForUser(ctx context.Context, userID, orderID uint64) (*domain.Order, error) {
-	q := platformquery.Use(s.db).Order
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Order
 	return q.WithContext(ctx).
 		Where(q.ID.Eq(orderID), q.BuyerId.Eq(userID)).
 		Or(q.ID.Eq(orderID), q.SellerId.Eq(userID)).
@@ -26,7 +27,7 @@ func (s *Store) GetForUser(ctx context.Context, userID, orderID uint64) (*domain
 
 // ListForUser returns a deterministic page of a user's buy and sell orders.
 func (s *Store) ListForUser(ctx context.Context, userID uint64, page, size int) ([]domain.Order, int64, error) {
-	q := platformquery.Use(s.db).Order
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Order
 	base := q.WithContext(ctx).Where(q.BuyerId.Eq(userID)).Or(q.SellerId.Eq(userID))
 	total, err := base.Count()
 	if err != nil {

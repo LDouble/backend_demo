@@ -3,8 +3,12 @@ package httpapi
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gin-gonic/gin"
@@ -22,23 +26,37 @@ import (
 	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
 	tradeapp "github.com/weouc-plus/campus-platform/internal/modules/trade/application"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // Handler wires core services to HTTP.
 type Handler struct {
-	auth        *auth.Service
-	users       *user.Service
-	permissions *permission.Service
-	configs     *configcenter.Service
-	notices     *noticeapp.Manager
-	activities  *activityapp.Manager
-	marketplace *marketplaceapp.Manager
-	errands     *errandapp.Manager
-	carpools    *carpoolapp.Manager
-	trades      *tradeapp.Manager
-	mysql       func(context.Context) error
-	redis       func(context.Context) error
-	log         *zap.Logger
+	auth           *auth.Service
+	users          *user.Service
+	permissions    *permission.Service
+	configs        *configcenter.Service
+	notices        *noticeapp.Manager
+	activities     *activityapp.Manager
+	marketplace    *marketplaceapp.Manager
+	errands        *errandapp.Manager
+	carpools       *carpoolapp.Manager
+	trades         *tradeapp.Manager
+	mysql          func(context.Context) error
+	redis          func(context.Context) error
+	log            *zap.Logger
+	maxBodyBytes   int64
+	maxHeaderBytes int
+	readinessMu    sync.Mutex
+	readinessAt    time.Time
+	readinessErr   error
+	authLimiter    AuthLimiter
+	db             *gorm.DB
+}
+
+// AuthLimiter is the distributed brute-force boundary used by auth endpoints.
+type AuthLimiter interface {
+	AllowLogin(context.Context, string, string) (bool, error)
+	AllowRefresh(context.Context, string, string) (bool, error)
 }
 
 // WithNotices attaches the optional notification-center module.
@@ -73,7 +91,34 @@ func (h *Handler) WithTrades(manager *tradeapp.Manager) *Handler { h.trades = ma
 
 // New creates an HTTP handler backed by the supplied core services.
 func New(authService *auth.Service, userService *user.Service, permissionService *permission.Service, configService *configcenter.Service, mysqlPing, redisPing func(context.Context) error, log *zap.Logger) *Handler {
-	return &Handler{auth: authService, users: userService, permissions: permissionService, configs: configService, mysql: mysqlPing, redis: redisPing, log: log}
+	return &Handler{
+		auth: authService, users: userService, permissions: permissionService, configs: configService,
+		mysql: mysqlPing, redis: redisPing, log: log,
+		maxBodyBytes: 1 << 20, maxHeaderBytes: 64 << 10,
+	}
+}
+
+// WithRequestLimits sets pre-parser HTTP body and aggregate-header limits.
+func (h *Handler) WithRequestLimits(maxBodyBytes int64, maxHeaderBytes int) *Handler {
+	if maxBodyBytes > 0 {
+		h.maxBodyBytes = maxBodyBytes
+	}
+	if maxHeaderBytes > 0 {
+		h.maxHeaderBytes = maxHeaderBytes
+	}
+	return h
+}
+
+// WithAuthLimiter attaches the shared Redis authentication limiter.
+func (h *Handler) WithAuthLimiter(limiter AuthLimiter) *Handler {
+	h.authLimiter = limiter
+	return h
+}
+
+// WithDatabase attaches the transaction boundary used by idempotent writes.
+func (h *Handler) WithDatabase(db *gorm.DB) *Handler {
+	h.db = db
+	return h
 }
 
 // Router creates the Gin engine and registers all routes.
@@ -91,20 +136,34 @@ func (h *Handler) Router() (*gin.Engine, error) {
 			failure(c, apperror.New(status, "invalid_request", "请求不符合 API 契约"))
 		},
 	})
-	r.Use(requestID(), recovery(h.log), accessLog(h.log), validator, h.security())
+	r.Use(requestID(), requestLimits(h.maxBodyBytes, h.maxHeaderBytes), recovery(h.log), accessLog(h.log), h.security(), validator)
 	generated.RegisterHandlersWithOptions(r, h, generated.GinServerOptions{ErrorHandler: func(c *gin.Context, err error, status int) {
 		failure(c, apperror.Wrap(status, "invalid_parameter", "路径参数无效", err))
 	}})
 	return r, nil
 }
 func (h *Handler) ready(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2e9)
-	defer cancel()
-	if err := h.mysql(ctx); err != nil {
-		failure(c, apperror.Wrap(503, "not_ready", "服务尚未就绪", err))
+	h.readinessMu.Lock()
+	if time.Since(h.readinessAt) < 5*time.Second {
+		err := h.readinessErr
+		h.readinessMu.Unlock()
+		if err != nil {
+			failure(c, apperror.Wrap(503, "not_ready", "服务尚未就绪", err))
+			return
+		}
+		success(c, 200, gin.H{"status": "ready"})
 		return
 	}
-	if err := h.redis(ctx); err != nil {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2e9)
+	defer cancel()
+	err := h.mysql(ctx)
+	if err == nil {
+		err = h.redis(ctx)
+	}
+	h.readinessAt = time.Now()
+	h.readinessErr = err
+	h.readinessMu.Unlock()
+	if err != nil {
 		failure(c, apperror.Wrap(503, "not_ready", "服务尚未就绪", err))
 		return
 	}
@@ -142,9 +201,30 @@ func paging(c *gin.Context) (int, int) {
 	return p, s
 }
 
+func setGeneratedPathParam(c *gin.Context, name string, value uint64) {
+	c.Set("generated.path."+name, value)
+}
+
+func setGeneratedParams(c *gin.Context, operationID string, params any) {
+	c.Set("generated.params."+operationID, params)
+}
+
+func generatedParams[T any](c *gin.Context, operationID string) (T, bool) {
+	value, exists := c.Get("generated.params." + operationID)
+	if !exists {
+		var zero T
+		return zero, false
+	}
+	params, ok := value.(T)
+	return params, ok
+}
+
 func (h *Handler) login(c *gin.Context) {
 	var req generated.LoginRequest
 	if !bind(c, &req) {
+		return
+	}
+	if !h.allowLogin(c, req.Username) {
 		return
 	}
 	pair, err := h.auth.Login(c.Request.Context(), req.Username, req.Password)
@@ -159,12 +239,51 @@ func (h *Handler) refresh(c *gin.Context) {
 	if !bind(c, &req) {
 		return
 	}
+	if !h.allowRefresh(c, req.RefreshToken) {
+		return
+	}
 	pair, err := h.auth.Refresh(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		failure(c, err)
 		return
 	}
 	success(c, 200, pair)
+}
+
+func (h *Handler) allowLogin(c *gin.Context, username string) bool {
+	if h.authLimiter == nil {
+		return true
+	}
+	allowed, err := h.authLimiter.AllowLogin(c.Request.Context(), username, remoteIP(c.Request))
+	return h.handleRateLimit(c, allowed, err)
+}
+
+func (h *Handler) allowRefresh(c *gin.Context, token string) bool {
+	if h.authLimiter == nil {
+		return true
+	}
+	allowed, err := h.authLimiter.AllowRefresh(c.Request.Context(), h.auth.RefreshFamily(token), remoteIP(c.Request))
+	return h.handleRateLimit(c, allowed, err)
+}
+
+func (h *Handler) handleRateLimit(c *gin.Context, allowed bool, err error) bool {
+	if err != nil {
+		failure(c, apperror.Wrap(http.StatusServiceUnavailable, "auth_limiter_unavailable", "认证服务暂时不可用", err))
+		return false
+	}
+	if !allowed {
+		failure(c, apperror.New(http.StatusTooManyRequests, "rate_limited", "请求过于频繁，请稍后重试"))
+		return false
+	}
+	return true
+}
+
+func remoteIP(request *http.Request) string {
+	host, _, err := net.SplitHostPort(request.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return request.RemoteAddr
 }
 func (h *Handler) logout(c *gin.Context) {
 	if err := h.auth.Logout(c.Request.Context(), c.GetString(sessionIDKey)); err != nil {
@@ -282,6 +401,10 @@ func (h *Handler) setUserRoles(c *gin.Context) {
 		return
 	}
 	if err := h.permissions.SetUserRoles(c.Request.Context(), id, req.Roles); err != nil {
+		failure(c, err)
+		return
+	}
+	if err := h.auth.RevokeUser(c.Request.Context(), id); err != nil {
 		failure(c, err)
 		return
 	}

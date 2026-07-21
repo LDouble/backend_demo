@@ -9,21 +9,35 @@ import (
 )
 
 // CreateMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CreateMarketplaceListing(c *gin.Context) {
-	h.createMarketplaceListing(c)
+func (h *Handler) CreateMarketplaceListing(c *gin.Context, params generated.CreateMarketplaceListingParams) {
+	setGeneratedParams(c, "CreateMarketplaceListing", params)
+	h.idempotent(c, "CreateMarketplaceListing", func() {
+		h.createMarketplaceListing(c)
+	})
 }
 
 // SubmitMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) SubmitMarketplaceListing(c *gin.Context, _ uint64) {
-	h.submitMarketplaceListing(c)
+func (h *Handler) SubmitMarketplaceListing(c *gin.Context, id uint64, params generated.SubmitMarketplaceListingParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "SubmitMarketplaceListing", params)
+	h.idempotent(c, "SubmitMarketplaceListing", func() {
+		h.submitMarketplaceListing(c)
+	})
 }
 
 // WithdrawMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) WithdrawMarketplaceListing(c *gin.Context, _ uint64) {
-	h.withdrawMarketplaceListing(c)
+func (h *Handler) WithdrawMarketplaceListing(c *gin.Context, id uint64, params generated.WithdrawMarketplaceListingParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "WithdrawMarketplaceListing", params)
+	h.idempotent(c, "WithdrawMarketplaceListing", func() {
+		h.withdrawMarketplaceListing(c)
+	})
 }
 
 // CreateMarketplaceOrder adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CreateMarketplaceOrder(c *gin.Context, _ generated.CreateMarketplaceOrderParams) {
-	h.createMarketplaceOrder(c)
+func (h *Handler) CreateMarketplaceOrder(c *gin.Context, params generated.CreateMarketplaceOrderParams) {
+	setGeneratedParams(c, "CreateMarketplaceOrder", params)
+	h.idempotent(c, "CreateMarketplaceOrder", func() {
+		h.createMarketplaceOrder(c)
+	})
 }

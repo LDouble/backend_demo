@@ -3,14 +3,14 @@
   "permissions": [
     {
       "name": "trade:cancel",
-      "path_pattern": "/api/v1/orders/{id}/cancel",
+      "path_pattern": "/api/v1/orders/:id/cancel",
       "methods": [
         "POST"
       ]
     },
     {
       "name": "trade:complete",
-      "path_pattern": "/api/v1/orders/{id}/complete",
+      "path_pattern": "/api/v1/orders/:id/complete",
       "methods": [
         "POST"
       ]
@@ -24,7 +24,7 @@
     },
     {
       "name": "trade:read_item",
-      "path_pattern": "/api/v1/orders/{id}",
+      "path_pattern": "/api/v1/orders/:id",
       "methods": [
         "GET"
       ]

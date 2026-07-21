@@ -264,6 +264,9 @@ type Group = string
 // ID defines model for ID.
 type ID = uint64
 
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
+
 // Page defines model for Page.
 type Page = int
 
@@ -304,12 +307,17 @@ type ListMyActivityRegistrationsParams struct {
 
 // CreateActivityRegistrationParams defines parameters for CreateActivityRegistration.
 type CreateActivityRegistrationParams struct {
-	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // CancelMyActivityRegistrationJSONBody defines parameters for CancelMyActivityRegistration.
 type CancelMyActivityRegistrationJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// CancelMyActivityRegistrationParams defines parameters for CancelMyActivityRegistration.
+type CancelMyActivityRegistrationParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // ListAdminActivitiesParams defines parameters for ListAdminActivities.
@@ -337,6 +345,11 @@ type CreateAdminActivityJSONBody struct {
 	Title         string    `json:"title"`
 }
 
+// CreateAdminActivityParams defines parameters for CreateAdminActivity.
+type CreateAdminActivityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // UpdateAdminActivityJSONBody defines parameters for UpdateAdminActivity.
 type UpdateAdminActivityJSONBody struct {
 	Body            string    `json:"body"`
@@ -353,10 +366,20 @@ type UpdateAdminActivityJSONBody struct {
 	Title           string    `json:"title"`
 }
 
+// UpdateAdminActivityParams defines parameters for UpdateAdminActivity.
+type UpdateAdminActivityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // ApproveAdminActivityJSONBody defines parameters for ApproveAdminActivity.
 type ApproveAdminActivityJSONBody struct {
 	ExpectedVersion uint64  `json:"expected_version"`
 	ReviewComment   *string `json:"review_comment,omitempty"`
+}
+
+// ApproveAdminActivityParams defines parameters for ApproveAdminActivity.
+type ApproveAdminActivityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // CancelAdminActivityJSONBody defines parameters for CancelAdminActivity.
@@ -364,14 +387,29 @@ type CancelAdminActivityJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// CancelAdminActivityParams defines parameters for CancelAdminActivity.
+type CancelAdminActivityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // FinishAdminActivityJSONBody defines parameters for FinishAdminActivity.
 type FinishAdminActivityJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// FinishAdminActivityParams defines parameters for FinishAdminActivity.
+type FinishAdminActivityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // PublishAdminActivityJSONBody defines parameters for PublishAdminActivity.
 type PublishAdminActivityJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// PublishAdminActivityParams defines parameters for PublishAdminActivity.
+type PublishAdminActivityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // RejectAdminActivityJSONBody defines parameters for RejectAdminActivity.
@@ -380,26 +418,62 @@ type RejectAdminActivityJSONBody struct {
 	ReviewComment   string `json:"review_comment"`
 }
 
+// RejectAdminActivityParams defines parameters for RejectAdminActivity.
+type RejectAdminActivityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // SubmitAdminActivityReviewJSONBody defines parameters for SubmitAdminActivityReview.
 type SubmitAdminActivityReviewJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// SubmitAdminActivityReviewParams defines parameters for SubmitAdminActivityReview.
+type SubmitAdminActivityReviewParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // ListAdminNoticesParams defines parameters for ListAdminNotices.
 type ListAdminNoticesParams struct {
-	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
-	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateNoticeParams defines parameters for CreateNotice.
+type CreateNoticeParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // DeleteNoticeParams defines parameters for DeleteNotice.
 type DeleteNoticeParams struct {
 	ExpectedVersion uint64 `form:"expected_version" json:"expected_version"`
+	IdempotencyKey  string `json:"Idempotency-Key"`
+}
+
+// UpdateNoticeParams defines parameters for UpdateNotice.
+type UpdateNoticeParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // ListNoticeDeliveriesParams defines parameters for ListNoticeDeliveries.
 type ListNoticeDeliveriesParams struct {
-	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
-	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// RetryNoticeDeliveriesParams defines parameters for RetryNoticeDeliveries.
+type RetryNoticeDeliveriesParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// PublishNoticeParams defines parameters for PublishNotice.
+type PublishNoticeParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// RevokeNoticeParams defines parameters for RevokeNotice.
+type RevokeNoticeParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // ListCarpoolTripsParams defines parameters for ListCarpoolTrips.
@@ -423,9 +497,19 @@ type CreateCarpoolTripJSONBody struct {
 	TotalSeats  int64     `json:"total_seats"`
 }
 
+// CreateCarpoolTripParams defines parameters for CreateCarpoolTrip.
+type CreateCarpoolTripParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // CancelCarpoolTripJSONBody defines parameters for CancelCarpoolTrip.
 type CancelCarpoolTripJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// CancelCarpoolTripParams defines parameters for CancelCarpoolTrip.
+type CancelCarpoolTripParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // JoinCarpoolTripJSONBody defines parameters for JoinCarpoolTrip.
@@ -433,9 +517,19 @@ type JoinCarpoolTripJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// JoinCarpoolTripParams defines parameters for JoinCarpoolTrip.
+type JoinCarpoolTripParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // LeaveCarpoolTripJSONBody defines parameters for LeaveCarpoolTrip.
 type LeaveCarpoolTripJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// LeaveCarpoolTripParams defines parameters for LeaveCarpoolTrip.
+type LeaveCarpoolTripParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // ListConfigsParams defines parameters for ListConfigs.
@@ -443,6 +537,21 @@ type ListConfigsParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 	Group    *Group    `form:"group,omitempty" json:"group,omitempty"`
+}
+
+// CreateConfigParams defines parameters for CreateConfig.
+type CreateConfigParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// DeleteConfigParams defines parameters for DeleteConfig.
+type DeleteConfigParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// UpdateConfigParams defines parameters for UpdateConfig.
+type UpdateConfigParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // ListErrandsParams defines parameters for ListErrands.
@@ -461,6 +570,11 @@ type CreateErrandJSONBody struct {
 	PickupLocation  string    `json:"pickup_location"`
 	RewardCents     int64     `json:"reward_cents"`
 	Title           string    `json:"title"`
+}
+
+// CreateErrandParams defines parameters for CreateErrand.
+type CreateErrandParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // ListMyErrandsParams defines parameters for ListMyErrands.
@@ -482,6 +596,11 @@ type UpdateErrandJSONBody struct {
 	Title           string    `json:"title"`
 }
 
+// UpdateErrandParams defines parameters for UpdateErrand.
+type UpdateErrandParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // AcceptErrandJSONBody defines parameters for AcceptErrand.
 type AcceptErrandJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
@@ -497,9 +616,19 @@ type CancelErrandJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// CancelErrandParams defines parameters for CancelErrand.
+type CancelErrandParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // CompleteErrandJSONBody defines parameters for CompleteErrand.
 type CompleteErrandJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// CompleteErrandParams defines parameters for CompleteErrand.
+type CompleteErrandParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // DeliverErrandJSONBody defines parameters for DeliverErrand.
@@ -507,9 +636,19 @@ type DeliverErrandJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// DeliverErrandParams defines parameters for DeliverErrand.
+type DeliverErrandParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // PickupErrandJSONBody defines parameters for PickupErrand.
 type PickupErrandJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// PickupErrandParams defines parameters for PickupErrand.
+type PickupErrandParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // CreateMarketplaceListingJSONBody defines parameters for CreateMarketplaceListing.
@@ -522,14 +661,29 @@ type CreateMarketplaceListingJSONBody struct {
 	Title       string    `json:"title"`
 }
 
+// CreateMarketplaceListingParams defines parameters for CreateMarketplaceListing.
+type CreateMarketplaceListingParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // SubmitMarketplaceListingJSONBody defines parameters for SubmitMarketplaceListing.
 type SubmitMarketplaceListingJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// SubmitMarketplaceListingParams defines parameters for SubmitMarketplaceListing.
+type SubmitMarketplaceListingParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // WithdrawMarketplaceListingJSONBody defines parameters for WithdrawMarketplaceListing.
 type WithdrawMarketplaceListingJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// WithdrawMarketplaceListingParams defines parameters for WithdrawMarketplaceListing.
+type WithdrawMarketplaceListingParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // CreateMarketplaceOrderJSONBody defines parameters for CreateMarketplaceOrder.
@@ -544,10 +698,10 @@ type CreateMarketplaceOrderParams struct {
 
 // ListMyNoticesParams defines parameters for ListMyNotices.
 type ListMyNoticesParams struct {
-	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
-	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
-	Unread   *bool     `form:"unread,omitempty" json:"unread,omitempty"`
-	Category *string   `form:"category,omitempty" json:"category,omitempty"`
+	Page     *int32  `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32  `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Unread   *bool   `form:"unread,omitempty" json:"unread,omitempty"`
+	Category *string `form:"category,omitempty" json:"category,omitempty"`
 }
 
 // ListMyTradeOrdersParams defines parameters for ListMyTradeOrders.
@@ -561,9 +715,19 @@ type CancelTradeOrderJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// CancelTradeOrderParams defines parameters for CancelTradeOrder.
+type CancelTradeOrderParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // CompleteTradeOrderJSONBody defines parameters for CompleteTradeOrder.
 type CompleteTradeOrderJSONBody struct {
 	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// CompleteTradeOrderParams defines parameters for CompleteTradeOrder.
+type CompleteTradeOrderParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
 // ListRolesParams defines parameters for ListRoles.
@@ -572,10 +736,50 @@ type ListRolesParams struct {
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
 
+// CreateRoleParams defines parameters for CreateRole.
+type CreateRoleParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// DeleteRoleParams defines parameters for DeleteRole.
+type DeleteRoleParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// UpdateRoleParams defines parameters for UpdateRole.
+type UpdateRoleParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// SetPermissionsParams defines parameters for SetPermissions.
+type SetPermissionsParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
 // ListUsersParams defines parameters for ListUsers.
 type ListUsersParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateUserParams defines parameters for CreateUser.
+type CreateUserParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// UpdateUserParams defines parameters for UpdateUser.
+type UpdateUserParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// SetUserRolesParams defines parameters for SetUserRoles.
+type SetUserRolesParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// SetUserStatusParams defines parameters for SetUserStatus.
+type SetUserStatusParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // CancelMyActivityRegistrationJSONRequestBody defines body for CancelMyActivityRegistration for application/json ContentType.
@@ -717,64 +921,64 @@ type ServerInterface interface {
 	CreateActivityRegistration(c *gin.Context, id uint64, params CreateActivityRegistrationParams)
 	// CancelMyActivityRegistration 取消我的活动报名
 	// (DELETE /api/v1/activities/{id}/registrations/me)
-	CancelMyActivityRegistration(c *gin.Context, id uint64)
+	CancelMyActivityRegistration(c *gin.Context, id uint64, params CancelMyActivityRegistrationParams)
 	// ListAdminActivities 管理端查询活动列表
 	// (GET /api/v1/admin/activities)
 	ListAdminActivities(c *gin.Context, params ListAdminActivitiesParams)
 	// CreateAdminActivity 管理端创建活动草稿
 	// (POST /api/v1/admin/activities)
-	CreateAdminActivity(c *gin.Context)
+	CreateAdminActivity(c *gin.Context, params CreateAdminActivityParams)
 	// GetAdminActivity 管理端查看活动详情
 	// (GET /api/v1/admin/activities/{id})
 	GetAdminActivity(c *gin.Context, id uint64)
 	// UpdateAdminActivity 管理端修改活动草稿
 	// (PATCH /api/v1/admin/activities/{id})
-	UpdateAdminActivity(c *gin.Context, id uint64)
+	UpdateAdminActivity(c *gin.Context, id uint64, params UpdateAdminActivityParams)
 	// ApproveAdminActivity 审核通过活动
 	// (POST /api/v1/admin/activities/{id}/approve)
-	ApproveAdminActivity(c *gin.Context, id uint64)
+	ApproveAdminActivity(c *gin.Context, id uint64, params ApproveAdminActivityParams)
 	// CancelAdminActivity 取消活动
 	// (POST /api/v1/admin/activities/{id}/cancel)
-	CancelAdminActivity(c *gin.Context, id uint64)
+	CancelAdminActivity(c *gin.Context, id uint64, params CancelAdminActivityParams)
 	// FinishAdminActivity 结束活动
 	// (POST /api/v1/admin/activities/{id}/finish)
-	FinishAdminActivity(c *gin.Context, id uint64)
+	FinishAdminActivity(c *gin.Context, id uint64, params FinishAdminActivityParams)
 	// PublishAdminActivity 发布活动
 	// (POST /api/v1/admin/activities/{id}/publish)
-	PublishAdminActivity(c *gin.Context, id uint64)
+	PublishAdminActivity(c *gin.Context, id uint64, params PublishAdminActivityParams)
 	// RejectAdminActivity 驳回活动审核
 	// (POST /api/v1/admin/activities/{id}/reject)
-	RejectAdminActivity(c *gin.Context, id uint64)
+	RejectAdminActivity(c *gin.Context, id uint64, params RejectAdminActivityParams)
 	// SubmitAdminActivityReview 提交活动审核
 	// (POST /api/v1/admin/activities/{id}/submit-review)
-	SubmitAdminActivityReview(c *gin.Context, id uint64)
-
+	SubmitAdminActivityReview(c *gin.Context, id uint64, params SubmitAdminActivityReviewParams)
+	// ListAdminNotices 管理端查询通知
 	// (GET /api/v1/admin/notices)
 	ListAdminNotices(c *gin.Context, params ListAdminNoticesParams)
-
+	// CreateNotice 创建通知草稿
 	// (POST /api/v1/admin/notices)
-	CreateNotice(c *gin.Context)
-
+	CreateNotice(c *gin.Context, params CreateNoticeParams)
+	// DeleteNotice 删除通知草稿
 	// (DELETE /api/v1/admin/notices/{id})
-	DeleteNotice(c *gin.Context, id ID, params DeleteNoticeParams)
-
+	DeleteNotice(c *gin.Context, id uint64, params DeleteNoticeParams)
+	// GetAdminNotice 查询通知详情
 	// (GET /api/v1/admin/notices/{id})
-	GetAdminNotice(c *gin.Context, id ID)
-
+	GetAdminNotice(c *gin.Context, id uint64)
+	// UpdateNotice 更新通知草稿
 	// (PATCH /api/v1/admin/notices/{id})
-	UpdateNotice(c *gin.Context, id ID)
-
+	UpdateNotice(c *gin.Context, id uint64, params UpdateNoticeParams)
+	// ListNoticeDeliveries 查询通知投递
 	// (GET /api/v1/admin/notices/{id}/deliveries)
-	ListNoticeDeliveries(c *gin.Context, id ID, params ListNoticeDeliveriesParams)
-
+	ListNoticeDeliveries(c *gin.Context, id uint64, params ListNoticeDeliveriesParams)
+	// RetryNoticeDeliveries 重试失败投递
 	// (POST /api/v1/admin/notices/{id}/deliveries/retry)
-	RetryNoticeDeliveries(c *gin.Context, id ID)
-
+	RetryNoticeDeliveries(c *gin.Context, id uint64, params RetryNoticeDeliveriesParams)
+	// PublishNotice 发布通知
 	// (POST /api/v1/admin/notices/{id}/publish)
-	PublishNotice(c *gin.Context, id ID)
-
+	PublishNotice(c *gin.Context, id uint64, params PublishNoticeParams)
+	// RevokeNotice 撤回通知
 	// (POST /api/v1/admin/notices/{id}/revoke)
-	RevokeNotice(c *gin.Context, id ID)
+	RevokeNotice(c *gin.Context, id uint64, params RevokeNoticeParams)
 
 	// (POST /api/v1/auth/login)
 	Login(c *gin.Context)
@@ -792,40 +996,40 @@ type ServerInterface interface {
 	ListCarpoolTrips(c *gin.Context, params ListCarpoolTripsParams)
 	// CreateCarpoolTrip 发起拼车行程
 	// (POST /api/v1/carpool/trips)
-	CreateCarpoolTrip(c *gin.Context)
+	CreateCarpoolTrip(c *gin.Context, params CreateCarpoolTripParams)
 	// GetCarpoolTrip 查看拼车行程
 	// (GET /api/v1/carpool/trips/{id})
 	GetCarpoolTrip(c *gin.Context, id uint64)
 	// CancelCarpoolTrip 取消拼车行程
 	// (POST /api/v1/carpool/trips/{id}/cancel)
-	CancelCarpoolTrip(c *gin.Context, id uint64)
+	CancelCarpoolTrip(c *gin.Context, id uint64, params CancelCarpoolTripParams)
 	// JoinCarpoolTrip 原子加入拼车行程
 	// (POST /api/v1/carpool/trips/{id}/join)
-	JoinCarpoolTrip(c *gin.Context, id uint64)
+	JoinCarpoolTrip(c *gin.Context, id uint64, params JoinCarpoolTripParams)
 	// LeaveCarpoolTrip 退出拼车行程
 	// (POST /api/v1/carpool/trips/{id}/leave)
-	LeaveCarpoolTrip(c *gin.Context, id uint64)
+	LeaveCarpoolTrip(c *gin.Context, id uint64, params LeaveCarpoolTripParams)
 
 	// (GET /api/v1/configs)
 	ListConfigs(c *gin.Context, params ListConfigsParams)
 
 	// (POST /api/v1/configs)
-	CreateConfig(c *gin.Context)
+	CreateConfig(c *gin.Context, params CreateConfigParams)
 
 	// (DELETE /api/v1/configs/{id})
-	DeleteConfig(c *gin.Context, id ID)
+	DeleteConfig(c *gin.Context, id ID, params DeleteConfigParams)
 
 	// (GET /api/v1/configs/{id})
 	GetConfig(c *gin.Context, id ID)
 
 	// (PUT /api/v1/configs/{id})
-	UpdateConfig(c *gin.Context, id ID)
+	UpdateConfig(c *gin.Context, id ID, params UpdateConfigParams)
 	// ListErrands 浏览待接跑腿任务
 	// (GET /api/v1/errands)
 	ListErrands(c *gin.Context, params ListErrandsParams)
 	// CreateErrand 发布跑腿任务
 	// (POST /api/v1/errands)
-	CreateErrand(c *gin.Context)
+	CreateErrand(c *gin.Context, params CreateErrandParams)
 	// ListMyErrands 查询我的跑腿任务
 	// (GET /api/v1/errands/mine)
 	ListMyErrands(c *gin.Context, params ListMyErrandsParams)
@@ -834,49 +1038,49 @@ type ServerInterface interface {
 	GetErrand(c *gin.Context, id uint64)
 	// UpdateErrand 修改未接单的跑腿任务
 	// (PATCH /api/v1/errands/{id})
-	UpdateErrand(c *gin.Context, id uint64)
+	UpdateErrand(c *gin.Context, id uint64, params UpdateErrandParams)
 	// AcceptErrand 原子接单并创建交易订单
 	// (POST /api/v1/errands/{id}/accept)
 	AcceptErrand(c *gin.Context, id uint64, params AcceptErrandParams)
 	// CancelErrand 取消跑腿任务
 	// (POST /api/v1/errands/{id}/cancel)
-	CancelErrand(c *gin.Context, id uint64)
+	CancelErrand(c *gin.Context, id uint64, params CancelErrandParams)
 	// CompleteErrand 发布者确认跑腿完成
 	// (POST /api/v1/errands/{id}/complete)
-	CompleteErrand(c *gin.Context, id uint64)
+	CompleteErrand(c *gin.Context, id uint64, params CompleteErrandParams)
 	// DeliverErrand 跑腿员确认送达
 	// (POST /api/v1/errands/{id}/deliver)
-	DeliverErrand(c *gin.Context, id uint64)
+	DeliverErrand(c *gin.Context, id uint64, params DeliverErrandParams)
 	// PickupErrand 跑腿员确认取件
 	// (POST /api/v1/errands/{id}/pickup)
-	PickupErrand(c *gin.Context, id uint64)
+	PickupErrand(c *gin.Context, id uint64, params PickupErrandParams)
 	// CreateMarketplaceListing 创建二手商品草稿
 	// (POST /api/v1/marketplace/listings)
-	CreateMarketplaceListing(c *gin.Context)
+	CreateMarketplaceListing(c *gin.Context, params CreateMarketplaceListingParams)
 	// SubmitMarketplaceListing 提交商品审核
 	// (POST /api/v1/marketplace/listings/{id}/submit)
-	SubmitMarketplaceListing(c *gin.Context, id uint64)
+	SubmitMarketplaceListing(c *gin.Context, id uint64, params SubmitMarketplaceListingParams)
 	// WithdrawMarketplaceListing 撤回商品
 	// (POST /api/v1/marketplace/listings/{id}/withdraw)
-	WithdrawMarketplaceListing(c *gin.Context, id uint64)
+	WithdrawMarketplaceListing(c *gin.Context, id uint64, params WithdrawMarketplaceListingParams)
 	// CreateMarketplaceOrder 原子保留商品并创建订单
 	// (POST /api/v1/marketplace/orders)
 	CreateMarketplaceOrder(c *gin.Context, params CreateMarketplaceOrderParams)
-
+	// ListMyNotices 查询我的通知
 	// (GET /api/v1/notices)
 	ListMyNotices(c *gin.Context, params ListMyNoticesParams)
-
+	// ReadAllNotices 全部标记已读
 	// (PUT /api/v1/notices/read-all)
 	ReadAllNotices(c *gin.Context)
-
+	// GetUnreadNoticeCount 查询未读数量
 	// (GET /api/v1/notices/unread-count)
 	GetUnreadNoticeCount(c *gin.Context)
-
+	// GetMyNotice 查询我的通知详情
 	// (GET /api/v1/notices/{id})
-	GetMyNotice(c *gin.Context, id ID)
-
+	GetMyNotice(c *gin.Context, id uint64)
+	// ReadNotice 标记通知已读
 	// (PUT /api/v1/notices/{id}/read)
-	ReadNotice(c *gin.Context, id ID)
+	ReadNotice(c *gin.Context, id uint64)
 	// ListMyTradeOrders 查询我的交易订单
 	// (GET /api/v1/orders)
 	ListMyTradeOrders(c *gin.Context, params ListMyTradeOrdersParams)
@@ -885,49 +1089,49 @@ type ServerInterface interface {
 	GetMyTradeOrder(c *gin.Context, id uint64)
 	// CancelTradeOrder 取消交易订单
 	// (POST /api/v1/orders/{id}/cancel)
-	CancelTradeOrder(c *gin.Context, id uint64)
+	CancelTradeOrder(c *gin.Context, id uint64, params CancelTradeOrderParams)
 	// CompleteTradeOrder 确认交易完成
 	// (POST /api/v1/orders/{id}/complete)
-	CompleteTradeOrder(c *gin.Context, id uint64)
+	CompleteTradeOrder(c *gin.Context, id uint64, params CompleteTradeOrderParams)
 
 	// (GET /api/v1/roles)
 	ListRoles(c *gin.Context, params ListRolesParams)
 
 	// (POST /api/v1/roles)
-	CreateRole(c *gin.Context)
+	CreateRole(c *gin.Context, params CreateRoleParams)
 
 	// (DELETE /api/v1/roles/{id})
-	DeleteRole(c *gin.Context, id ID)
+	DeleteRole(c *gin.Context, id ID, params DeleteRoleParams)
 
 	// (PATCH /api/v1/roles/{id})
-	UpdateRole(c *gin.Context, id ID)
+	UpdateRole(c *gin.Context, id ID, params UpdateRoleParams)
 
 	// (GET /api/v1/roles/{id}/permissions)
 	GetPermissions(c *gin.Context, id ID)
 
 	// (PUT /api/v1/roles/{id}/permissions)
-	SetPermissions(c *gin.Context, id ID)
+	SetPermissions(c *gin.Context, id ID, params SetPermissionsParams)
 
 	// (GET /api/v1/users)
 	ListUsers(c *gin.Context, params ListUsersParams)
 
 	// (POST /api/v1/users)
-	CreateUser(c *gin.Context)
+	CreateUser(c *gin.Context, params CreateUserParams)
 
 	// (GET /api/v1/users/{id})
 	GetUser(c *gin.Context, id ID)
 
 	// (PATCH /api/v1/users/{id})
-	UpdateUser(c *gin.Context, id ID)
+	UpdateUser(c *gin.Context, id ID, params UpdateUserParams)
 
 	// (GET /api/v1/users/{id}/roles)
 	GetUserRoles(c *gin.Context, id ID)
 
 	// (PUT /api/v1/users/{id}/roles)
-	SetUserRoles(c *gin.Context, id ID)
+	SetUserRoles(c *gin.Context, id ID, params SetUserRolesParams)
 
 	// (PATCH /api/v1/users/{id}/status)
-	SetUserStatus(c *gin.Context, id ID)
+	SetUserStatus(c *gin.Context, id ID, params SetUserStatusParams)
 
 	// (GET /health/live)
 	Live(c *gin.Context)
@@ -1076,7 +1280,7 @@ func (siw *ServerInterfaceWrapper) CreateActivityRegistration(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Optional header parameter "Idempotency-Key" -------------
+	// ------------- Required header parameter "Idempotency-Key" -------------
 	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
 		var IdempotencyKey string
 		n := len(valueList)
@@ -1085,14 +1289,17 @@ func (siw *ServerInterfaceWrapper) CreateActivityRegistration(c *gin.Context) {
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
 			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IdempotencyKey = &IdempotencyKey
+		params.IdempotencyKey = IdempotencyKey
 
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
 	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1120,6 +1327,33 @@ func (siw *ServerInterfaceWrapper) CancelMyActivityRegistration(c *gin.Context) 
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelMyActivityRegistrationParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1127,7 +1361,7 @@ func (siw *ServerInterfaceWrapper) CancelMyActivityRegistration(c *gin.Context) 
 		}
 	}
 
-	siw.Handler.CancelMyActivityRegistration(c, id)
+	siw.Handler.CancelMyActivityRegistration(c, id, params)
 }
 
 // ListAdminActivities operation middleware
@@ -1200,6 +1434,36 @@ func (siw *ServerInterfaceWrapper) ListAdminActivities(c *gin.Context) {
 // CreateAdminActivity operation middleware
 func (siw *ServerInterfaceWrapper) CreateAdminActivity(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateAdminActivityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1207,7 +1471,7 @@ func (siw *ServerInterfaceWrapper) CreateAdminActivity(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateAdminActivity(c)
+	siw.Handler.CreateAdminActivity(c, params)
 }
 
 // GetAdminActivity operation middleware
@@ -1250,6 +1514,33 @@ func (siw *ServerInterfaceWrapper) UpdateAdminActivity(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateAdminActivityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1257,7 +1548,7 @@ func (siw *ServerInterfaceWrapper) UpdateAdminActivity(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateAdminActivity(c, id)
+	siw.Handler.UpdateAdminActivity(c, id, params)
 }
 
 // ApproveAdminActivity operation middleware
@@ -1275,6 +1566,33 @@ func (siw *ServerInterfaceWrapper) ApproveAdminActivity(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ApproveAdminActivityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1282,7 +1600,7 @@ func (siw *ServerInterfaceWrapper) ApproveAdminActivity(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ApproveAdminActivity(c, id)
+	siw.Handler.ApproveAdminActivity(c, id, params)
 }
 
 // CancelAdminActivity operation middleware
@@ -1300,6 +1618,33 @@ func (siw *ServerInterfaceWrapper) CancelAdminActivity(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelAdminActivityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1307,7 +1652,7 @@ func (siw *ServerInterfaceWrapper) CancelAdminActivity(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CancelAdminActivity(c, id)
+	siw.Handler.CancelAdminActivity(c, id, params)
 }
 
 // FinishAdminActivity operation middleware
@@ -1325,6 +1670,33 @@ func (siw *ServerInterfaceWrapper) FinishAdminActivity(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params FinishAdminActivityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1332,7 +1704,7 @@ func (siw *ServerInterfaceWrapper) FinishAdminActivity(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.FinishAdminActivity(c, id)
+	siw.Handler.FinishAdminActivity(c, id, params)
 }
 
 // PublishAdminActivity operation middleware
@@ -1350,6 +1722,33 @@ func (siw *ServerInterfaceWrapper) PublishAdminActivity(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PublishAdminActivityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1357,7 +1756,7 @@ func (siw *ServerInterfaceWrapper) PublishAdminActivity(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PublishAdminActivity(c, id)
+	siw.Handler.PublishAdminActivity(c, id, params)
 }
 
 // RejectAdminActivity operation middleware
@@ -1375,6 +1774,33 @@ func (siw *ServerInterfaceWrapper) RejectAdminActivity(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RejectAdminActivityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1382,7 +1808,7 @@ func (siw *ServerInterfaceWrapper) RejectAdminActivity(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.RejectAdminActivity(c, id)
+	siw.Handler.RejectAdminActivity(c, id, params)
 }
 
 // SubmitAdminActivityReview operation middleware
@@ -1400,6 +1826,33 @@ func (siw *ServerInterfaceWrapper) SubmitAdminActivityReview(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SubmitAdminActivityReviewParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1407,7 +1860,7 @@ func (siw *ServerInterfaceWrapper) SubmitAdminActivityReview(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.SubmitAdminActivityReview(c, id)
+	siw.Handler.SubmitAdminActivityReview(c, id, params)
 }
 
 // ListAdminNotices operation middleware
@@ -1421,7 +1874,7 @@ func (siw *ServerInterfaceWrapper) ListAdminNotices(c *gin.Context) {
 
 	// ------------- Optional query parameter "page" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
 		return
@@ -1429,7 +1882,7 @@ func (siw *ServerInterfaceWrapper) ListAdminNotices(c *gin.Context) {
 
 	// ------------- Optional query parameter "page_size" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
 		return
@@ -1448,6 +1901,36 @@ func (siw *ServerInterfaceWrapper) ListAdminNotices(c *gin.Context) {
 // CreateNotice operation middleware
 func (siw *ServerInterfaceWrapper) CreateNotice(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateNoticeParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1455,7 +1938,7 @@ func (siw *ServerInterfaceWrapper) CreateNotice(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateNotice(c)
+	siw.Handler.CreateNotice(c, params)
 }
 
 // DeleteNotice operation middleware
@@ -1465,7 +1948,7 @@ func (siw *ServerInterfaceWrapper) DeleteNotice(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
@@ -1481,6 +1964,30 @@ func (siw *ServerInterfaceWrapper) DeleteNotice(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, true, "expected_version", c.Request.URL.Query(), &params.ExpectedVersion, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter expected_version: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -1501,7 +2008,7 @@ func (siw *ServerInterfaceWrapper) GetAdminNotice(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
@@ -1526,11 +2033,38 @@ func (siw *ServerInterfaceWrapper) UpdateNotice(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateNoticeParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -1541,7 +2075,7 @@ func (siw *ServerInterfaceWrapper) UpdateNotice(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateNotice(c, id)
+	siw.Handler.UpdateNotice(c, id, params)
 }
 
 // ListNoticeDeliveries operation middleware
@@ -1551,7 +2085,7 @@ func (siw *ServerInterfaceWrapper) ListNoticeDeliveries(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
@@ -1564,7 +2098,7 @@ func (siw *ServerInterfaceWrapper) ListNoticeDeliveries(c *gin.Context) {
 
 	// ------------- Optional query parameter "page" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
 		return
@@ -1572,7 +2106,7 @@ func (siw *ServerInterfaceWrapper) ListNoticeDeliveries(c *gin.Context) {
 
 	// ------------- Optional query parameter "page_size" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
 		return
@@ -1595,11 +2129,38 @@ func (siw *ServerInterfaceWrapper) RetryNoticeDeliveries(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RetryNoticeDeliveriesParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -1610,7 +2171,7 @@ func (siw *ServerInterfaceWrapper) RetryNoticeDeliveries(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.RetryNoticeDeliveries(c, id)
+	siw.Handler.RetryNoticeDeliveries(c, id, params)
 }
 
 // PublishNotice operation middleware
@@ -1620,11 +2181,38 @@ func (siw *ServerInterfaceWrapper) PublishNotice(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PublishNoticeParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -1635,7 +2223,7 @@ func (siw *ServerInterfaceWrapper) PublishNotice(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PublishNotice(c, id)
+	siw.Handler.PublishNotice(c, id, params)
 }
 
 // RevokeNotice operation middleware
@@ -1645,11 +2233,38 @@ func (siw *ServerInterfaceWrapper) RevokeNotice(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RevokeNoticeParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -1660,7 +2275,7 @@ func (siw *ServerInterfaceWrapper) RevokeNotice(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.RevokeNotice(c, id)
+	siw.Handler.RevokeNotice(c, id, params)
 }
 
 // Login operation middleware
@@ -1785,6 +2400,36 @@ func (siw *ServerInterfaceWrapper) ListCarpoolTrips(c *gin.Context) {
 // CreateCarpoolTrip operation middleware
 func (siw *ServerInterfaceWrapper) CreateCarpoolTrip(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateCarpoolTripParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1792,7 +2437,7 @@ func (siw *ServerInterfaceWrapper) CreateCarpoolTrip(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateCarpoolTrip(c)
+	siw.Handler.CreateCarpoolTrip(c, params)
 }
 
 // GetCarpoolTrip operation middleware
@@ -1835,6 +2480,33 @@ func (siw *ServerInterfaceWrapper) CancelCarpoolTrip(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelCarpoolTripParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1842,7 +2514,7 @@ func (siw *ServerInterfaceWrapper) CancelCarpoolTrip(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CancelCarpoolTrip(c, id)
+	siw.Handler.CancelCarpoolTrip(c, id, params)
 }
 
 // JoinCarpoolTrip operation middleware
@@ -1860,6 +2532,33 @@ func (siw *ServerInterfaceWrapper) JoinCarpoolTrip(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params JoinCarpoolTripParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1867,7 +2566,7 @@ func (siw *ServerInterfaceWrapper) JoinCarpoolTrip(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.JoinCarpoolTrip(c, id)
+	siw.Handler.JoinCarpoolTrip(c, id, params)
 }
 
 // LeaveCarpoolTrip operation middleware
@@ -1885,6 +2584,33 @@ func (siw *ServerInterfaceWrapper) LeaveCarpoolTrip(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LeaveCarpoolTripParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1892,7 +2618,7 @@ func (siw *ServerInterfaceWrapper) LeaveCarpoolTrip(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.LeaveCarpoolTrip(c, id)
+	siw.Handler.LeaveCarpoolTrip(c, id, params)
 }
 
 // ListConfigs operation middleware
@@ -1941,6 +2667,36 @@ func (siw *ServerInterfaceWrapper) ListConfigs(c *gin.Context) {
 // CreateConfig operation middleware
 func (siw *ServerInterfaceWrapper) CreateConfig(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateConfigParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1948,7 +2704,7 @@ func (siw *ServerInterfaceWrapper) CreateConfig(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateConfig(c)
+	siw.Handler.CreateConfig(c, params)
 }
 
 // DeleteConfig operation middleware
@@ -1966,6 +2722,33 @@ func (siw *ServerInterfaceWrapper) DeleteConfig(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteConfigParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1973,7 +2756,7 @@ func (siw *ServerInterfaceWrapper) DeleteConfig(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.DeleteConfig(c, id)
+	siw.Handler.DeleteConfig(c, id, params)
 }
 
 // GetConfig operation middleware
@@ -2016,6 +2799,33 @@ func (siw *ServerInterfaceWrapper) UpdateConfig(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateConfigParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2023,7 +2833,7 @@ func (siw *ServerInterfaceWrapper) UpdateConfig(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateConfig(c, id)
+	siw.Handler.UpdateConfig(c, id, params)
 }
 
 // ListErrands operation middleware
@@ -2064,6 +2874,36 @@ func (siw *ServerInterfaceWrapper) ListErrands(c *gin.Context) {
 // CreateErrand operation middleware
 func (siw *ServerInterfaceWrapper) CreateErrand(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateErrandParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2071,7 +2911,7 @@ func (siw *ServerInterfaceWrapper) CreateErrand(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateErrand(c)
+	siw.Handler.CreateErrand(c, params)
 }
 
 // ListMyErrands operation middleware
@@ -2149,6 +2989,33 @@ func (siw *ServerInterfaceWrapper) UpdateErrand(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateErrandParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2156,7 +3023,7 @@ func (siw *ServerInterfaceWrapper) UpdateErrand(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateErrand(c, id)
+	siw.Handler.UpdateErrand(c, id, params)
 }
 
 // AcceptErrand operation middleware
@@ -2226,6 +3093,33 @@ func (siw *ServerInterfaceWrapper) CancelErrand(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelErrandParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2233,7 +3127,7 @@ func (siw *ServerInterfaceWrapper) CancelErrand(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CancelErrand(c, id)
+	siw.Handler.CancelErrand(c, id, params)
 }
 
 // CompleteErrand operation middleware
@@ -2251,6 +3145,33 @@ func (siw *ServerInterfaceWrapper) CompleteErrand(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CompleteErrandParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2258,7 +3179,7 @@ func (siw *ServerInterfaceWrapper) CompleteErrand(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CompleteErrand(c, id)
+	siw.Handler.CompleteErrand(c, id, params)
 }
 
 // DeliverErrand operation middleware
@@ -2276,6 +3197,33 @@ func (siw *ServerInterfaceWrapper) DeliverErrand(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeliverErrandParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2283,7 +3231,7 @@ func (siw *ServerInterfaceWrapper) DeliverErrand(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.DeliverErrand(c, id)
+	siw.Handler.DeliverErrand(c, id, params)
 }
 
 // PickupErrand operation middleware
@@ -2301,6 +3249,33 @@ func (siw *ServerInterfaceWrapper) PickupErrand(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PickupErrandParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2308,12 +3283,42 @@ func (siw *ServerInterfaceWrapper) PickupErrand(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PickupErrand(c, id)
+	siw.Handler.PickupErrand(c, id, params)
 }
 
 // CreateMarketplaceListing operation middleware
 func (siw *ServerInterfaceWrapper) CreateMarketplaceListing(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMarketplaceListingParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2321,7 +3326,7 @@ func (siw *ServerInterfaceWrapper) CreateMarketplaceListing(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateMarketplaceListing(c)
+	siw.Handler.CreateMarketplaceListing(c, params)
 }
 
 // SubmitMarketplaceListing operation middleware
@@ -2339,6 +3344,33 @@ func (siw *ServerInterfaceWrapper) SubmitMarketplaceListing(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SubmitMarketplaceListingParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2346,7 +3378,7 @@ func (siw *ServerInterfaceWrapper) SubmitMarketplaceListing(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.SubmitMarketplaceListing(c, id)
+	siw.Handler.SubmitMarketplaceListing(c, id, params)
 }
 
 // WithdrawMarketplaceListing operation middleware
@@ -2364,6 +3396,33 @@ func (siw *ServerInterfaceWrapper) WithdrawMarketplaceListing(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params WithdrawMarketplaceListingParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2371,7 +3430,7 @@ func (siw *ServerInterfaceWrapper) WithdrawMarketplaceListing(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.WithdrawMarketplaceListing(c, id)
+	siw.Handler.WithdrawMarketplaceListing(c, id, params)
 }
 
 // CreateMarketplaceOrder operation middleware
@@ -2428,7 +3487,7 @@ func (siw *ServerInterfaceWrapper) ListMyNotices(c *gin.Context) {
 
 	// ------------- Optional query parameter "page" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
 		return
@@ -2436,7 +3495,7 @@ func (siw *ServerInterfaceWrapper) ListMyNotices(c *gin.Context) {
 
 	// ------------- Optional query parameter "page_size" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
 		return
@@ -2501,7 +3560,7 @@ func (siw *ServerInterfaceWrapper) GetMyNotice(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
@@ -2526,7 +3585,7 @@ func (siw *ServerInterfaceWrapper) ReadNotice(c *gin.Context) {
 	_ = err
 
 	// ------------- Path parameter "id" -------------
-	var id ID
+	var id uint64
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
 	if err != nil {
@@ -2619,6 +3678,33 @@ func (siw *ServerInterfaceWrapper) CancelTradeOrder(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelTradeOrderParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2626,7 +3712,7 @@ func (siw *ServerInterfaceWrapper) CancelTradeOrder(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CancelTradeOrder(c, id)
+	siw.Handler.CancelTradeOrder(c, id, params)
 }
 
 // CompleteTradeOrder operation middleware
@@ -2644,6 +3730,33 @@ func (siw *ServerInterfaceWrapper) CompleteTradeOrder(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CompleteTradeOrderParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2651,7 +3764,7 @@ func (siw *ServerInterfaceWrapper) CompleteTradeOrder(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CompleteTradeOrder(c, id)
+	siw.Handler.CompleteTradeOrder(c, id, params)
 }
 
 // ListRoles operation middleware
@@ -2692,6 +3805,36 @@ func (siw *ServerInterfaceWrapper) ListRoles(c *gin.Context) {
 // CreateRole operation middleware
 func (siw *ServerInterfaceWrapper) CreateRole(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateRoleParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2699,7 +3842,7 @@ func (siw *ServerInterfaceWrapper) CreateRole(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateRole(c)
+	siw.Handler.CreateRole(c, params)
 }
 
 // DeleteRole operation middleware
@@ -2717,6 +3860,33 @@ func (siw *ServerInterfaceWrapper) DeleteRole(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteRoleParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2724,7 +3894,7 @@ func (siw *ServerInterfaceWrapper) DeleteRole(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.DeleteRole(c, id)
+	siw.Handler.DeleteRole(c, id, params)
 }
 
 // UpdateRole operation middleware
@@ -2742,6 +3912,33 @@ func (siw *ServerInterfaceWrapper) UpdateRole(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateRoleParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2749,7 +3946,7 @@ func (siw *ServerInterfaceWrapper) UpdateRole(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateRole(c, id)
+	siw.Handler.UpdateRole(c, id, params)
 }
 
 // GetPermissions operation middleware
@@ -2792,6 +3989,33 @@ func (siw *ServerInterfaceWrapper) SetPermissions(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SetPermissionsParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2799,7 +4023,7 @@ func (siw *ServerInterfaceWrapper) SetPermissions(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.SetPermissions(c, id)
+	siw.Handler.SetPermissions(c, id, params)
 }
 
 // ListUsers operation middleware
@@ -2840,6 +4064,36 @@ func (siw *ServerInterfaceWrapper) ListUsers(c *gin.Context) {
 // CreateUser operation middleware
 func (siw *ServerInterfaceWrapper) CreateUser(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateUserParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2847,7 +4101,7 @@ func (siw *ServerInterfaceWrapper) CreateUser(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateUser(c)
+	siw.Handler.CreateUser(c, params)
 }
 
 // GetUser operation middleware
@@ -2890,6 +4144,33 @@ func (siw *ServerInterfaceWrapper) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateUserParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2897,7 +4178,7 @@ func (siw *ServerInterfaceWrapper) UpdateUser(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateUser(c, id)
+	siw.Handler.UpdateUser(c, id, params)
 }
 
 // GetUserRoles operation middleware
@@ -2940,6 +4221,33 @@ func (siw *ServerInterfaceWrapper) SetUserRoles(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SetUserRolesParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2947,7 +4255,7 @@ func (siw *ServerInterfaceWrapper) SetUserRoles(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.SetUserRoles(c, id)
+	siw.Handler.SetUserRoles(c, id, params)
 }
 
 // SetUserStatus operation middleware
@@ -2965,6 +4273,33 @@ func (siw *ServerInterfaceWrapper) SetUserStatus(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SetUserStatusParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2972,7 +4307,7 @@ func (siw *ServerInterfaceWrapper) SetUserStatus(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.SetUserStatus(c, id)
+	siw.Handler.SetUserStatus(c, id, params)
 }
 
 // Live operation middleware
@@ -3052,44 +4387,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/configs/:id", wrapper.DeleteConfig)
 	router.GET(options.BaseURL+"/api/v1/configs/:id", wrapper.GetConfig)
 	router.PUT(options.BaseURL+"/api/v1/configs/:id", wrapper.UpdateConfig)
-	router.GET(options.BaseURL+"/api/v1/admin/notices", wrapper.ListAdminNotices)
-	router.POST(options.BaseURL+"/api/v1/admin/notices", wrapper.CreateNotice)
-	router.DELETE(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.DeleteNotice)
-	router.GET(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.GetAdminNotice)
-	router.PATCH(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.UpdateNotice)
-	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/publish", wrapper.PublishNotice)
-	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/revoke", wrapper.RevokeNotice)
-	router.GET(options.BaseURL+"/api/v1/admin/notices/:id/deliveries", wrapper.ListNoticeDeliveries)
-	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/deliveries/retry", wrapper.RetryNoticeDeliveries)
-	router.GET(options.BaseURL+"/api/v1/notices", wrapper.ListMyNotices)
-	router.GET(options.BaseURL+"/api/v1/notices/unread-count", wrapper.GetUnreadNoticeCount)
-	router.PUT(options.BaseURL+"/api/v1/notices/read-all", wrapper.ReadAllNotices)
-	router.GET(options.BaseURL+"/api/v1/notices/:id", wrapper.GetMyNotice)
-	router.PUT(options.BaseURL+"/api/v1/notices/:id/read", wrapper.ReadNotice)
-	router.POST(options.BaseURL+"/api/v1/marketplace/listings", wrapper.CreateMarketplaceListing)
-	router.POST(options.BaseURL+"/api/v1/marketplace/listings/:id/submit", wrapper.SubmitMarketplaceListing)
-	router.POST(options.BaseURL+"/api/v1/marketplace/listings/:id/withdraw", wrapper.WithdrawMarketplaceListing)
-	router.POST(options.BaseURL+"/api/v1/marketplace/orders", wrapper.CreateMarketplaceOrder)
-	router.GET(options.BaseURL+"/api/v1/orders", wrapper.ListMyTradeOrders)
-	router.GET(options.BaseURL+"/api/v1/orders/:id", wrapper.GetMyTradeOrder)
-	router.POST(options.BaseURL+"/api/v1/orders/:id/cancel", wrapper.CancelTradeOrder)
-	router.POST(options.BaseURL+"/api/v1/orders/:id/complete", wrapper.CompleteTradeOrder)
-	router.GET(options.BaseURL+"/api/v1/errands", wrapper.ListErrands)
-	router.POST(options.BaseURL+"/api/v1/errands", wrapper.CreateErrand)
-	router.GET(options.BaseURL+"/api/v1/errands/mine", wrapper.ListMyErrands)
-	router.GET(options.BaseURL+"/api/v1/errands/:id", wrapper.GetErrand)
-	router.PATCH(options.BaseURL+"/api/v1/errands/:id", wrapper.UpdateErrand)
-	router.POST(options.BaseURL+"/api/v1/errands/:id/accept", wrapper.AcceptErrand)
-	router.POST(options.BaseURL+"/api/v1/errands/:id/cancel", wrapper.CancelErrand)
-	router.POST(options.BaseURL+"/api/v1/errands/:id/complete", wrapper.CompleteErrand)
-	router.POST(options.BaseURL+"/api/v1/errands/:id/deliver", wrapper.DeliverErrand)
-	router.POST(options.BaseURL+"/api/v1/errands/:id/pickup", wrapper.PickupErrand)
-	router.GET(options.BaseURL+"/api/v1/carpool/trips", wrapper.ListCarpoolTrips)
-	router.POST(options.BaseURL+"/api/v1/carpool/trips", wrapper.CreateCarpoolTrip)
-	router.GET(options.BaseURL+"/api/v1/carpool/trips/:id", wrapper.GetCarpoolTrip)
-	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/cancel", wrapper.CancelCarpoolTrip)
-	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/join", wrapper.JoinCarpoolTrip)
-	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/leave", wrapper.LeaveCarpoolTrip)
 	router.GET(options.BaseURL+"/api/v1/activities", wrapper.ListActivities)
 	router.GET(options.BaseURL+"/api/v1/activities/registrations/mine", wrapper.ListMyActivityRegistrations)
 	router.GET(options.BaseURL+"/api/v1/activities/:id", wrapper.GetActivity)
@@ -3105,6 +4402,44 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/publish", wrapper.PublishAdminActivity)
 	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/reject", wrapper.RejectAdminActivity)
 	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/submit-review", wrapper.SubmitAdminActivityReview)
+	router.GET(options.BaseURL+"/api/v1/carpool/trips", wrapper.ListCarpoolTrips)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips", wrapper.CreateCarpoolTrip)
+	router.GET(options.BaseURL+"/api/v1/carpool/trips/:id", wrapper.GetCarpoolTrip)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/cancel", wrapper.CancelCarpoolTrip)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/join", wrapper.JoinCarpoolTrip)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/leave", wrapper.LeaveCarpoolTrip)
+	router.GET(options.BaseURL+"/api/v1/errands", wrapper.ListErrands)
+	router.POST(options.BaseURL+"/api/v1/errands", wrapper.CreateErrand)
+	router.GET(options.BaseURL+"/api/v1/errands/mine", wrapper.ListMyErrands)
+	router.GET(options.BaseURL+"/api/v1/errands/:id", wrapper.GetErrand)
+	router.PATCH(options.BaseURL+"/api/v1/errands/:id", wrapper.UpdateErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/accept", wrapper.AcceptErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/cancel", wrapper.CancelErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/complete", wrapper.CompleteErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/deliver", wrapper.DeliverErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/pickup", wrapper.PickupErrand)
+	router.POST(options.BaseURL+"/api/v1/marketplace/listings", wrapper.CreateMarketplaceListing)
+	router.POST(options.BaseURL+"/api/v1/marketplace/listings/:id/submit", wrapper.SubmitMarketplaceListing)
+	router.POST(options.BaseURL+"/api/v1/marketplace/listings/:id/withdraw", wrapper.WithdrawMarketplaceListing)
+	router.POST(options.BaseURL+"/api/v1/marketplace/orders", wrapper.CreateMarketplaceOrder)
+	router.GET(options.BaseURL+"/api/v1/admin/notices", wrapper.ListAdminNotices)
+	router.POST(options.BaseURL+"/api/v1/admin/notices", wrapper.CreateNotice)
+	router.DELETE(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.DeleteNotice)
+	router.GET(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.GetAdminNotice)
+	router.PATCH(options.BaseURL+"/api/v1/admin/notices/:id", wrapper.UpdateNotice)
+	router.GET(options.BaseURL+"/api/v1/admin/notices/:id/deliveries", wrapper.ListNoticeDeliveries)
+	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/deliveries/retry", wrapper.RetryNoticeDeliveries)
+	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/publish", wrapper.PublishNotice)
+	router.POST(options.BaseURL+"/api/v1/admin/notices/:id/revoke", wrapper.RevokeNotice)
+	router.GET(options.BaseURL+"/api/v1/notices", wrapper.ListMyNotices)
+	router.PUT(options.BaseURL+"/api/v1/notices/read-all", wrapper.ReadAllNotices)
+	router.GET(options.BaseURL+"/api/v1/notices/unread-count", wrapper.GetUnreadNoticeCount)
+	router.GET(options.BaseURL+"/api/v1/notices/:id", wrapper.GetMyNotice)
+	router.PUT(options.BaseURL+"/api/v1/notices/:id/read", wrapper.ReadNotice)
+	router.GET(options.BaseURL+"/api/v1/orders", wrapper.ListMyTradeOrders)
+	router.GET(options.BaseURL+"/api/v1/orders/:id", wrapper.GetMyTradeOrder)
+	router.POST(options.BaseURL+"/api/v1/orders/:id/cancel", wrapper.CancelTradeOrder)
+	router.POST(options.BaseURL+"/api/v1/orders/:id/complete", wrapper.CompleteTradeOrder)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -3112,69 +4447,72 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"/wQAAP//",
+	"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",
+	"DRht2yWNV+qv1JXl+eV/BwAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

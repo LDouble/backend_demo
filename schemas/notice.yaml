@@ -48,11 +48,13 @@ entities:
       - {name: channel, type: string, size: 16, required: true}
       - {name: status, type: string, size: 16, required: true, index: true}
       - {name: attempts, type: int64, required: true}
+      - {name: locked_at, type: datetime}
       - {name: idempotency_key, type: string, size: 128, required: true, unique: true}
       - {name: provider_message_id, type: string, size: 128}
       - {name: last_error, type: string, size: 1000}
     indexes:
       - {name: idx_delivery_notice, fields: [notice_id, status]}
+      - {name: idx_delivery_lease, fields: [status, locked_at]}
     foreign_keys:
       - {field: notice_id, references: notices.id, on_delete: CASCADE}
   - name: OutboxEvent
@@ -70,15 +72,97 @@ entities:
     indexes:
       - {name: idx_outbox_dispatch, fields: [status, available_at, locked_at]}
 crud: [create, get, list, update, delete]
-permissions:
-  - {name: notice:manage, path: /api/v1/admin/notices, methods: [GET, POST]}
-  - {name: notice:manage_item, path: /api/v1/admin/notices/:id, methods: [GET, PATCH, DELETE]}
-  - {name: notice:publish, path: /api/v1/admin/notices/:id/publish, methods: [POST]}
-  - {name: notice:revoke, path: /api/v1/admin/notices/:id/revoke, methods: [POST]}
-  - {name: notice:deliveries, path: /api/v1/admin/notices/:id/deliveries, methods: [GET]}
-  - {name: notice:retry, path: /api/v1/admin/notices/:id/deliveries/retry, methods: [POST]}
-  - {name: notice:read, path: /api/v1/notices, methods: [GET]}
-  - {name: notice:read_item, path: /api/v1/notices/:id, methods: [GET]}
-  - {name: notice:mark_read, path: /api/v1/notices/:id/read, methods: [PUT]}
-  - {name: notice:read_all, path: /api/v1/notices/read-all, methods: [PUT]}
-  - {name: notice:unread, path: /api/v1/notices/unread-count, methods: [GET]}
+operations:
+  - operation_id: ListAdminNotices
+    method: GET
+    path: /api/v1/admin/notices
+    permission: notice:manage
+    summary: 管理端查询通知
+    query: &paging
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+  - operation_id: CreateNotice
+    method: POST
+    idempotency: required
+    path: /api/v1/admin/notices
+    permission: notice:manage
+    summary: 创建通知草稿
+    body: {ref: CreateNoticeRequest}
+    responses: [{status: 201, kind: success}]
+  - operation_id: GetAdminNotice
+    method: GET
+    path: /api/v1/admin/notices/{id}
+    permission: notice:manage_item
+    summary: 查询通知详情
+  - operation_id: UpdateNotice
+    method: PATCH
+    idempotency: required
+    path: /api/v1/admin/notices/{id}
+    permission: notice:manage_item
+    summary: 更新通知草稿
+    body: {ref: UpdateNoticeRequest}
+  - operation_id: DeleteNotice
+    method: DELETE
+    idempotency: required
+    path: /api/v1/admin/notices/{id}
+    permission: notice:manage_item
+    summary: 删除通知草稿
+    query: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]
+  - operation_id: PublishNotice
+    method: POST
+    idempotency: required
+    path: /api/v1/admin/notices/{id}/publish
+    permission: notice:publish
+    summary: 发布通知
+    body: {ref: PublishNoticeRequest}
+  - operation_id: RevokeNotice
+    method: POST
+    idempotency: required
+    path: /api/v1/admin/notices/{id}/revoke
+    permission: notice:revoke
+    summary: 撤回通知
+    body: {ref: VersionRequest}
+  - operation_id: ListNoticeDeliveries
+    method: GET
+    path: /api/v1/admin/notices/{id}/deliveries
+    permission: notice:deliveries
+    summary: 查询通知投递
+    query: *paging
+  - operation_id: RetryNoticeDeliveries
+    method: POST
+    idempotency: required
+    path: /api/v1/admin/notices/{id}/deliveries/retry
+    permission: notice:retry
+    summary: 重试失败投递
+  - operation_id: ListMyNotices
+    method: GET
+    path: /api/v1/notices
+    permission: notice:read
+    summary: 查询我的通知
+    query:
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+      - {name: unread, type: boolean}
+      - {name: category, type: string}
+  - operation_id: GetUnreadNoticeCount
+    method: GET
+    path: /api/v1/notices/unread-count
+    permission: notice:unread
+    summary: 查询未读数量
+  - operation_id: ReadAllNotices
+    method: PUT
+    idempotency: inherent
+    path: /api/v1/notices/read-all
+    permission: notice:read_all
+    summary: 全部标记已读
+  - operation_id: GetMyNotice
+    method: GET
+    path: /api/v1/notices/{id}
+    permission: notice:read_item
+    summary: 查询我的通知详情
+  - operation_id: ReadNotice
+    method: PUT
+    idempotency: inherent
+    path: /api/v1/notices/{id}/read
+    permission: notice:mark_read
+    summary: 标记通知已读

@@ -33,12 +33,24 @@ type RoleGuard interface {
 
 // Service manages users.
 type Service struct {
-	repo  Repository
-	guard RoleGuard
+	repo    Repository
+	guard   RoleGuard
+	revoker SessionRevoker
+}
+
+// SessionRevoker invalidates every active session for a security-sensitive user change.
+type SessionRevoker interface {
+	RevokeUser(context.Context, uint64) error
 }
 
 // NewService creates a user service.
 func NewService(repo Repository, guard RoleGuard) *Service { return &Service{repo: repo, guard: guard} }
+
+// WithSessionRevoker attaches authentication session invalidation.
+func (s *Service) WithSessionRevoker(revoker SessionRevoker) *Service {
+	s.revoker = revoker
+	return s
+}
 
 // HashPassword validates and hashes a password.
 func HashPassword(password string) (string, error) {
@@ -67,7 +79,7 @@ func (s *Service) Create(ctx context.Context, username, password string) (*model
 	if err != nil {
 		return nil, err
 	}
-	u := &model.User{Username: username, PasswordHash: hash, Status: model.UserActive}
+	u := &model.User{Username: username, PasswordHash: hash, Status: model.UserActive, SessionVersion: 1}
 	if err := s.repo.Create(ctx, u); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, apperror.New(http.StatusConflict, "username_exists", "用户名已存在")
@@ -125,9 +137,15 @@ func (s *Service) Update(ctx context.Context, id uint64, username, password *str
 			return nil, e
 		}
 		u.PasswordHash = hash
+		u.SessionVersion++
 	}
 	if err := s.repo.Update(ctx, u); err != nil {
 		return nil, fmt.Errorf("update user: %w", err)
+	}
+	if password != nil && s.revoker != nil {
+		if err := s.revoker.RevokeUser(ctx, id); err != nil {
+			return nil, err
+		}
 	}
 	return u, nil
 }
@@ -142,6 +160,21 @@ func (s *Service) SetStatus(ctx context.Context, id uint64, status string) (*mod
 		return nil, err
 	}
 	if status == model.UserDisabled && s.guard != nil {
+		if disabler, ok := s.guard.(interface {
+			DisableUser(context.Context, uint64) error
+		}); ok {
+			if err = disabler.DisableUser(ctx, id); err != nil {
+				return nil, err
+			}
+			u.Status = status
+			u.SessionVersion++
+			if s.revoker != nil {
+				if err = s.revoker.RevokeUser(ctx, id); err != nil {
+					return nil, err
+				}
+			}
+			return u, nil
+		}
 		ok, e := s.guard.CanDisable(ctx, id)
 		if e != nil {
 			return nil, e
@@ -151,8 +184,14 @@ func (s *Service) SetStatus(ctx context.Context, id uint64, status string) (*mod
 		}
 	}
 	u.Status = status
+	u.SessionVersion++
 	if err := s.repo.Update(ctx, u); err != nil {
 		return nil, fmt.Errorf("update status: %w", err)
+	}
+	if status == model.UserDisabled && s.revoker != nil {
+		if err := s.revoker.RevokeUser(ctx, id); err != nil {
+			return nil, err
+		}
 	}
 	return u, nil
 }

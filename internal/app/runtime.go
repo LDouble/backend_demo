@@ -60,7 +60,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		_ = log.Sync()
 		return nil, err
 	}
-	rdb, err := redisclient.Open(ctx, cfg.Redis.Address, cfg.Redis.Password, cfg.Redis.DB)
+	rdb, err := redisclient.Open(ctx, cfg.Redis, cfg.Redis.DB)
 	if err != nil {
 		_ = log.Sync()
 		return nil, err
@@ -71,13 +71,14 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	userService := user.NewService(userRepo, permissionService)
+	permissionService.WithLogger(log)
 	cipher, err := configcenter.NewCipher(cfg.Secret.ConfigKey)
 	if err != nil {
 		return nil, err
 	}
 	configService := configcenter.NewService(mysql.NewConfigRepository(db), cipher)
 	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
+	userService := user.NewService(userRepo, permissionService).WithSessionRevoker(authService)
 	noticeService := noticeinfra.NewManager(db, nil)
 	activityService := activityinfra.NewManager(db, cipher)
 	marketplaceService := marketplaceinfra.NewManager(db, cipher)
@@ -89,6 +90,9 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		return nil, fmt.Errorf("get sql db: %w", err)
 	}
 	h := httpapi.New(authService, userService, permissionService, configService, sqlDB.PingContext, func(c context.Context) error { return rdb.Ping(c).Err() }, log).
+		WithDatabase(db).
+		WithRequestLimits(cfg.Server.MaxBodyBytes, cfg.Server.MaxHeaderBytes).
+		WithAuthLimiter(redisclient.NewAuthLimiter(rdb, cfg.Environment == "production")).
 		WithNotices(noticeService).
 		WithActivities(activityService).
 		WithMarketplace(marketplaceService).
@@ -99,12 +103,16 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	permissionService.StartSync(ctx, redisclient.NewPolicyNotifier(rdb))
 	return &Runtime{Config: cfg, DB: db, Redis: rdb, Logger: log, Router: router, Users: userService, Permissions: permissionService, Notices: noticeService, Activities: activityService, Marketplace: marketplaceService, Errands: errandService, Carpools: carpoolService, Trades: tradeService}, nil
 }
 
 // Close releases runtime resources.
 func (r *Runtime) Close() error {
 	var first error
+	if r.Permissions != nil {
+		r.Permissions.StopSync()
+	}
 	if r.Redis != nil {
 		if err := r.Redis.Close(); err != nil {
 			first = err

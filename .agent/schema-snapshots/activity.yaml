@@ -1,0 +1,676 @@
+version: 2
+module: activity
+entity:
+    name: Activity
+    table: activities
+    primary: true
+    fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: summary
+          type: string
+          required: true
+          size: 500
+        - name: body
+          type: text
+          required: true
+        - name: location
+          type: string
+          required: true
+          size: 500
+        - name: signup_start_at
+          type: datetime
+          required: true
+          index: true
+        - name: signup_end_at
+          type: datetime
+          required: true
+          index: true
+        - name: start_at
+          type: datetime
+          required: true
+          index: true
+        - name: end_at
+          type: datetime
+          required: true
+          index: true
+        - name: capacity
+          type: int64
+          required: true
+        - name: registered_count
+          type: int64
+          required: true
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_comment
+          type: string
+          required: false
+          size: 500
+        - name: contact_type
+          type: string
+          required: true
+          size: 16
+        - name: contact_ciphertext
+          type: string
+          required: true
+          size: 4096
+        - name: created_by
+          type: uint64
+          required: true
+          index: true
+        - name: updated_by
+          type: uint64
+          required: true
+          index: true
+        - name: version
+          type: uint64
+          required: true
+    indexes:
+        - name: idx_activity_public_list
+          fields:
+            - status
+            - review_status
+            - start_at
+        - name: idx_activity_admin_list
+          fields:
+            - status
+            - review_status
+            - start_at
+entities:
+    - name: Activity
+      table: activities
+      primary: true
+      fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: summary
+          type: string
+          required: true
+          size: 500
+        - name: body
+          type: text
+          required: true
+        - name: location
+          type: string
+          required: true
+          size: 500
+        - name: signup_start_at
+          type: datetime
+          required: true
+          index: true
+        - name: signup_end_at
+          type: datetime
+          required: true
+          index: true
+        - name: start_at
+          type: datetime
+          required: true
+          index: true
+        - name: end_at
+          type: datetime
+          required: true
+          index: true
+        - name: capacity
+          type: int64
+          required: true
+        - name: registered_count
+          type: int64
+          required: true
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_comment
+          type: string
+          required: false
+          size: 500
+        - name: contact_type
+          type: string
+          required: true
+          size: 16
+        - name: contact_ciphertext
+          type: string
+          required: true
+          size: 4096
+        - name: created_by
+          type: uint64
+          required: true
+          index: true
+        - name: updated_by
+          type: uint64
+          required: true
+          index: true
+        - name: version
+          type: uint64
+          required: true
+      indexes:
+        - name: idx_activity_public_list
+          fields:
+            - status
+            - review_status
+            - start_at
+        - name: idx_activity_admin_list
+          fields:
+            - status
+            - review_status
+            - start_at
+    - name: ActivityRegistration
+      table: activity_registrations
+      fields:
+        - name: activity_id
+          type: uint64
+          required: true
+        - name: user_id
+          type: uint64
+          required: true
+        - name: status
+          type: string
+          required: true
+          size: 16
+          index: true
+        - name: registered_at
+          type: datetime
+          required: true
+        - name: cancelled_at
+          type: datetime
+          required: false
+        - name: idempotency_key
+          type: string
+          required: true
+          size: 128
+        - name: version
+          type: uint64
+          required: true
+      indexes:
+        - name: uk_activity_registration_user
+          fields:
+            - activity_id
+            - user_id
+          unique: true
+        - name: uk_activity_registration_idempotency
+          fields:
+            - activity_id
+            - user_id
+            - idempotency_key
+          unique: true
+        - name: idx_activity_registration_user
+          fields:
+            - user_id
+            - status
+            - registered_at
+      foreign_keys:
+        - field: activity_id
+          references: activities.id
+          on_delete: CASCADE
+crud:
+    - create
+    - get
+    - list
+    - update
+permissions:
+    - name: activity:admin_approve
+      path: /api/v1/admin/activities/:id/approve
+      methods:
+        - POST
+    - name: activity:admin_cancel
+      path: /api/v1/admin/activities/:id/cancel
+      methods:
+        - POST
+    - name: activity:admin_create
+      path: /api/v1/admin/activities
+      methods:
+        - POST
+    - name: activity:admin_finish
+      path: /api/v1/admin/activities/:id/finish
+      methods:
+        - POST
+    - name: activity:admin_list
+      path: /api/v1/admin/activities
+      methods:
+        - GET
+    - name: activity:admin_publish
+      path: /api/v1/admin/activities/:id/publish
+      methods:
+        - POST
+    - name: activity:admin_read
+      path: /api/v1/admin/activities/:id
+      methods:
+        - GET
+    - name: activity:admin_reject
+      path: /api/v1/admin/activities/:id/reject
+      methods:
+        - POST
+    - name: activity:admin_submit_review
+      path: /api/v1/admin/activities/:id/submit-review
+      methods:
+        - POST
+    - name: activity:admin_update
+      path: /api/v1/admin/activities/:id
+      methods:
+        - PATCH
+    - name: activity:list
+      path: /api/v1/activities
+      methods:
+        - GET
+    - name: activity:read
+      path: /api/v1/activities/:id
+      methods:
+        - GET
+    - name: activity:register
+      path: /api/v1/activities/:id/registrations
+      methods:
+        - POST
+    - name: activity:registration_cancel
+      path: /api/v1/activities/:id/registrations/me
+      methods:
+        - DELETE
+    - name: activity:registration_mine
+      path: /api/v1/activities/registrations/mine
+      methods:
+        - GET
+operations:
+    - operation_id: ListActivities
+      method: GET
+      path: /api/v1/activities
+      permission: activity:list
+      summary: 用户侧浏览已发布活动
+      query:
+        - name: keyword
+          type: string
+        - name: start_date
+          type: string
+          format: date
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: ListMyActivityRegistrations
+      method: GET
+      path: /api/v1/activities/registrations/mine
+      permission: activity:registration_mine
+      summary: 查看我的活动报名
+      query:
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: GetActivity
+      method: GET
+      path: /api/v1/activities/{id}
+      permission: activity:read
+      summary: 用户侧查看活动详情
+      responses:
+        - status: 200
+          kind: success
+        - status: 404
+          kind: error
+    - operation_id: CreateActivityRegistration
+      method: POST
+      path: /api/v1/activities/{id}/registrations
+      permission: activity:register
+      idempotency: required
+      summary: 报名活动
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      responses:
+        - status: 201
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: CancelMyActivityRegistration
+      method: DELETE
+      path: /api/v1/activities/{id}/registrations/me
+      permission: activity:registration_cancel
+      idempotency: required
+      summary: 取消我的活动报名
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: ListAdminActivities
+      method: GET
+      path: /api/v1/admin/activities
+      permission: activity:admin_list
+      summary: 管理端查询活动列表
+      query:
+        - name: keyword
+          type: string
+        - name: status
+          type: string
+        - name: review_status
+          type: string
+        - name: start_date
+          type: string
+          format: date
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: CreateAdminActivity
+      method: POST
+      path: /api/v1/admin/activities
+      permission: activity:admin_create
+      idempotency: required
+      summary: 管理端创建活动草稿
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: title
+              type: string
+              required: true
+            - name: summary
+              type: string
+              required: true
+            - name: body
+              type: string
+              required: true
+            - name: location
+              type: string
+              required: true
+            - name: signup_start_at
+              type: string
+              required: true
+              format: date-time
+            - name: signup_end_at
+              type: string
+              required: true
+              format: date-time
+            - name: start_at
+              type: string
+              required: true
+              format: date-time
+            - name: end_at
+              type: string
+              required: true
+              format: date-time
+            - name: capacity
+              type: integer
+              required: true
+              format: int64
+              minimum: 1
+            - name: contact_type
+              type: string
+              required: true
+            - name: contact
+              type: string
+              required: true
+      responses:
+        - status: 201
+          kind: success
+        - status: 400
+          kind: error
+    - operation_id: GetAdminActivity
+      method: GET
+      path: /api/v1/admin/activities/{id}
+      permission: activity:admin_read
+      summary: 管理端查看活动详情
+      responses:
+        - status: 200
+          kind: success
+        - status: 404
+          kind: error
+    - operation_id: UpdateAdminActivity
+      method: PATCH
+      path: /api/v1/admin/activities/{id}
+      permission: activity:admin_update
+      idempotency: required
+      summary: 管理端修改活动草稿
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: title
+              type: string
+              required: true
+            - name: summary
+              type: string
+              required: true
+            - name: body
+              type: string
+              required: true
+            - name: location
+              type: string
+              required: true
+            - name: signup_start_at
+              type: string
+              required: true
+              format: date-time
+            - name: signup_end_at
+              type: string
+              required: true
+              format: date-time
+            - name: start_at
+              type: string
+              required: true
+              format: date-time
+            - name: end_at
+              type: string
+              required: true
+              format: date-time
+            - name: capacity
+              type: integer
+              required: true
+              format: int64
+              minimum: 1
+            - name: contact_type
+              type: string
+            - name: contact
+              type: string
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: ApproveAdminActivity
+      method: POST
+      path: /api/v1/admin/activities/{id}/approve
+      permission: activity:admin_approve
+      idempotency: required
+      summary: 审核通过活动
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+            - name: review_comment
+              type: string
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: CancelAdminActivity
+      method: POST
+      path: /api/v1/admin/activities/{id}/cancel
+      permission: activity:admin_cancel
+      idempotency: required
+      summary: 取消活动
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: FinishAdminActivity
+      method: POST
+      path: /api/v1/admin/activities/{id}/finish
+      permission: activity:admin_finish
+      idempotency: required
+      summary: 结束活动
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: PublishAdminActivity
+      method: POST
+      path: /api/v1/admin/activities/{id}/publish
+      permission: activity:admin_publish
+      idempotency: required
+      summary: 发布活动
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: RejectAdminActivity
+      method: POST
+      path: /api/v1/admin/activities/{id}/reject
+      permission: activity:admin_reject
+      idempotency: required
+      summary: 驳回活动审核
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+            - name: review_comment
+              type: string
+              required: true
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: SubmitAdminActivityReview
+      method: POST
+      path: /api/v1/admin/activities/{id}/submit-review
+      permission: activity:admin_submit_review
+      idempotency: required
+      summary: 提交活动审核
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error

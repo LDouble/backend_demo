@@ -9,21 +9,31 @@ import (
 )
 
 // ListMyTradeOrders adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ListMyTradeOrders(c *gin.Context, _ generated.ListMyTradeOrdersParams) {
+func (h *Handler) ListMyTradeOrders(c *gin.Context, params generated.ListMyTradeOrdersParams) {
+	setGeneratedParams(c, "ListMyTradeOrders", params)
 	h.listMyTradeOrders(c)
 }
 
 // GetMyTradeOrder adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) GetMyTradeOrder(c *gin.Context, _ uint64) {
+func (h *Handler) GetMyTradeOrder(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
 	h.getMyTradeOrder(c)
 }
 
 // CancelTradeOrder adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CancelTradeOrder(c *gin.Context, _ uint64) {
-	h.cancelTradeOrder(c)
+func (h *Handler) CancelTradeOrder(c *gin.Context, id uint64, params generated.CancelTradeOrderParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CancelTradeOrder", params)
+	h.idempotent(c, "CancelTradeOrder", func() {
+		h.cancelTradeOrder(c)
+	})
 }
 
 // CompleteTradeOrder adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CompleteTradeOrder(c *gin.Context, _ uint64) {
-	h.completeTradeOrder(c)
+func (h *Handler) CompleteTradeOrder(c *gin.Context, id uint64, params generated.CompleteTradeOrderParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CompleteTradeOrder", params)
+	h.idempotent(c, "CompleteTradeOrder", func() {
+		h.completeTradeOrder(c)
+	})
 }

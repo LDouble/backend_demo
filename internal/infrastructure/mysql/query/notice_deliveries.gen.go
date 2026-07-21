@@ -34,6 +34,7 @@ func newNoticeDelivery(db *gorm.DB, opts ...gen.DOOption) noticeDelivery {
 	_noticeDelivery.Channel = field.NewString(tableName, "channel")
 	_noticeDelivery.Status = field.NewString(tableName, "status")
 	_noticeDelivery.Attempts = field.NewInt64(tableName, "attempts")
+	_noticeDelivery.LockedAt = field.NewTime(tableName, "locked_at")
 	_noticeDelivery.IdempotencyKey = field.NewString(tableName, "idempotency_key")
 	_noticeDelivery.ProviderMessageId = field.NewString(tableName, "provider_message_id")
 	_noticeDelivery.LastError = field.NewString(tableName, "last_error")
@@ -55,6 +56,7 @@ type noticeDelivery struct {
 	Channel           field.String
 	Status            field.String
 	Attempts          field.Int64
+	LockedAt          field.Time
 	IdempotencyKey    field.String
 	ProviderMessageId field.String
 	LastError         field.String
@@ -82,6 +84,7 @@ func (n *noticeDelivery) updateTableName(table string) *noticeDelivery {
 	n.Channel = field.NewString(table, "channel")
 	n.Status = field.NewString(table, "status")
 	n.Attempts = field.NewInt64(table, "attempts")
+	n.LockedAt = field.NewTime(table, "locked_at")
 	n.IdempotencyKey = field.NewString(table, "idempotency_key")
 	n.ProviderMessageId = field.NewString(table, "provider_message_id")
 	n.LastError = field.NewString(table, "last_error")
@@ -115,13 +118,14 @@ func (n *noticeDelivery) GetFieldByName(fieldName string) (field.OrderExpr, bool
 }
 
 func (n *noticeDelivery) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 11)
+	n.fieldMap = make(map[string]field.Expr, 12)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["notice_id"] = n.NoticeId
 	n.fieldMap["user_id"] = n.UserId
 	n.fieldMap["channel"] = n.Channel
 	n.fieldMap["status"] = n.Status
 	n.fieldMap["attempts"] = n.Attempts
+	n.fieldMap["locked_at"] = n.LockedAt
 	n.fieldMap["idempotency_key"] = n.IdempotencyKey
 	n.fieldMap["provider_message_id"] = n.ProviderMessageId
 	n.fieldMap["last_error"] = n.LastError

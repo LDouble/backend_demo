@@ -45,6 +45,7 @@ operations:
   - operation_id: CreateMarketplaceListing
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/marketplace/listings
     permission: marketplace:create
     summary: 创建二手商品草稿
@@ -60,6 +61,7 @@ operations:
   - operation_id: SubmitMarketplaceListing
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/marketplace/listings/{id}/submit
     permission: marketplace:submit
     summary: 提交商品审核
@@ -68,6 +70,7 @@ operations:
   - operation_id: WithdrawMarketplaceListing
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/marketplace/listings/{id}/withdraw
     permission: marketplace:withdraw
     summary: 撤回商品
@@ -75,6 +78,7 @@ operations:
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: CreateMarketplaceOrder
     method: POST
+    idempotency: required
     path: /api/v1/marketplace/orders
     permission: marketplace:order_create
     summary: 原子保留商品并创建订单

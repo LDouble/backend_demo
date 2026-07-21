@@ -9,51 +9,81 @@ import (
 )
 
 // ListErrands adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ListErrands(c *gin.Context, _ generated.ListErrandsParams) {
+func (h *Handler) ListErrands(c *gin.Context, params generated.ListErrandsParams) {
+	setGeneratedParams(c, "ListErrands", params)
 	h.listErrands(c)
 }
 
 // CreateErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CreateErrand(c *gin.Context) {
-	h.createErrand(c)
+func (h *Handler) CreateErrand(c *gin.Context, params generated.CreateErrandParams) {
+	setGeneratedParams(c, "CreateErrand", params)
+	h.idempotent(c, "CreateErrand", func() {
+		h.createErrand(c)
+	})
 }
 
 // ListMyErrands adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ListMyErrands(c *gin.Context, _ generated.ListMyErrandsParams) {
+func (h *Handler) ListMyErrands(c *gin.Context, params generated.ListMyErrandsParams) {
+	setGeneratedParams(c, "ListMyErrands", params)
 	h.listMyErrands(c)
 }
 
 // GetErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) GetErrand(c *gin.Context, _ uint64) {
+func (h *Handler) GetErrand(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
 	h.getErrand(c)
 }
 
 // UpdateErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) UpdateErrand(c *gin.Context, _ uint64) {
-	h.updateErrand(c)
+func (h *Handler) UpdateErrand(c *gin.Context, id uint64, params generated.UpdateErrandParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "UpdateErrand", params)
+	h.idempotent(c, "UpdateErrand", func() {
+		h.updateErrand(c)
+	})
 }
 
 // AcceptErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) AcceptErrand(c *gin.Context, _ uint64, _ generated.AcceptErrandParams) {
-	h.acceptErrand(c)
+func (h *Handler) AcceptErrand(c *gin.Context, id uint64, params generated.AcceptErrandParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "AcceptErrand", params)
+	h.idempotent(c, "AcceptErrand", func() {
+		h.acceptErrand(c)
+	})
 }
 
 // CancelErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CancelErrand(c *gin.Context, _ uint64) {
-	h.cancelErrand(c)
+func (h *Handler) CancelErrand(c *gin.Context, id uint64, params generated.CancelErrandParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CancelErrand", params)
+	h.idempotent(c, "CancelErrand", func() {
+		h.cancelErrand(c)
+	})
 }
 
 // CompleteErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CompleteErrand(c *gin.Context, _ uint64) {
-	h.completeErrand(c)
+func (h *Handler) CompleteErrand(c *gin.Context, id uint64, params generated.CompleteErrandParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CompleteErrand", params)
+	h.idempotent(c, "CompleteErrand", func() {
+		h.completeErrand(c)
+	})
 }
 
 // DeliverErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) DeliverErrand(c *gin.Context, _ uint64) {
-	h.deliverErrand(c)
+func (h *Handler) DeliverErrand(c *gin.Context, id uint64, params generated.DeliverErrandParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "DeliverErrand", params)
+	h.idempotent(c, "DeliverErrand", func() {
+		h.deliverErrand(c)
+	})
 }
 
 // PickupErrand adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) PickupErrand(c *gin.Context, _ uint64) {
-	h.pickupErrand(c)
+func (h *Handler) PickupErrand(c *gin.Context, id uint64, params generated.PickupErrandParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "PickupErrand", params)
+	h.idempotent(c, "PickupErrand", func() {
+		h.pickupErrand(c)
+	})
 }

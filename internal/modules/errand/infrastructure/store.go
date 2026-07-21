@@ -13,6 +13,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/privacy"
 	"github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
@@ -38,7 +39,7 @@ func NewStore(db *gorm.DB, ciphers ...*configcenter.Cipher) *Store {
 // Create inserts a new errand task and encrypts its contact details.
 func (s *Store) Create(ctx context.Context, requester uint64, input domain.TaskInput) (*domain.Task, error) {
 	task := &domain.Task{Title: strings.TrimSpace(input.Title), Description: strings.TrimSpace(input.Description), RewardCents: input.RewardCents, Currency: domain.CurrencyCNY, PickupLocation: strings.TrimSpace(input.PickupLocation), DropoffLocation: strings.TrimSpace(input.DropoffLocation), Deadline: input.Deadline.UTC(), Status: domain.TaskOpen, RequesterId: requester, ContactType: strings.TrimSpace(input.Contact.Type), Version: 1}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(task).Error; err != nil {
 			return err
 		}
@@ -58,14 +59,14 @@ func (s *Store) Create(ctx context.Context, requester uint64, input domain.TaskI
 // Get returns one task by ID.
 func (s *Store) Get(ctx context.Context, id uint64) (*domain.Task, error) {
 	var task domain.Task
-	err := s.db.WithContext(ctx).First(&task, id).Error
+	err := idempotency.DB(ctx, s.db).First(&task, id).Error
 	return &task, taskNotFound(err)
 }
 
 // ListOpen returns currently open tasks before their deadlines.
 func (s *Store) ListOpen(ctx context.Context, page, size int, now time.Time) ([]domain.Task, int64, error) {
 	var rows []domain.Task
-	base := s.db.WithContext(ctx).Model(&domain.Task{}).Where("status = ? AND deadline > ?", domain.TaskOpen, now)
+	base := idempotency.DB(ctx, s.db).Model(&domain.Task{}).Where("status = ? AND deadline > ?", domain.TaskOpen, now)
 	var total int64
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -77,7 +78,7 @@ func (s *Store) ListOpen(ctx context.Context, page, size int, now time.Time) ([]
 // ListMine returns tasks related to the supplied user.
 func (s *Store) ListMine(ctx context.Context, user uint64, page, size int) ([]domain.Task, int64, error) {
 	var rows []domain.Task
-	base := s.db.WithContext(ctx).Model(&domain.Task{}).Where("requester_id = ? OR runner_id = ?", user, user)
+	base := idempotency.DB(ctx, s.db).Model(&domain.Task{}).Where("requester_id = ? OR runner_id = ?", user, user)
 	var total int64
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -150,7 +151,7 @@ func (s *Store) Accept(ctx context.Context, id, runner, version uint64, key stri
 	}
 	var task domain.Task
 	var order tradedomain.Order
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&task, id).Error; err != nil {
 			return taskNotFound(err)
 		}
@@ -251,11 +252,11 @@ func (s *Store) Cancel(ctx context.Context, id, actor, version uint64, now time.
 // CompleteOrder completes the order associated with a task.
 func (s *Store) CompleteOrder(ctx context.Context, orderID, actor, version uint64, now time.Time) (*tradedomain.Order, error) {
 	var task domain.Task
-	if err := s.db.WithContext(ctx).Where("trade_order_id = ?", orderID).First(&task).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).Where("trade_order_id = ?", orderID).First(&task).Error; err != nil {
 		return nil, taskNotFound(err)
 	}
 	var order tradedomain.Order
-	if err := s.db.WithContext(ctx).First(&order, orderID).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).First(&order, orderID).Error; err != nil {
 		return nil, err
 	}
 	if order.Version != version {
@@ -268,11 +269,11 @@ func (s *Store) CompleteOrder(ctx context.Context, orderID, actor, version uint6
 // CancelOrder cancels the order associated with a task.
 func (s *Store) CancelOrder(ctx context.Context, orderID, actor, version uint64, now time.Time) (*tradedomain.Order, error) {
 	var task domain.Task
-	if err := s.db.WithContext(ctx).Where("trade_order_id = ?", orderID).First(&task).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).Where("trade_order_id = ?", orderID).First(&task).Error; err != nil {
 		return nil, taskNotFound(err)
 	}
 	var order tradedomain.Order
-	if err := s.db.WithContext(ctx).First(&order, orderID).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).First(&order, orderID).Error; err != nil {
 		return nil, err
 	}
 	if order.Version != version {
@@ -284,7 +285,7 @@ func (s *Store) CancelOrder(ctx context.Context, orderID, actor, version uint64,
 func (s *Store) finish(ctx context.Context, id, actor, version uint64, target string, now time.Time) (*domain.Task, *tradedomain.Order, error) {
 	var task domain.Task
 	var order tradedomain.Order
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&task, id).Error; err != nil {
 			return taskNotFound(err)
 		}
@@ -347,7 +348,7 @@ func (s *Store) finish(ctx context.Context, id, actor, version uint64, target st
 }
 func (s *Store) mutate(ctx context.Context, id, requester, version uint64, status string, fn func(*gorm.DB, *domain.Task) error) (*domain.Task, error) {
 	var task domain.Task
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&task, id).Error; err != nil {
 			return taskNotFound(err)
 		}
@@ -383,10 +384,6 @@ func taskEvent(tx *gorm.DB, task *domain.Task, kind, key string) error {
 }
 func orderEvent(tx *gorm.DB, order *tradedomain.Order, kind, key string) error {
 	return domainevent.WriteWithKey(tx, "order", order.ID, kind, key, order)
-}
-// event is retained for legacy callers and forwards to the shared domainevent helper.
-func event(tx *gorm.DB, aggregate string, id uint64, kind, key string, payload any) error {
-	return domainevent.WriteWithKey(tx, aggregate, id, kind, key, payload)
 }
 func taskNotFound(err error) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {

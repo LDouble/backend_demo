@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"gopkg.in/yaml.v3"
 )
 
 func TestGenerateDeterministicPreservesRulesAndDetectsDrift(t *testing.T) {
@@ -62,7 +63,6 @@ func TestGeneratedArtifacts(t *testing.T) {
 		"internal/modules/activity/domain/entity.gen.go",
 		"internal/modules/activity/infrastructure/repository.gen.go",
 		"api/modules/activity.yaml",
-		"migrations/modules/activity.up.sql",
 		"permissions/modules/activity.json",
 		".agent/modules.json",
 		"internal/infrastructure/mysql/generator/modules.gen.go",
@@ -88,12 +88,8 @@ func TestGeneratedArtifacts(t *testing.T) {
 	if err != nil || len(modules) != 1 || modules[0].Name != "activity" {
 		t.Fatalf("ListModules() = %#v, %v", modules, err)
 	}
-	migration, err := os.ReadFile(filepath.Join(root, "migrations/modules/activity.up.sql"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(migration), "BIGINT UNSIGNED") || !strings.Contains(string(migration), "idx_activities_title") {
-		t.Fatalf("unexpected migration:\n%s", migration)
+	if _, err := os.Stat(filepath.Join(root, "migrations/modules/activity.up.sql")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("ordinary generation created a migration draft: %v", err)
 	}
 }
 
@@ -109,19 +105,6 @@ func TestGenerateV2MultipleEntitiesAndDependencies(t *testing.T) {
 	for _, name := range []string{"notices.gen.go", "notice_recipients.gen.go"} {
 		if _, err := os.Stat(filepath.Join(root, "internal/modules/notice/domain", name)); err != nil {
 			t.Fatalf("generated entity %s: %v", name, err)
-		}
-	}
-	migration, err := os.ReadFile(filepath.Join(root, "migrations/modules/notice.up.sql"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(migration)
-	if strings.Index(text, "CREATE TABLE notices") > strings.Index(text, "CREATE TABLE notice_recipients") {
-		t.Fatal("primary table must be generated before dependent table")
-	}
-	for _, expected := range []string{"UNIQUE KEY uk_notice_recipient (notice_id, user_id)", "REFERENCES notices(id) ON DELETE CASCADE", "idx_notices_title"} {
-		if !strings.Contains(text, expected) {
-			t.Fatalf("migration missing %q:\n%s", expected, text)
 		}
 	}
 	registration, err := os.ReadFile(filepath.Join(root, "internal/infrastructure/mysql/generator/modules.gen.go"))
@@ -170,4 +153,82 @@ func TestListModulesMissingAndInvalid(t *testing.T) {
 	if _, err = ListModules(ctx, root); !errors.Is(err, context.Canceled) {
 		t.Fatalf("ListModules(cancelled) error = %v", err)
 	}
+}
+
+func TestDiscoverModulesDetectsDeletedSchemaAsStale(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "schemas"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	data, err := yaml.Marshal(validSchema())
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemaPath := filepath.Join(root, "schemas", "activity.yaml")
+	if err = os.WriteFile(schemaPath, data, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	modules, err := DiscoverModules(context.Background(), root)
+	if err != nil || len(modules) != 1 {
+		t.Fatalf("discovered=%v err=%v", modules, err)
+	}
+	if err = SyncModuleRegistry(context.Background(), root, modules, false); err != nil {
+		t.Fatal(err)
+	}
+	if err = SyncModuleRegistry(context.Background(), root, modules, true); err != nil {
+		t.Fatal(err)
+	}
+	global, err := GlobalManagedFiles(context.Background(), root, modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(global, "api/openapi.yaml") || !containsString(global, "internal/infrastructure/mysql/query/activities.gen.go") {
+		t.Fatalf("global managed files=%v", global)
+	}
+	result, err := Generate(context.Background(), validSchema(), Options{Root: root, Source: modules[0].Schema})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = ReconcileManagedFiles(context.Background(), root, result.Managed, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Remove(schemaPath); err != nil {
+		t.Fatal(err)
+	}
+	modules, err = DiscoverModules(context.Background(), root)
+	if err != nil || len(modules) != 0 {
+		t.Fatalf("after deletion discovered=%v err=%v", modules, err)
+	}
+	stale, err := FindStaleManagedFiles(root, []string{".agent/modules.json"})
+	if err != nil || len(stale) == 0 {
+		t.Fatalf("stale=%v err=%v", stale, err)
+	}
+}
+
+func TestDiscoverModulesRejectsDuplicateDeclarations(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "schemas"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	data, err := yaml.Marshal(validSchema())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"first.yaml", "second.yaml"} {
+		if err = os.WriteFile(filepath.Join(root, "schemas", name), data, 0o640); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err = DiscoverModules(context.Background(), root); err == nil || !strings.Contains(err.Error(), "declared by both") {
+		t.Fatalf("duplicate discovery error=%v", err)
+	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }

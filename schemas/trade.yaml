@@ -64,6 +64,7 @@ operations:
   - operation_id: CancelTradeOrder
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/orders/{id}/cancel
     permission: trade:cancel
     summary: 取消交易订单
@@ -72,6 +73,7 @@ operations:
   - operation_id: CompleteTradeOrder
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
+    idempotency: required
     path: /api/v1/orders/{id}/complete
     permission: trade:complete
     summary: 确认交易完成

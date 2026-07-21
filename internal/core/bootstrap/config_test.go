@@ -56,11 +56,34 @@ func TestLoadDefaultsAndOverrides(t *testing.T) {
 	setRequired(t)
 	t.Setenv("CAMPUS_SERVER_ADDRESS", ":9090")
 	t.Setenv("CAMPUS_REDIS_DB", "2")
+	t.Setenv("CAMPUS_SERVER_MAX_BODY_BYTES", "2048")
+	t.Setenv("CAMPUS_SERVER_MAX_HEADER_BYTES", "4096")
 	cfg, err := Load(filepath.Join(t.TempDir(), "missing.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Server.Address != ":9090" || cfg.Redis.DB != 2 || cfg.JWT.Issuer != "campus-platform" {
+	if cfg.Server.Address != ":9090" || cfg.Server.MaxBodyBytes != 2048 || cfg.Server.MaxHeaderBytes != 4096 || cfg.Redis.DB != 2 || cfg.JWT.Issuer != "campus-platform" {
+		t.Fatalf("cfg=%+v", cfg)
+	}
+}
+
+func TestLoadProductionRedisTLSValidation(t *testing.T) {
+	setRequired(t)
+	t.Setenv("CAMPUS_ENV", "production")
+	if _, err := Load(""); err == nil {
+		t.Fatal("production accepted plaintext Redis")
+	}
+	t.Setenv("CAMPUS_REDIS_TLS", "true")
+	t.Setenv("CAMPUS_REDIS_CLIENT_CERT_FILE", "client.pem")
+	if _, err := Load(""); err == nil {
+		t.Fatal("accepted client certificate without key")
+	}
+	t.Setenv("CAMPUS_REDIS_CLIENT_KEY_FILE", "client.key")
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Redis.TLS || cfg.Environment != "production" {
 		t.Fatalf("cfg=%+v", cfg)
 	}
 }

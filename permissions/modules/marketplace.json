@@ -17,14 +17,14 @@
     },
     {
       "name": "marketplace:submit",
-      "path_pattern": "/api/v1/marketplace/listings/{id}/submit",
+      "path_pattern": "/api/v1/marketplace/listings/:id/submit",
       "methods": [
         "POST"
       ]
     },
     {
       "name": "marketplace:withdraw",
-      "path_pattern": "/api/v1/marketplace/listings/{id}/withdraw",
+      "path_pattern": "/api/v1/marketplace/listings/:id/withdraw",
       "methods": [
         "POST"
       ]

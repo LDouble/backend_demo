@@ -69,12 +69,17 @@ func (h *Handler) getAdminNotice(c *gin.Context) {
 	success(c, 200, gin.H{"notice": noticeViewOf(notice), "audience": audienceViewOf(audience)})
 }
 
-func (h *Handler) deleteNotice(c *gin.Context, expected uint64) {
+func (h *Handler) deleteNotice(c *gin.Context) {
 	id, ok := idParam(c)
 	if !ok {
 		return
 	}
-	if err := h.notices.Delete(c.Request.Context(), id, expected); err != nil {
+	params, ok := generatedParams[generated.DeleteNoticeParams](c, "DeleteNotice")
+	if !ok {
+		failure(c, apperror.New(400, "invalid_parameter", "缺少已校验的通知删除参数"))
+		return
+	}
+	if err := h.notices.Delete(c.Request.Context(), id, params.ExpectedVersion); err != nil {
 		failure(c, err)
 		return
 	}

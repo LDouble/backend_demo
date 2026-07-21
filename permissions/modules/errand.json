@@ -3,21 +3,21 @@
   "permissions": [
     {
       "name": "errand:accept",
-      "path_pattern": "/api/v1/errands/{id}/accept",
+      "path_pattern": "/api/v1/errands/:id/accept",
       "methods": [
         "POST"
       ]
     },
     {
       "name": "errand:cancel",
-      "path_pattern": "/api/v1/errands/{id}/cancel",
+      "path_pattern": "/api/v1/errands/:id/cancel",
       "methods": [
         "POST"
       ]
     },
     {
       "name": "errand:complete",
-      "path_pattern": "/api/v1/errands/{id}/complete",
+      "path_pattern": "/api/v1/errands/:id/complete",
       "methods": [
         "POST"
       ]
@@ -31,14 +31,14 @@
     },
     {
       "name": "errand:deliver",
-      "path_pattern": "/api/v1/errands/{id}/deliver",
+      "path_pattern": "/api/v1/errands/:id/deliver",
       "methods": [
         "POST"
       ]
     },
     {
       "name": "errand:pickup",
-      "path_pattern": "/api/v1/errands/{id}/pickup",
+      "path_pattern": "/api/v1/errands/:id/pickup",
       "methods": [
         "POST"
       ]
@@ -52,7 +52,7 @@
     },
     {
       "name": "errand:read_item",
-      "path_pattern": "/api/v1/errands/{id}",
+      "path_pattern": "/api/v1/errands/:id",
       "methods": [
         "GET"
       ]
@@ -66,7 +66,7 @@
     },
     {
       "name": "errand:update",
-      "path_pattern": "/api/v1/errands/{id}",
+      "path_pattern": "/api/v1/errands/:id",
       "methods": [
         "PATCH"
       ]

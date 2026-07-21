@@ -21,6 +21,14 @@ import (
 const accessType = "access"
 const refreshType = "refresh"
 
+var dummyPasswordHash = func() string {
+	hash, err := user.HashPassword("authentication-timing-placeholder")
+	if err != nil {
+		panic("initialize dummy password hash: " + err.Error())
+	}
+	return hash
+}()
+
 // UserRepository supplies authentication users.
 type UserRepository interface {
 	GetByID(context.Context, uint64) (*model.User, error)
@@ -33,12 +41,15 @@ type SessionStore interface {
 	Exists(context.Context, string) (bool, error)
 	Rotate(context.Context, string, string, string, time.Duration) (bool, error)
 	Delete(context.Context, string) error
+	DeleteUser(context.Context, uint64) error
 }
 
 // Claims are platform JWT claims.
 type Claims struct {
-	Type      string `json:"typ"`
-	SessionID string `json:"sid"`
+	Type           string `json:"typ"`
+	SessionID      string `json:"sid"`
+	FamilyID       string `json:"fid"`
+	SessionVersion uint64 `json:"sv"`
 	jwt.RegisteredClaims
 }
 
@@ -68,7 +79,12 @@ func NewService(users UserRepository, sessions SessionStore, issuer string, key 
 // Login authenticates a user and creates a new device session.
 func (s *Service) Login(ctx context.Context, username, password string) (TokenPair, error) {
 	u, err := s.users.GetByUsername(ctx, username)
-	if err != nil || !user.CheckPassword(u.PasswordHash, password) {
+	passwordHash := dummyPasswordHash
+	if err == nil && u != nil {
+		passwordHash = u.PasswordHash
+	}
+	passwordMatches := user.CheckPassword(passwordHash, password)
+	if err != nil || u == nil || !passwordMatches {
 		return TokenPair{}, apperror.New(http.StatusUnauthorized, "invalid_credentials", "用户名或密码错误")
 	}
 	if u.Status != model.UserActive {
@@ -78,7 +94,7 @@ func (s *Service) Login(ctx context.Context, username, password string) (TokenPa
 	if err != nil {
 		return TokenPair{}, err
 	}
-	pair, refreshHash, err := s.issue(u.ID, sid)
+	pair, refreshHash, err := s.issue(u.ID, sid, effectiveSessionVersion(u))
 	if err != nil {
 		return TokenPair{}, err
 	}
@@ -99,10 +115,10 @@ func (s *Service) Refresh(ctx context.Context, raw string) (TokenPair, error) {
 		return TokenPair{}, apperror.New(401, "invalid_refresh_token", "刷新令牌无效")
 	}
 	u, err := s.users.GetByID(ctx, uid)
-	if err != nil || u.Status != model.UserActive {
+	if err != nil || u.Status != model.UserActive || claims.SessionVersion != effectiveSessionVersion(u) {
 		return TokenPair{}, apperror.New(401, "invalid_refresh_token", "刷新令牌无效")
 	}
-	pair, newHash, err := s.issue(uid, claims.SessionID)
+	pair, newHash, err := s.issue(uid, claims.SessionID, effectiveSessionVersion(u))
 	if err != nil {
 		return TokenPair{}, err
 	}
@@ -111,9 +127,29 @@ func (s *Service) Refresh(ctx context.Context, raw string) (TokenPair, error) {
 		return TokenPair{}, fmt.Errorf("rotate session: %w", err)
 	}
 	if !ok {
+		if deleteErr := s.sessions.Delete(ctx, claims.SessionID); deleteErr != nil {
+			return TokenPair{}, fmt.Errorf("revoke reused refresh family: %w", deleteErr)
+		}
 		return TokenPair{}, apperror.New(401, "refresh_reused", "刷新令牌已失效")
 	}
 	return pair, nil
+}
+
+// RefreshFamily returns a stable, non-secret limiter scope for a refresh family.
+func (s *Service) RefreshFamily(raw string) string {
+	claims, err := s.parse(raw, refreshType)
+	if err != nil {
+		return tokenHash(raw)
+	}
+	return claims.FamilyID
+}
+
+// RevokeUser removes every active token family for a user.
+func (s *Service) RevokeUser(ctx context.Context, userID uint64) error {
+	if err := s.sessions.DeleteUser(ctx, userID); err != nil {
+		return fmt.Errorf("revoke user sessions: %w", err)
+	}
+	return nil
 }
 
 // Authenticate validates an access token and active session.
@@ -134,7 +170,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (uint64, string,
 		return 0, "", apperror.New(401, "session_expired", "会话已失效")
 	}
 	u, err := s.users.GetByID(ctx, uid)
-	if err != nil || u.Status != model.UserActive {
+	if err != nil || u.Status != model.UserActive || claims.SessionVersion != effectiveSessionVersion(u) {
 		return 0, "", apperror.New(403, "user_disabled", "用户已禁用")
 	}
 	return uid, claims.SessionID, nil
@@ -147,25 +183,25 @@ func (s *Service) Logout(ctx context.Context, sid string) error {
 	}
 	return nil
 }
-func (s *Service) issue(uid uint64, sid string) (TokenPair, string, error) {
+func (s *Service) issue(uid uint64, sid string, sessionVersion uint64) (TokenPair, string, error) {
 	now := s.now()
-	access, err := s.sign(uid, sid, accessType, now.Add(s.accessTTL))
+	access, err := s.sign(uid, sid, sessionVersion, accessType, now.Add(s.accessTTL))
 	if err != nil {
 		return TokenPair{}, "", err
 	}
-	refresh, err := s.sign(uid, sid, refreshType, now.Add(s.refreshTTL))
+	refresh, err := s.sign(uid, sid, sessionVersion, refreshType, now.Add(s.refreshTTL))
 	if err != nil {
 		return TokenPair{}, "", err
 	}
 	return TokenPair{AccessToken: access, RefreshToken: refresh, TokenType: "Bearer", ExpiresIn: int64(s.accessTTL.Seconds())}, tokenHash(refresh), nil
 }
-func (s *Service) sign(uid uint64, sid, typ string, expires time.Time) (string, error) {
+func (s *Service) sign(uid uint64, sid string, sessionVersion uint64, typ string, expires time.Time) (string, error) {
 	jti, err := randomID()
 	if err != nil {
 		return "", err
 	}
 	now := s.now()
-	claims := Claims{Type: typ, SessionID: sid, RegisteredClaims: jwt.RegisteredClaims{Issuer: s.issuer, Subject: strconv.FormatUint(uid, 10), ID: jti, IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(expires)}}
+	claims := Claims{Type: typ, SessionID: sid, FamilyID: sid, SessionVersion: sessionVersion, RegisteredClaims: jwt.RegisteredClaims{Issuer: s.issuer, Subject: strconv.FormatUint(uid, 10), ID: jti, IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(expires)}}
 	raw, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.key)
 	if err != nil {
 		return "", fmt.Errorf("sign jwt: %w", err)
@@ -180,7 +216,7 @@ func (s *Service) parse(raw, typ string) (*Claims, error) {
 		}
 		return s.key, nil
 	}, jwt.WithIssuer(s.issuer), jwt.WithValidMethods([]string{"HS256"}))
-	if err != nil || !token.Valid || claims.Type != typ || claims.SessionID == "" {
+	if err != nil || !token.Valid || claims.Type != typ || claims.SessionID == "" || claims.FamilyID != claims.SessionID || claims.SessionVersion == 0 {
 		return nil, errors.New("invalid token")
 	}
 	return claims, nil
@@ -195,4 +231,11 @@ func randomID() (string, error) {
 func tokenHash(raw string) string {
 	sum := sha256.Sum256([]byte(raw))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+func effectiveSessionVersion(u *model.User) uint64 {
+	if u.SessionVersion == 0 {
+		return 1
+	}
+	return u.SessionVersion
 }

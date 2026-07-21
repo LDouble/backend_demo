@@ -1,4 +1,4 @@
-.PHONY: build generate generate-check generate-module check-architecture run test test-race test-core-coverage test-notice-coverage test-generator test-integration test-compose lint fmt vet env migrate-up migrate-down compose-up compose-down
+.PHONY: build generate generate-check generate-module migration-check check-architecture run test test-race test-core-coverage test-notice-coverage test-generator test-integration test-compose lint fmt vet env migrate-up migrate-down compose-up compose-down
 
 build:
 	go build ./...
@@ -16,6 +16,9 @@ generate-check:
 generate-module:
 	@test -n "$(SCHEMA)" || (echo 'usage: make generate-module SCHEMA=schemas/<module>.yaml' && exit 1)
 	go run ./cmd/campusctl generate module "$(SCHEMA)"
+
+migration-check:
+	go run ./cmd/campusctl migration check
 
 check-architecture:
 	@if rg -n 'internal/infrastructure/mysql/query' internal/core internal/api; then \
@@ -52,7 +55,7 @@ test-compose:
 	./scripts/test-compose.sh
 
 lint:
-	go tool golangci-lint run ./...
+	go tool golangci-lint run
 
 fmt:
 	gofmt -w cmd internal

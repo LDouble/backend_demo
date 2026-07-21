@@ -13,12 +13,13 @@ const (
 
 // User is a platform account.
 type User struct {
-	ID           uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Username     string    `gorm:"size:32;uniqueIndex;not null" json:"username"`
-	PasswordHash string    `gorm:"size:255;not null" json:"-"`
-	Status       string    `gorm:"size:16;not null;index" json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID             uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Username       string    `gorm:"size:32;uniqueIndex;not null" json:"username"`
+	PasswordHash   string    `gorm:"size:255;not null" json:"-"`
+	Status         string    `gorm:"size:16;not null;index" json:"status"`
+	SessionVersion uint64    `gorm:"not null;default:1" json:"-"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // Role provides metadata for a Casbin role.

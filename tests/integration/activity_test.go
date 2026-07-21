@@ -24,6 +24,9 @@ func TestActivityHTTPFlow(t *testing.T) {
 	bystander := createIntegrationUser(t, client, base, adminToken, "activity_bystander_"+suffix)
 	roleID := grantActivityPermissions(t, client, base, adminToken, suffix, owner.id, participant.id, bystander.id)
 	_ = roleID
+	owner.token = loginWithCredentials(t, base, owner.username, integrationPassword)
+	participant.token = loginWithCredentials(t, base, participant.username, integrationPassword)
+	bystander.token = loginWithCredentials(t, base, bystander.username, integrationPassword)
 
 	now := time.Now().UTC()
 	startAt := now.Add(2 * time.Hour)
@@ -69,7 +72,7 @@ func TestActivityHTTPFlow(t *testing.T) {
 	}
 
 	publicList := pageOf[activityResource]{}
-	decodeData(t, request(t, client, http.MethodGet, base+"/api/v1/activities?keyword=A%20%E5%8C%BA&page=1&page_size=10", participant.token, nil), &publicList)
+	decodeData(t, request(t, client, http.MethodGet, base+"/api/v1/activities?keyword=%E6%B4%BB%E5%8A%A8%E6%90%9C%E7%B4%A2%E6%91%98%E8%A6%81&page=1&page_size=10", participant.token, nil), &publicList)
 	if len(publicList.Items) != 1 || publicList.Items[0].ID != approved.ID {
 		t.Fatalf("public items = %+v", publicList.Items)
 	}
@@ -120,6 +123,7 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 	owner := createIntegrationUser(t, client, base, adminToken, "activity_editor_"+suffix)
 	roleID := grantActivityPermissions(t, client, base, adminToken, suffix, owner.id)
 	_ = roleID
+	owner.token = loginWithCredentials(t, base, owner.username, integrationPassword)
 
 	now := time.Now().UTC()
 	startAt := now.Add(4 * time.Hour)
@@ -178,12 +182,15 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/publish", base, created.ID), owner.token, map[string]any{
 		"expected_version": updated.Version,
 	}), &updated)
-	finished := activityResource{}
-	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/finish", base, created.ID), owner.token, map[string]any{
+	assertStatus(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/finish", base, created.ID), owner.token, map[string]any{
 		"expected_version": updated.Version,
-	}), &finished)
-	if finished.Status != "finished" || finished.Contact == "88776655" {
-		t.Fatalf("finished = %+v", finished)
+	}), http.StatusConflict)
+	cancelled := activityResource{}
+	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/cancel", base, created.ID), owner.token, map[string]any{
+		"expected_version": updated.Version,
+	}), &cancelled)
+	if cancelled.Status != "cancelled" || cancelled.Contact == "88776655" {
+		t.Fatalf("cancelled = %+v", cancelled)
 	}
 }
 

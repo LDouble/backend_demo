@@ -12,6 +12,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/privacy"
 	platformquery "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
 	"github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
@@ -22,13 +23,12 @@ import (
 // Store persists activity aggregates and registration workflows.
 type Store struct {
 	db     *gorm.DB
-	query  *platformquery.Query
 	cipher *configcenter.Cipher
 }
 
 // NewStore creates an activity persistence adapter.
 func NewStore(db *gorm.DB, ciphers ...*configcenter.Cipher) *Store {
-	store := &Store{db: db, query: platformquery.Use(db)}
+	store := &Store{db: db}
 	if len(ciphers) > 0 {
 		store.cipher = ciphers[0]
 	}
@@ -55,7 +55,7 @@ func (s *Store) Create(ctx context.Context, actorID uint64, input domain.Activit
 		UpdatedBy:       actorID,
 		Version:         1,
 	}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(activity).Error; err != nil {
 			return err
 		}
@@ -114,7 +114,8 @@ func (s *Store) Update(ctx context.Context, id, actorID, version uint64, input d
 
 // GetAdmin returns an activity without public visibility constraints.
 func (s *Store) GetAdmin(ctx context.Context, id uint64) (*domain.Activity, error) {
-	activity, err := s.query.Activity.WithContext(ctx).Where(s.query.Activity.ID.Eq(id)).First()
+	query := platformquery.Use(idempotency.DB(ctx, s.db)).Activity
+	activity, err := query.WithContext(ctx).Where(query.ID.Eq(id)).First()
 	return activity, activityNotFound(err)
 }
 
@@ -122,7 +123,8 @@ func (s *Store) GetAdmin(ctx context.Context, id uint64) (*domain.Activity, erro
 // and active-registration viewers can still resolve cancelled/finished
 // activities that they have a relationship to. Unrelated viewers see 404.
 func (s *Store) GetPublic(ctx context.Context, id, viewerID uint64) (*domain.Activity, error) {
-	activity, err := s.query.Activity.WithContext(ctx).Where(s.query.Activity.ID.Eq(id)).First()
+	query := platformquery.Use(idempotency.DB(ctx, s.db)).Activity
+	activity, err := query.WithContext(ctx).Where(query.ID.Eq(id)).First()
 	if err != nil {
 		return nil, activityNotFound(err)
 	}
@@ -143,7 +145,7 @@ func (s *Store) IsViewerRegistered(ctx context.Context, viewerID, activityID uin
 	if viewerID == 0 {
 		return false, nil
 	}
-	q := s.query.ActivityRegistration
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).ActivityRegistration
 	count, err := q.WithContext(ctx).Where(
 		q.ActivityId.Eq(activityID),
 		q.UserId.Eq(viewerID),
@@ -163,7 +165,7 @@ func (s *Store) IsViewerRegisteredBatch(ctx context.Context, viewerID uint64, ac
 	if viewerID == 0 || len(activityIDs) == 0 {
 		return out, nil
 	}
-	q := s.query.ActivityRegistration
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).ActivityRegistration
 	rows, err := q.WithContext(ctx).Where(
 		q.UserId.Eq(viewerID),
 		q.Status.Eq(domain.RegistrationStatusActive),
@@ -180,7 +182,7 @@ func (s *Store) IsViewerRegisteredBatch(ctx context.Context, viewerID uint64, ac
 
 // ListAdmin returns activities visible to administrators.
 func (s *Store) ListAdmin(ctx context.Context, search domain.AdminSearch, page, pageSize int) ([]domain.Activity, int64, error) {
-	dao := s.db.WithContext(ctx).Model(&domain.Activity{})
+	dao := idempotency.DB(ctx, s.db).Model(&domain.Activity{})
 	if status := strings.TrimSpace(search.Status); status != "" {
 		dao = dao.Where("status = ?", status)
 	}
@@ -202,7 +204,7 @@ func (s *Store) ListAdmin(ctx context.Context, search domain.AdminSearch, page, 
 
 // ListPublic returns published and approved activities for user endpoints.
 func (s *Store) ListPublic(ctx context.Context, search domain.PublicSearch, page, pageSize int) ([]domain.Activity, int64, error) {
-	dao := s.db.WithContext(ctx).Model(&domain.Activity{}).
+	dao := idempotency.DB(ctx, s.db).Model(&domain.Activity{}).
 		Where("status = ? AND review_status = ?", domain.ActivityStatusPublished, domain.ReviewStatusApproved)
 	dao = applyKeywordFilter(dao, strings.TrimSpace(search.Keyword))
 	dao = applyStartDateFilter(dao, search.StartDate)
@@ -319,13 +321,16 @@ func (s *Store) Cancel(ctx context.Context, id, actorID, version uint64, _ time.
 }
 
 // Finish marks a published activity finished.
-func (s *Store) Finish(ctx context.Context, id, actorID, version uint64, _ time.Time) (*domain.Activity, error) {
+func (s *Store) Finish(ctx context.Context, id, actorID, version uint64, now time.Time) (*domain.Activity, error) {
 	return s.mutateActivityWithEvent(ctx, id, version, "activity.finished", func(tx *gorm.DB, activity *domain.Activity) error {
 		if activity.CreatedBy != actorID {
 			return apperror.New(http.StatusForbidden, "not_activity_owner", "仅活动发布者可以执行此操作")
 		}
 		if !domain.CanFinish(activity.Status) {
 			return apperror.New(http.StatusConflict, "invalid_activity_state", "当前活动状态不允许结束")
+		}
+		if now.Before(activity.EndAt) {
+			return apperror.New(http.StatusConflict, "activity_not_ended", "活动结束时间前不能结束，请使用取消操作")
 		}
 		activity.Status = domain.ActivityStatusFinished
 		activity.UpdatedBy = actorID
@@ -341,12 +346,9 @@ func (s *Store) Register(ctx context.Context, activityID, userID uint64, key str
 	}
 	var registration domain.ActivityRegistration
 	var activity domain.Activity
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&activity, activityID).Error; err != nil {
 			return activityNotFound(err)
-		}
-		if err := domain.RegistrationAllowed(&activity, now); err != nil {
-			return apperror.Wrap(http.StatusConflict, "activity_not_registrable", err.Error(), err)
 		}
 		// Replay-first dedupe: a row with the same (activity_id, user_id, key) is the
 		// canonical idempotent representation; if found, return that row unchanged.
@@ -359,6 +361,9 @@ func (s *Store) Register(ctx context.Context, activityID, userID uint64, key str
 			return nil
 		case !errors.Is(err, gorm.ErrRecordNotFound):
 			return err
+		}
+		if err := domain.RegistrationAllowed(&activity, now); err != nil {
+			return apperror.Wrap(http.StatusConflict, "activity_not_registrable", err.Error(), err)
 		}
 		// No prior registration with this key. Check for an *active* row that
 		// belongs to a different key — that signals the caller reused a key
@@ -411,7 +416,7 @@ func (s *Store) Register(ctx context.Context, activityID, userID uint64, key str
 func (s *Store) CancelRegistration(ctx context.Context, activityID, userID, version uint64, now time.Time) (*domain.ActivityRegistration, *domain.Activity, error) {
 	var registration domain.ActivityRegistration
 	var activity domain.Activity
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&activity, activityID).Error; err != nil {
 			return activityNotFound(err)
 		}
@@ -449,7 +454,8 @@ func (s *Store) CancelRegistration(ctx context.Context, activityID, userID, vers
 
 // ListMyRegistrations returns registrations for the current user joined with activities.
 func (s *Store) ListMyRegistrations(ctx context.Context, userID uint64, page, pageSize int) ([]domain.MyRegistration, int64, error) {
-	regQuery := s.query.ActivityRegistration
+	query := platformquery.Use(idempotency.DB(ctx, s.db))
+	regQuery := query.ActivityRegistration
 	rows, total, err := regQuery.WithContext(ctx).
 		Where(regQuery.UserId.Eq(userID)).
 		Order(regQuery.RegisteredAt.Desc(), regQuery.ID.Desc()).
@@ -464,7 +470,7 @@ func (s *Store) ListMyRegistrations(ctx context.Context, userID uint64, page, pa
 	for _, row := range rows {
 		ids = append(ids, row.ActivityId)
 	}
-	actQuery := s.query.Activity
+	actQuery := query.Activity
 	activities, err := actQuery.WithContext(ctx).Where(actQuery.ID.In(ids...)).Find()
 	if err != nil {
 		return nil, 0, err
@@ -515,7 +521,7 @@ func (s *Store) Contact(ctx context.Context, activity *domain.Activity, viewerID
 // `hasActiveRegistration` flag in lieu of re-querying. When the masked route
 // is taken, the ciphertext is *not* decrypted, eliminating one AES-GCM call
 // per row in the common case where the viewer is neither owner nor registered.
-func (s *Store) ContactWithAccess(ctx context.Context, activity *domain.Activity, viewerID uint64, hasActiveRegistration bool) (domain.ContactDetails, error) {
+func (s *Store) ContactWithAccess(_ context.Context, activity *domain.Activity, viewerID uint64, hasActiveRegistration bool) (domain.ContactDetails, error) {
 	if activity == nil {
 		return domain.ContactDetails{}, nil
 	}
@@ -555,17 +561,13 @@ func (s *Store) maskedContact(activity *domain.Activity) (domain.ContactDetails,
 	return domain.ContactDetails{Type: activity.ContactType, Value: privacy.MaskContact(value)}, nil
 }
 
-func (s *Store) mutateActivity(ctx context.Context, id, version uint64, fn func(*gorm.DB, *domain.Activity) error) (*domain.Activity, error) {
-	return s.mutateActivityWithEvent(ctx, id, version, "", fn)
-}
-
 // mutateActivityWithEvent runs an optimistic-lock transaction and, on commit,
 // writes a domain_event row whose event_kind is the kind supplied. Pass an
 // empty kind to skip event emission (used by tests / paths that intentionally
 // avoid event writes).
 func (s *Store) mutateActivityWithEvent(ctx context.Context, id, version uint64, eventKind string, fn func(*gorm.DB, *domain.Activity) error) (*domain.Activity, error) {
 	var activity domain.Activity
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&activity, id).Error; err != nil {
 			return activityNotFound(err)
 		}
@@ -659,7 +661,7 @@ func isMySQL(dao *gorm.DB) bool {
 	if dao == nil || dao.Dialector == nil {
 		return false
 	}
-	return dao.Dialector.Name() == "mysql"
+	return dao.Name() == "mysql"
 }
 
 func applyStartDateFilter(dao *gorm.DB, startDate *time.Time) *gorm.DB {

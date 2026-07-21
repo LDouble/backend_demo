@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -27,6 +29,14 @@ type resource struct {
 	ID      uint64 `json:"id"`
 	Version uint64 `json:"version"`
 }
+
+var (
+	adminLoginOnce             sync.Once
+	adminLoginBase             string
+	adminLoginToken            string
+	adminLoginErr              error
+	integrationRequestSequence atomic.Uint64
+)
 
 func TestAuthenticationLifecycle(t *testing.T) {
 	base := os.Getenv("CAMPUS_INTEGRATION_BASE_URL")
@@ -65,8 +75,8 @@ func TestAuthenticationLifecycle(t *testing.T) {
 		t.Fatalf("reused refresh status=%d", reused.StatusCode)
 	}
 	logout := request(t, client, http.MethodPost, base+"/api/v1/auth/logout", rotated.AccessToken, nil)
-	if logout.StatusCode != 200 {
-		t.Fatalf("logout status=%d", logout.StatusCode)
+	if logout.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("logout after family reuse status=%d", logout.StatusCode)
 	}
 	after := request(t, client, http.MethodGet, base+"/api/v1/auth/me", rotated.AccessToken, nil)
 	if after.StatusCode != 401 {
@@ -186,10 +196,29 @@ func integrationAdmin(t *testing.T) (string, string) {
 	if base == "" || username == "" || password == "" {
 		t.Skip("integration environment is not configured")
 	}
-	login := request(t, http.Client{}, http.MethodPost, base+"/api/v1/auth/login", "", map[string]string{"username": username, "password": password})
-	var pair tokens
-	decodeData(t, login, &pair)
-	return base, pair.AccessToken
+	adminLoginOnce.Do(func() {
+		adminLoginBase = base
+		login := request(t, http.Client{}, http.MethodPost, base+"/api/v1/auth/login", "", map[string]string{"username": username, "password": password})
+		if login.StatusCode >= 300 {
+			adminLoginErr = fmt.Errorf("administrator login status=%d", login.StatusCode)
+			return
+		}
+		var pair tokens
+		var wrapper envelope
+		if err := json.NewDecoder(login.Body).Decode(&wrapper); err != nil {
+			adminLoginErr = err
+			return
+		}
+		if err := json.Unmarshal(wrapper.Data, &pair); err != nil {
+			adminLoginErr = err
+			return
+		}
+		adminLoginToken = pair.AccessToken
+	})
+	if adminLoginErr != nil || adminLoginBase != base {
+		t.Fatalf("cache administrator login: %v", adminLoginErr)
+	}
+	return base, adminLoginToken
 }
 
 func request(t *testing.T, client http.Client, method, url, token string, body any) *http.Response {
@@ -211,6 +240,9 @@ func request(t *testing.T, client http.Client, method, url, token string, body a
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
+		if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch || method == http.MethodDelete {
+			req.Header.Set("Idempotency-Key", fmt.Sprintf("integration-%d", integrationRequestSequence.Add(1)))
+		}
 	}
 	res, err := client.Do(req)
 	if err != nil {

@@ -3,7 +3,7 @@
   "permissions": [
     {
       "name": "carpool:cancel",
-      "path_pattern": "/api/v1/carpool/trips/{id}/cancel",
+      "path_pattern": "/api/v1/carpool/trips/:id/cancel",
       "methods": [
         "POST"
       ]
@@ -17,14 +17,14 @@
     },
     {
       "name": "carpool:join",
-      "path_pattern": "/api/v1/carpool/trips/{id}/join",
+      "path_pattern": "/api/v1/carpool/trips/:id/join",
       "methods": [
         "POST"
       ]
     },
     {
       "name": "carpool:leave",
-      "path_pattern": "/api/v1/carpool/trips/{id}/leave",
+      "path_pattern": "/api/v1/carpool/trips/:id/leave",
       "methods": [
         "POST"
       ]
@@ -38,7 +38,7 @@
     },
     {
       "name": "carpool:read_item",
-      "path_pattern": "/api/v1/carpool/trips/{id}",
+      "path_pattern": "/api/v1/carpool/trips/:id",
       "methods": [
         "GET"
       ]

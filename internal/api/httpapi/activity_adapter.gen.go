@@ -9,76 +9,120 @@ import (
 )
 
 // ListActivities adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ListActivities(c *gin.Context, _ generated.ListActivitiesParams) {
+func (h *Handler) ListActivities(c *gin.Context, params generated.ListActivitiesParams) {
+	setGeneratedParams(c, "ListActivities", params)
 	h.listActivities(c)
 }
 
 // ListMyActivityRegistrations adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ListMyActivityRegistrations(c *gin.Context, _ generated.ListMyActivityRegistrationsParams) {
+func (h *Handler) ListMyActivityRegistrations(c *gin.Context, params generated.ListMyActivityRegistrationsParams) {
+	setGeneratedParams(c, "ListMyActivityRegistrations", params)
 	h.listMyActivityRegistrations(c)
 }
 
 // GetActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) GetActivity(c *gin.Context, _ uint64) {
+func (h *Handler) GetActivity(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
 	h.getActivity(c)
 }
 
 // CreateActivityRegistration adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CreateActivityRegistration(c *gin.Context, _ uint64, _ generated.CreateActivityRegistrationParams) {
-	h.createActivityRegistration(c)
+func (h *Handler) CreateActivityRegistration(c *gin.Context, id uint64, params generated.CreateActivityRegistrationParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CreateActivityRegistration", params)
+	h.idempotent(c, "CreateActivityRegistration", func() {
+		h.createActivityRegistration(c)
+	})
 }
 
 // CancelMyActivityRegistration adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CancelMyActivityRegistration(c *gin.Context, _ uint64) {
-	h.cancelMyActivityRegistration(c)
+func (h *Handler) CancelMyActivityRegistration(c *gin.Context, id uint64, params generated.CancelMyActivityRegistrationParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CancelMyActivityRegistration", params)
+	h.idempotent(c, "CancelMyActivityRegistration", func() {
+		h.cancelMyActivityRegistration(c)
+	})
 }
 
 // ListAdminActivities adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ListAdminActivities(c *gin.Context, _ generated.ListAdminActivitiesParams) {
+func (h *Handler) ListAdminActivities(c *gin.Context, params generated.ListAdminActivitiesParams) {
+	setGeneratedParams(c, "ListAdminActivities", params)
 	h.listAdminActivities(c)
 }
 
 // CreateAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CreateAdminActivity(c *gin.Context) {
-	h.createAdminActivity(c)
+func (h *Handler) CreateAdminActivity(c *gin.Context, params generated.CreateAdminActivityParams) {
+	setGeneratedParams(c, "CreateAdminActivity", params)
+	h.idempotent(c, "CreateAdminActivity", func() {
+		h.createAdminActivity(c)
+	})
 }
 
 // GetAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) GetAdminActivity(c *gin.Context, _ uint64) {
+func (h *Handler) GetAdminActivity(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
 	h.getAdminActivity(c)
 }
 
 // UpdateAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) UpdateAdminActivity(c *gin.Context, _ uint64) {
-	h.updateAdminActivity(c)
+func (h *Handler) UpdateAdminActivity(c *gin.Context, id uint64, params generated.UpdateAdminActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "UpdateAdminActivity", params)
+	h.idempotent(c, "UpdateAdminActivity", func() {
+		h.updateAdminActivity(c)
+	})
 }
 
 // ApproveAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ApproveAdminActivity(c *gin.Context, _ uint64) {
-	h.approveAdminActivity(c)
+func (h *Handler) ApproveAdminActivity(c *gin.Context, id uint64, params generated.ApproveAdminActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "ApproveAdminActivity", params)
+	h.idempotent(c, "ApproveAdminActivity", func() {
+		h.approveAdminActivity(c)
+	})
 }
 
 // CancelAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CancelAdminActivity(c *gin.Context, _ uint64) {
-	h.cancelAdminActivity(c)
+func (h *Handler) CancelAdminActivity(c *gin.Context, id uint64, params generated.CancelAdminActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CancelAdminActivity", params)
+	h.idempotent(c, "CancelAdminActivity", func() {
+		h.cancelAdminActivity(c)
+	})
 }
 
 // FinishAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) FinishAdminActivity(c *gin.Context, _ uint64) {
-	h.finishAdminActivity(c)
+func (h *Handler) FinishAdminActivity(c *gin.Context, id uint64, params generated.FinishAdminActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "FinishAdminActivity", params)
+	h.idempotent(c, "FinishAdminActivity", func() {
+		h.finishAdminActivity(c)
+	})
 }
 
 // PublishAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) PublishAdminActivity(c *gin.Context, _ uint64) {
-	h.publishAdminActivity(c)
+func (h *Handler) PublishAdminActivity(c *gin.Context, id uint64, params generated.PublishAdminActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "PublishAdminActivity", params)
+	h.idempotent(c, "PublishAdminActivity", func() {
+		h.publishAdminActivity(c)
+	})
 }
 
 // RejectAdminActivity adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) RejectAdminActivity(c *gin.Context, _ uint64) {
-	h.rejectAdminActivity(c)
+func (h *Handler) RejectAdminActivity(c *gin.Context, id uint64, params generated.RejectAdminActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "RejectAdminActivity", params)
+	h.idempotent(c, "RejectAdminActivity", func() {
+		h.rejectAdminActivity(c)
+	})
 }
 
 // SubmitAdminActivityReview adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) SubmitAdminActivityReview(c *gin.Context, _ uint64) {
-	h.submitAdminActivityReview(c)
+func (h *Handler) SubmitAdminActivityReview(c *gin.Context, id uint64, params generated.SubmitAdminActivityReviewParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "SubmitAdminActivityReview", params)
+	h.idempotent(c, "SubmitAdminActivityReview", func() {
+		h.submitAdminActivityReview(c)
+	})
 }

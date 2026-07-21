@@ -16,7 +16,8 @@ func TestFailureEnvelope(t *testing.T) {
 	r.GET("/", func(c *gin.Context) { failure(c, apperror.New(409, "conflict", "冲突")) })
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("X-Request-ID", "test-id")
+	requestID := "7cf0bd65-79b3-4d60-89d0-8fe8b827fd41"
+	req.Header.Set("X-Request-ID", requestID)
 	r.ServeHTTP(w, req)
 	if w.Code != 409 {
 		t.Fatalf("status %d", w.Code)
@@ -25,7 +26,7 @@ func TestFailureEnvelope(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body["request_id"] != "test-id" {
+	if body["request_id"] != requestID {
 		t.Fatalf("body %#v", body)
 	}
 }

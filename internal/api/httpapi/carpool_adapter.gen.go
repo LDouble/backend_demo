@@ -9,31 +9,48 @@ import (
 )
 
 // ListCarpoolTrips adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) ListCarpoolTrips(c *gin.Context, _ generated.ListCarpoolTripsParams) {
+func (h *Handler) ListCarpoolTrips(c *gin.Context, params generated.ListCarpoolTripsParams) {
+	setGeneratedParams(c, "ListCarpoolTrips", params)
 	h.listCarpoolTrips(c)
 }
 
 // CreateCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CreateCarpoolTrip(c *gin.Context) {
-	h.createCarpoolTrip(c)
+func (h *Handler) CreateCarpoolTrip(c *gin.Context, params generated.CreateCarpoolTripParams) {
+	setGeneratedParams(c, "CreateCarpoolTrip", params)
+	h.idempotent(c, "CreateCarpoolTrip", func() {
+		h.createCarpoolTrip(c)
+	})
 }
 
 // GetCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) GetCarpoolTrip(c *gin.Context, _ uint64) {
+func (h *Handler) GetCarpoolTrip(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
 	h.getCarpoolTrip(c)
 }
 
 // CancelCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) CancelCarpoolTrip(c *gin.Context, _ uint64) {
-	h.cancelCarpoolTrip(c)
+func (h *Handler) CancelCarpoolTrip(c *gin.Context, id uint64, params generated.CancelCarpoolTripParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CancelCarpoolTrip", params)
+	h.idempotent(c, "CancelCarpoolTrip", func() {
+		h.cancelCarpoolTrip(c)
+	})
 }
 
 // JoinCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) JoinCarpoolTrip(c *gin.Context, _ uint64) {
-	h.joinCarpoolTrip(c)
+func (h *Handler) JoinCarpoolTrip(c *gin.Context, id uint64, params generated.JoinCarpoolTripParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "JoinCarpoolTrip", params)
+	h.idempotent(c, "JoinCarpoolTrip", func() {
+		h.joinCarpoolTrip(c)
+	})
 }
 
 // LeaveCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
-func (h *Handler) LeaveCarpoolTrip(c *gin.Context, _ uint64) {
-	h.leaveCarpoolTrip(c)
+func (h *Handler) LeaveCarpoolTrip(c *gin.Context, id uint64, params generated.LeaveCarpoolTripParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "LeaveCarpoolTrip", params)
+	h.idempotent(c, "LeaveCarpoolTrip", func() {
+		h.leaveCarpoolTrip(c)
+	})
 }
