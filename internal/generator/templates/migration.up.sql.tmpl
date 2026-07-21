@@ -1,6 +1,6 @@
 -- {{.Header}}
 -- Source: {{.Source}}
-{{- if .Entities}}{{range .Entities}}{{$table := .Table}}
+{{if .Entities}}{{range .Entities}}{{$table := .Table}}
 CREATE TABLE {{.Table}} (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 {{- range .Fields}}
