@@ -16,54 +16,90 @@ import (
 )
 
 var (
-	Q               = new(Query)
-	Config          *config
-	Notice          *notice
-	NoticeAudience  *noticeAudience
-	NoticeDelivery  *noticeDelivery
-	NoticeRecipient *noticeRecipient
-	OutboxEvent     *outboxEvent
-	Role            *role
-	User            *user
+	Q                      = new(Query)
+	Config                 *config
+	Listing                *listing
+	ListingImage           *listingImage
+	MarketplaceReservation *marketplaceReservation
+	Notice                 *notice
+	NoticeAudience         *noticeAudience
+	NoticeDelivery         *noticeDelivery
+	NoticeRecipient        *noticeRecipient
+	Order                  *order
+	OrderTransition        *orderTransition
+	OutboxEvent            *outboxEvent
+	PaymentCallback        *paymentCallback
+	PaymentIntent          *paymentIntent
+	PaymentRefund          *paymentRefund
+	PaymentTransaction     *paymentTransaction
+	Role                   *role
+	User                   *user
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	Config = &Q.Config
+	Listing = &Q.Listing
+	ListingImage = &Q.ListingImage
+	MarketplaceReservation = &Q.MarketplaceReservation
 	Notice = &Q.Notice
 	NoticeAudience = &Q.NoticeAudience
 	NoticeDelivery = &Q.NoticeDelivery
 	NoticeRecipient = &Q.NoticeRecipient
+	Order = &Q.Order
+	OrderTransition = &Q.OrderTransition
 	OutboxEvent = &Q.OutboxEvent
+	PaymentCallback = &Q.PaymentCallback
+	PaymentIntent = &Q.PaymentIntent
+	PaymentRefund = &Q.PaymentRefund
+	PaymentTransaction = &Q.PaymentTransaction
 	Role = &Q.Role
 	User = &Q.User
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:              db,
-		Config:          newConfig(db, opts...),
-		Notice:          newNotice(db, opts...),
-		NoticeAudience:  newNoticeAudience(db, opts...),
-		NoticeDelivery:  newNoticeDelivery(db, opts...),
-		NoticeRecipient: newNoticeRecipient(db, opts...),
-		OutboxEvent:     newOutboxEvent(db, opts...),
-		Role:            newRole(db, opts...),
-		User:            newUser(db, opts...),
+		db:                     db,
+		Config:                 newConfig(db, opts...),
+		Listing:                newListing(db, opts...),
+		ListingImage:           newListingImage(db, opts...),
+		MarketplaceReservation: newMarketplaceReservation(db, opts...),
+		Notice:                 newNotice(db, opts...),
+		NoticeAudience:         newNoticeAudience(db, opts...),
+		NoticeDelivery:         newNoticeDelivery(db, opts...),
+		NoticeRecipient:        newNoticeRecipient(db, opts...),
+		Order:                  newOrder(db, opts...),
+		OrderTransition:        newOrderTransition(db, opts...),
+		OutboxEvent:            newOutboxEvent(db, opts...),
+		PaymentCallback:        newPaymentCallback(db, opts...),
+		PaymentIntent:          newPaymentIntent(db, opts...),
+		PaymentRefund:          newPaymentRefund(db, opts...),
+		PaymentTransaction:     newPaymentTransaction(db, opts...),
+		Role:                   newRole(db, opts...),
+		User:                   newUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Config          config
-	Notice          notice
-	NoticeAudience  noticeAudience
-	NoticeDelivery  noticeDelivery
-	NoticeRecipient noticeRecipient
-	OutboxEvent     outboxEvent
-	Role            role
-	User            user
+	Config                 config
+	Listing                listing
+	ListingImage           listingImage
+	MarketplaceReservation marketplaceReservation
+	Notice                 notice
+	NoticeAudience         noticeAudience
+	NoticeDelivery         noticeDelivery
+	NoticeRecipient        noticeRecipient
+	Order                  order
+	OrderTransition        orderTransition
+	OutboxEvent            outboxEvent
+	PaymentCallback        paymentCallback
+	PaymentIntent          paymentIntent
+	PaymentRefund          paymentRefund
+	PaymentTransaction     paymentTransaction
+	Role                   role
+	User                   user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -72,15 +108,24 @@ func (q *Query) UnderlyingDB() *gorm.DB { return q.db }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:              db,
-		Config:          q.Config.clone(db),
-		Notice:          q.Notice.clone(db),
-		NoticeAudience:  q.NoticeAudience.clone(db),
-		NoticeDelivery:  q.NoticeDelivery.clone(db),
-		NoticeRecipient: q.NoticeRecipient.clone(db),
-		OutboxEvent:     q.OutboxEvent.clone(db),
-		Role:            q.Role.clone(db),
-		User:            q.User.clone(db),
+		db:                     db,
+		Config:                 q.Config.clone(db),
+		Listing:                q.Listing.clone(db),
+		ListingImage:           q.ListingImage.clone(db),
+		MarketplaceReservation: q.MarketplaceReservation.clone(db),
+		Notice:                 q.Notice.clone(db),
+		NoticeAudience:         q.NoticeAudience.clone(db),
+		NoticeDelivery:         q.NoticeDelivery.clone(db),
+		NoticeRecipient:        q.NoticeRecipient.clone(db),
+		Order:                  q.Order.clone(db),
+		OrderTransition:        q.OrderTransition.clone(db),
+		OutboxEvent:            q.OutboxEvent.clone(db),
+		PaymentCallback:        q.PaymentCallback.clone(db),
+		PaymentIntent:          q.PaymentIntent.clone(db),
+		PaymentRefund:          q.PaymentRefund.clone(db),
+		PaymentTransaction:     q.PaymentTransaction.clone(db),
+		Role:                   q.Role.clone(db),
+		User:                   q.User.clone(db),
 	}
 }
 
@@ -94,39 +139,66 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:              db,
-		Config:          q.Config.replaceDB(db),
-		Notice:          q.Notice.replaceDB(db),
-		NoticeAudience:  q.NoticeAudience.replaceDB(db),
-		NoticeDelivery:  q.NoticeDelivery.replaceDB(db),
-		NoticeRecipient: q.NoticeRecipient.replaceDB(db),
-		OutboxEvent:     q.OutboxEvent.replaceDB(db),
-		Role:            q.Role.replaceDB(db),
-		User:            q.User.replaceDB(db),
+		db:                     db,
+		Config:                 q.Config.replaceDB(db),
+		Listing:                q.Listing.replaceDB(db),
+		ListingImage:           q.ListingImage.replaceDB(db),
+		MarketplaceReservation: q.MarketplaceReservation.replaceDB(db),
+		Notice:                 q.Notice.replaceDB(db),
+		NoticeAudience:         q.NoticeAudience.replaceDB(db),
+		NoticeDelivery:         q.NoticeDelivery.replaceDB(db),
+		NoticeRecipient:        q.NoticeRecipient.replaceDB(db),
+		Order:                  q.Order.replaceDB(db),
+		OrderTransition:        q.OrderTransition.replaceDB(db),
+		OutboxEvent:            q.OutboxEvent.replaceDB(db),
+		PaymentCallback:        q.PaymentCallback.replaceDB(db),
+		PaymentIntent:          q.PaymentIntent.replaceDB(db),
+		PaymentRefund:          q.PaymentRefund.replaceDB(db),
+		PaymentTransaction:     q.PaymentTransaction.replaceDB(db),
+		Role:                   q.Role.replaceDB(db),
+		User:                   q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Config          IConfigDo
-	Notice          INoticeDo
-	NoticeAudience  INoticeAudienceDo
-	NoticeDelivery  INoticeDeliveryDo
-	NoticeRecipient INoticeRecipientDo
-	OutboxEvent     IOutboxEventDo
-	Role            IRoleDo
-	User            IUserDo
+	Config                 IConfigDo
+	Listing                IListingDo
+	ListingImage           IListingImageDo
+	MarketplaceReservation IMarketplaceReservationDo
+	Notice                 INoticeDo
+	NoticeAudience         INoticeAudienceDo
+	NoticeDelivery         INoticeDeliveryDo
+	NoticeRecipient        INoticeRecipientDo
+	Order                  IOrderDo
+	OrderTransition        IOrderTransitionDo
+	OutboxEvent            IOutboxEventDo
+	PaymentCallback        IPaymentCallbackDo
+	PaymentIntent          IPaymentIntentDo
+	PaymentRefund          IPaymentRefundDo
+	PaymentTransaction     IPaymentTransactionDo
+	Role                   IRoleDo
+	User                   IUserDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Config:          q.Config.WithContext(ctx),
-		Notice:          q.Notice.WithContext(ctx),
-		NoticeAudience:  q.NoticeAudience.WithContext(ctx),
-		NoticeDelivery:  q.NoticeDelivery.WithContext(ctx),
-		NoticeRecipient: q.NoticeRecipient.WithContext(ctx),
-		OutboxEvent:     q.OutboxEvent.WithContext(ctx),
-		Role:            q.Role.WithContext(ctx),
-		User:            q.User.WithContext(ctx),
+		Config:                 q.Config.WithContext(ctx),
+		Listing:                q.Listing.WithContext(ctx),
+		ListingImage:           q.ListingImage.WithContext(ctx),
+		MarketplaceReservation: q.MarketplaceReservation.WithContext(ctx),
+		Notice:                 q.Notice.WithContext(ctx),
+		NoticeAudience:         q.NoticeAudience.WithContext(ctx),
+		NoticeDelivery:         q.NoticeDelivery.WithContext(ctx),
+		NoticeRecipient:        q.NoticeRecipient.WithContext(ctx),
+		Order:                  q.Order.WithContext(ctx),
+		OrderTransition:        q.OrderTransition.WithContext(ctx),
+		OutboxEvent:            q.OutboxEvent.WithContext(ctx),
+		PaymentCallback:        q.PaymentCallback.WithContext(ctx),
+		PaymentIntent:          q.PaymentIntent.WithContext(ctx),
+		PaymentRefund:          q.PaymentRefund.WithContext(ctx),
+		PaymentTransaction:     q.PaymentTransaction.WithContext(ctx),
+		Role:                   q.Role.WithContext(ctx),
+		User:                   q.User.WithContext(ctx),
 	}
 }
 

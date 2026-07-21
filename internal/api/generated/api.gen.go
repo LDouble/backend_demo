@@ -311,12 +311,56 @@ type ListConfigsParams struct {
 	Group    *Group    `form:"group,omitempty" json:"group,omitempty"`
 }
 
+// CreateMarketplaceListingJSONBody defines parameters for CreateMarketplaceListing.
+type CreateMarketplaceListingJSONBody struct {
+	Description string    `json:"description"`
+	ImageUrls   *[]string `json:"image_urls,omitempty"`
+	PriceCents  int64     `json:"price_cents"`
+	Title       string    `json:"title"`
+}
+
+// SubmitMarketplaceListingJSONBody defines parameters for SubmitMarketplaceListing.
+type SubmitMarketplaceListingJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// WithdrawMarketplaceListingJSONBody defines parameters for WithdrawMarketplaceListing.
+type WithdrawMarketplaceListingJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// CreateMarketplaceOrderJSONBody defines parameters for CreateMarketplaceOrder.
+type CreateMarketplaceOrderJSONBody struct {
+	ListingId uint64 `json:"listing_id"`
+}
+
+// CreateMarketplaceOrderParams defines parameters for CreateMarketplaceOrder.
+type CreateMarketplaceOrderParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // ListMyNoticesParams defines parameters for ListMyNotices.
 type ListMyNoticesParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 	Unread   *bool     `form:"unread,omitempty" json:"unread,omitempty"`
 	Category *string   `form:"category,omitempty" json:"category,omitempty"`
+}
+
+// ListMyTradeOrdersParams defines parameters for ListMyTradeOrders.
+type ListMyTradeOrdersParams struct {
+	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CancelTradeOrderJSONBody defines parameters for CancelTradeOrder.
+type CancelTradeOrderJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// CompleteTradeOrderJSONBody defines parameters for CompleteTradeOrder.
+type CompleteTradeOrderJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
 }
 
 // ListRolesParams defines parameters for ListRoles.
@@ -354,6 +398,24 @@ type CreateConfigJSONRequestBody = CreateConfigRequest
 
 // UpdateConfigJSONRequestBody defines body for UpdateConfig for application/json ContentType.
 type UpdateConfigJSONRequestBody = UpdateConfigRequest
+
+// CreateMarketplaceListingJSONRequestBody defines body for CreateMarketplaceListing for application/json ContentType.
+type CreateMarketplaceListingJSONRequestBody CreateMarketplaceListingJSONBody
+
+// SubmitMarketplaceListingJSONRequestBody defines body for SubmitMarketplaceListing for application/json ContentType.
+type SubmitMarketplaceListingJSONRequestBody SubmitMarketplaceListingJSONBody
+
+// WithdrawMarketplaceListingJSONRequestBody defines body for WithdrawMarketplaceListing for application/json ContentType.
+type WithdrawMarketplaceListingJSONRequestBody WithdrawMarketplaceListingJSONBody
+
+// CreateMarketplaceOrderJSONRequestBody defines body for CreateMarketplaceOrder for application/json ContentType.
+type CreateMarketplaceOrderJSONRequestBody CreateMarketplaceOrderJSONBody
+
+// CancelTradeOrderJSONRequestBody defines body for CancelTradeOrder for application/json ContentType.
+type CancelTradeOrderJSONRequestBody CancelTradeOrderJSONBody
+
+// CompleteTradeOrderJSONRequestBody defines body for CompleteTradeOrder for application/json ContentType.
+type CompleteTradeOrderJSONRequestBody CompleteTradeOrderJSONBody
 
 // CreateRoleJSONRequestBody defines body for CreateRole for application/json ContentType.
 type CreateRoleJSONRequestBody = CreateRoleRequest
@@ -432,6 +494,18 @@ type ServerInterface interface {
 
 	// (PUT /api/v1/configs/{id})
 	UpdateConfig(c *gin.Context, id ID)
+	// CreateMarketplaceListing 创建二手商品草稿
+	// (POST /api/v1/marketplace/listings)
+	CreateMarketplaceListing(c *gin.Context)
+	// SubmitMarketplaceListing 提交商品审核
+	// (POST /api/v1/marketplace/listings/{id}/submit)
+	SubmitMarketplaceListing(c *gin.Context, id uint64)
+	// WithdrawMarketplaceListing 撤回商品
+	// (POST /api/v1/marketplace/listings/{id}/withdraw)
+	WithdrawMarketplaceListing(c *gin.Context, id uint64)
+	// CreateMarketplaceOrder 原子保留商品并创建订单
+	// (POST /api/v1/marketplace/orders)
+	CreateMarketplaceOrder(c *gin.Context, params CreateMarketplaceOrderParams)
 
 	// (GET /api/v1/notices)
 	ListMyNotices(c *gin.Context, params ListMyNoticesParams)
@@ -447,6 +521,18 @@ type ServerInterface interface {
 
 	// (PUT /api/v1/notices/{id}/read)
 	ReadNotice(c *gin.Context, id ID)
+	// ListMyTradeOrders 查询我的交易订单
+	// (GET /api/v1/orders)
+	ListMyTradeOrders(c *gin.Context, params ListMyTradeOrdersParams)
+	// GetMyTradeOrder 查询交易订单详情
+	// (GET /api/v1/orders/{id})
+	GetMyTradeOrder(c *gin.Context, id uint64)
+	// CancelTradeOrder 取消交易订单
+	// (POST /api/v1/orders/{id}/cancel)
+	CancelTradeOrder(c *gin.Context, id uint64)
+	// CompleteTradeOrder 确认交易完成
+	// (POST /api/v1/orders/{id}/complete)
+	CompleteTradeOrder(c *gin.Context, id uint64)
 
 	// (GET /api/v1/roles)
 	ListRoles(c *gin.Context, params ListRolesParams)
@@ -939,6 +1025,112 @@ func (siw *ServerInterfaceWrapper) UpdateConfig(c *gin.Context) {
 	siw.Handler.UpdateConfig(c, id)
 }
 
+// CreateMarketplaceListing operation middleware
+func (siw *ServerInterfaceWrapper) CreateMarketplaceListing(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateMarketplaceListing(c)
+}
+
+// SubmitMarketplaceListing operation middleware
+func (siw *ServerInterfaceWrapper) SubmitMarketplaceListing(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SubmitMarketplaceListing(c, id)
+}
+
+// WithdrawMarketplaceListing operation middleware
+func (siw *ServerInterfaceWrapper) WithdrawMarketplaceListing(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.WithdrawMarketplaceListing(c, id)
+}
+
+// CreateMarketplaceOrder operation middleware
+func (siw *ServerInterfaceWrapper) CreateMarketplaceOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMarketplaceOrderParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateMarketplaceOrder(c, params)
+}
+
 // ListMyNotices operation middleware
 func (siw *ServerInterfaceWrapper) ListMyNotices(c *gin.Context) {
 
@@ -1064,6 +1256,116 @@ func (siw *ServerInterfaceWrapper) ReadNotice(c *gin.Context) {
 	}
 
 	siw.Handler.ReadNotice(c, id)
+}
+
+// ListMyTradeOrders operation middleware
+func (siw *ServerInterfaceWrapper) ListMyTradeOrders(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyTradeOrdersParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListMyTradeOrders(c, params)
+}
+
+// GetMyTradeOrder operation middleware
+func (siw *ServerInterfaceWrapper) GetMyTradeOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetMyTradeOrder(c, id)
+}
+
+// CancelTradeOrder operation middleware
+func (siw *ServerInterfaceWrapper) CancelTradeOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CancelTradeOrder(c, id)
+}
+
+// CompleteTradeOrder operation middleware
+func (siw *ServerInterfaceWrapper) CompleteTradeOrder(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CompleteTradeOrder(c, id)
 }
 
 // ListRoles operation middleware
@@ -1478,6 +1780,14 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PUT(options.BaseURL+"/api/v1/notices/read-all", wrapper.ReadAllNotices)
 	router.GET(options.BaseURL+"/api/v1/notices/:id", wrapper.GetMyNotice)
 	router.PUT(options.BaseURL+"/api/v1/notices/:id/read", wrapper.ReadNotice)
+	router.POST(options.BaseURL+"/api/v1/marketplace/listings", wrapper.CreateMarketplaceListing)
+	router.POST(options.BaseURL+"/api/v1/marketplace/listings/:id/submit", wrapper.SubmitMarketplaceListing)
+	router.POST(options.BaseURL+"/api/v1/marketplace/listings/:id/withdraw", wrapper.WithdrawMarketplaceListing)
+	router.POST(options.BaseURL+"/api/v1/marketplace/orders", wrapper.CreateMarketplaceOrder)
+	router.GET(options.BaseURL+"/api/v1/orders", wrapper.ListMyTradeOrders)
+	router.GET(options.BaseURL+"/api/v1/orders/:id", wrapper.GetMyTradeOrder)
+	router.POST(options.BaseURL+"/api/v1/orders/:id/cancel", wrapper.CancelTradeOrder)
+	router.POST(options.BaseURL+"/api/v1/orders/:id/complete", wrapper.CompleteTradeOrder)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -1485,37 +1795,47 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"3Fvfc9O4E/9XGH15dGu3BQby1m/LMb0BrtNe7x46uYxqbxKBLRlJzhE6+d9vJNmxbMtx0sYJ4YVp7NX+",
-	"3o9Wa/GIQpakjAKVAg0eUYo5TkAC178+cJal6g9C0QB9y4DPkYcoTgAN0ES/9JAIp5BgRZXg7x+BTuQU",
-	"Dd688pCcp4pOSE7oBC0WHrq6XDJLsZyWvEiEPMThW0Y4RGggeQY24zHjCZZogDJC5ZtXyEMJoSTJEjQ4",
-	"WcohVMIEuBZ0jSfQpneq3tncIxjjLJaa1xp8b8mPlbxHQhE4BZwGnnJSLiEIOuQtjE9AyP+ziIAOyQUH",
-	"LOFOAFe/QkYlUKn+xGkakxBLwqj/RTCqnpUqvOQwRgP0P78Mt2/eCr9keWOklaLLcCw89JFNCN2aVM1t",
-	"tcAbGHMQ062JzPmtFnqXRtt2cMlylWj9RKSMChPp95yz7emgub2nM4hZCkZ+BCLkJFXM0MCIe1FogBYe",
-	"us3CEITYmgo5v1VK5CTjLLY0WRS1ZBXABaNjMincqYCLsxS4zKsEaMjnqVS+tcpvjGMByzp7YCwGTJWl",
-	"kwLnapDloa8wdz6f4TgDx5tKWO+XGKnYFIuGSw3YwxcIpWJnjPrMJAmh1SgcKi+NNHJW0fb1yanX1BFn",
-	"EQEaQldcjNjzgnrhoQcWzWsiToMgx6viyYlDZIglTBifm61ESuAqqv/c46MfQ/VPcPTuaPgYeG/OFi+R",
-	"a/0UUwqxNpdISPJgKoC8R4SOcKq8mWZiarmxXJ4QemVWlcphzvFcvUw5YZzIuc2Sqo0lRh4iScq4xFQi",
-	"D2V8onLdJUBkSYJ53TevlWcatJLIGJpe7PBhLYEMk1JwHhvL05Zhlv+s6Lfn2w2L27OtUpiOCjA7XlcB",
-	"aKp2DWxMbGiQYiH+ZVzXsO0zV65nAnihkeXvs9OKu8+63L1k45XSXdpX0bQJPwV0Vx+HLAKnLxMQIu9Y",
-	"VuunOZT0LtXyjmFEom52Rs/KGhfLylZ9SGGqIVsTUePYcpK1IXAWQxWEmuVdgxel04hE1VWbNa51pjWr",
-	"lbaFapY8l+HXwBMiRF67VaMTkFMWbWid2nRGS0TvyqsKtbeUuFpT0Z5hJU1F61WbmuWBLr/a7J0qZg8x",
-	"EdOO3Rm+pxBKiEYz4IXjNw1/aiSNsKysVt3jkSQ63zsKuq6Ey55aG9ywhJv3I8m+whrBrpK7BNYbv+Ze",
-	"g6XqHjdEL72qE7xM893VL24heGu2hGuFyCjdyDgcx3+M0eB+nfNcdfHC277Jmxs2XJr2jNajngUWcbsr",
-	"f4ZGo6maUkrBeXspbroP1WtTrx+2yL6VWGbtwoV+bbfL6gQyUygUEYEfYogcTXJNg5yJS4W/TJ70WJSb",
-	"Z6jq8SHMVDt9q8rJaPIAmAM/z8zBy/z6rdDk97//LKY9uovQb0uknkqZmqMuoWOmQ2gOBugCJ2kmXlzH",
-	"WCqzXpxfX6lDYmEsOjkOjgPlKJYCxSlBA3R2HByfIbMda818nBJ/duLjKCHUp7rm9YsJaI8qf+qz+lWE",
-	"BugjEfJcUX7OCb3KwK8FV0oSX8/VFJasQafnZIthbapxGgRtW/eSrpgUVMKh1bMDcT/UeJIy4bDUxkBk",
-	"j9HmWx6b1WDWOVKqOeBkmw5YeO4c8B9JtDBgGoOEpocu9fOlh2p54BpuNspniyPb56WJh14F77rpzURt",
-	"naRyVs8HsIsH9Z7YG1Xm1aWutRTLcNpU3e4neioHV8uyVjnsMdAri8ePICYz4KQDUI3JlyXxrwCqm+fe",
-	"ur70OchiQPiUBHfC/Y3i6QhEn15abXB+lNuynZWjaE+F7DzuHnYlc5ixr7D1nFNMew1FrUM+pCBkcurH",
-	"xQdDtwPN98SG59y6WJ9BzadD9HzTT9Y33WUby+RK49T7Xeq4aXjMIbat1fkEO8RPpQ4vv/a2FZwheELG",
-	"FEv3ljOhnj+tbiQucpr++4duWnPzY7+nN+OPXk9v1bHgXk9veYaseW6zfNNneNrAYUfin7ZbZ7LtANRr",
-	"RrkGzQe0Y68zO/o0393gyHMPITLKAUfu61Ut9zvaWFmf0Ne+wzbc2Z5YNLDK3KP8Q6UztW8AR+dxXEZm",
-	"xwqaiByFLDMV1IYZd5rOqHmhiXeuaoGtrT3P/Oed7bSYo/Pj6SebtoTaiR8sk5YfOlqx5yb/7v1LD6yV",
-	"kb02PPZ3t722OzrgazY7S68c1ri1x2A2P6JuvdN4WjD92l2NNqS1rn0cUBd521S8h/lb80bMXoObifx/",
-	"A7RC852m+MWhWd8If8LowVq9O3TVMetsd5YmHRauPjUS1uodV0/eqa3scfJ4FG3OAUFiVe0eNrv6NZn9",
-	"w6EJaHlBZptJnnvUXM7p0aXV2z/78ekUcCynfkxmsGKHmT23+7NlqfPSvFXYjX77zBHN6+Bskymx9hSf",
-	"FcmT8Ti/NjTw/ZiFOJ4yIQdvg7eBOgb+FwAA//8=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

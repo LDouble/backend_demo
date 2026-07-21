@@ -4,11 +4,14 @@ build:
 	go build ./...
 
 generate:
+	go run ./cmd/campusctl generate modules
+	go run ./cmd/campusctl generate openapi
 	go generate ./...
 
 generate-check:
+	go run ./cmd/campusctl generate modules --check
+	go run ./cmd/campusctl generate openapi --check
 	./scripts/check-go-generated.sh
-	./scripts/check-generated-modules.sh
 
 generate-module:
 	@test -n "$(SCHEMA)" || (echo 'usage: make generate-module SCHEMA=schemas/<module>.yaml' && exit 1)

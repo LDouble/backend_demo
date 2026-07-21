@@ -1,0 +1,77 @@
+version: 2
+module: trade
+entities:
+  - name: Order
+    table: trade_orders
+    primary: true
+    fields:
+      - {name: order_no, type: string, size: 40, required: true, unique: true}
+      - {name: order_type, type: string, size: 32, required: true, index: true}
+      - {name: resource_type, type: string, size: 64, required: true}
+      - {name: resource_id, type: uint64, required: true}
+      - {name: buyer_id, type: uint64, required: true, index: true}
+      - {name: seller_id, type: uint64, required: true, index: true}
+      - {name: amount_cents, type: int64, required: true}
+      - {name: currency, type: string, size: 3, required: true}
+      - {name: payment_mode, type: string, size: 16, required: true}
+      - {name: trade_status, type: string, size: 24, required: true, index: true}
+      - {name: fulfillment_status, type: string, size: 24, required: true}
+      - {name: title_snapshot, type: string, size: 200, required: true}
+      - {name: resource_snapshot, type: json, required: true}
+      - {name: idempotency_key, type: string, size: 128, required: true}
+      - {name: expires_at, type: datetime, index: true}
+      - {name: paid_at, type: datetime}
+      - {name: completed_at, type: datetime}
+      - {name: cancelled_at, type: datetime}
+      - {name: closed_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: uk_trade_buyer_idempotency, fields: [buyer_id, idempotency_key], unique: true}
+      - {name: idx_trade_resource, fields: [resource_type, resource_id]}
+      - {name: idx_trade_expiry, fields: [trade_status, expires_at]}
+  - name: OrderTransition
+    table: trade_order_transitions
+    fields:
+      - {name: order_id, type: uint64, required: true}
+      - {name: from_status, type: string, size: 24, required: true}
+      - {name: to_status, type: string, size: 24, required: true}
+      - {name: actor_type, type: string, size: 16, required: true}
+      - {name: actor_id, type: uint64}
+      - {name: reason_code, type: string, size: 64}
+      - {name: reason_text, type: string, size: 500}
+      - {name: idempotency_key, type: string, size: 128, required: true, unique: true}
+    indexes:
+      - {name: idx_trade_transition_order, fields: [order_id]}
+    foreign_keys:
+      - {field: order_id, references: trade_orders.id, on_delete: CASCADE}
+crud: [create, get, list, update]
+operations:
+  - operation_id: ListMyTradeOrders
+    method: GET
+    path: /api/v1/orders
+    permission: trade:read
+    summary: 查询我的交易订单
+    query:
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success}]
+  - operation_id: GetMyTradeOrder
+    method: GET
+    path: /api/v1/orders/{id}
+    permission: trade:read_item
+    summary: 查询交易订单详情
+    responses: [{status: 200, kind: success}, {status: 404, kind: error}]
+  - operation_id: CancelTradeOrder
+    method: POST
+    path: /api/v1/orders/{id}/cancel
+    permission: trade:cancel
+    summary: 取消交易订单
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: CompleteTradeOrder
+    method: POST
+    path: /api/v1/orders/{id}/complete
+    permission: trade:complete
+    summary: 确认交易完成
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]

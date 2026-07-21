@@ -5,10 +5,11 @@
 1. 先在 `.agent/TASKS` 与 `.agent/PRDS` 明确范围并完成评审。
 2. 创建或修改 `schemas/<module>.yaml`。
 3. 执行 `go run ./cmd/campusctl module validate <schema>`。
-4. 执行 `go run ./cmd/campusctl generate module <schema>`。
-5. 执行 `make generate-check`，生成并校验模块的 GORM Query。
-6. 审核模块 OpenAPI、权限清单及迁移，将迁移编号后再纳入主序列。
-7. 只在 `rule.go`、扩展 Handler 和测试中补充业务逻辑。
+4. 在 `operations` 中声明方法、路径、参数、响应和权限；不得另行手写路由或权限清单。
+5. 执行 `go run ./cmd/campusctl generate module <schema>` 完成首次登记。
+6. 执行 `make generate`，再执行 `make generate-check` 校验模块、OpenAPI、HTTP adapter 和 GORM Query 漂移。
+7. 审核模块 OpenAPI、权限清单及迁移，将迁移编号后再纳入主序列。
+8. 只在 `rule.go`、扩展 Handler 和测试中补充业务逻辑。
 
 ## 禁止事项
 

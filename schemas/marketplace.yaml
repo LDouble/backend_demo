@@ -1,0 +1,76 @@
+version: 2
+module: marketplace
+entities:
+  - name: Listing
+    table: marketplace_listings
+    primary: true
+    fields:
+      - {name: title, type: string, size: 200, required: true}
+      - {name: description, type: text, required: true}
+      - {name: price_cents, type: int64, required: true}
+      - {name: currency, type: string, size: 3, required: true}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: rejection_reason, type: string, size: 500}
+      - {name: owner_id, type: uint64, required: true, index: true}
+      - {name: reviewed_by, type: uint64}
+      - {name: reviewed_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+  - name: ListingImage
+    table: marketplace_listing_images
+    fields:
+      - {name: listing_id, type: uint64, required: true}
+      - {name: url, type: string, size: 2048, required: true}
+      - {name: position, type: int64, required: true}
+    indexes:
+      - {name: uk_listing_image_position, fields: [listing_id, position], unique: true}
+    foreign_keys:
+      - {field: listing_id, references: marketplace_listings.id, on_delete: CASCADE}
+  - name: MarketplaceReservation
+    table: marketplace_reservations
+    fields:
+      - {name: listing_id, type: uint64, required: true, index: true}
+      - {name: trade_order_id, type: uint64, required: true, unique: true}
+      - {name: buyer_id, type: uint64, required: true, index: true}
+      - {name: status, type: string, size: 16, required: true, index: true}
+      - {name: expires_at, type: datetime, required: true, index: true}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: idx_reservation_expiry, fields: [status, expires_at]}
+    foreign_keys:
+      - {field: listing_id, references: marketplace_listings.id, on_delete: RESTRICT}
+crud: [create, get, list, update, delete]
+operations:
+  - operation_id: CreateMarketplaceListing
+    method: POST
+    path: /api/v1/marketplace/listings
+    permission: marketplace:create
+    summary: 创建二手商品草稿
+    body:
+      fields:
+        - {name: title, type: string, required: true}
+        - {name: description, type: string, required: true}
+        - {name: price_cents, type: integer, format: int64, required: true, minimum: 1}
+        - {name: image_urls, type: array, items: string}
+    responses: [{status: 201, kind: success}, {status: 400, kind: error}]
+  - operation_id: SubmitMarketplaceListing
+    method: POST
+    path: /api/v1/marketplace/listings/{id}/submit
+    permission: marketplace:submit
+    summary: 提交商品审核
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: WithdrawMarketplaceListing
+    method: POST
+    path: /api/v1/marketplace/listings/{id}/withdraw
+    permission: marketplace:withdraw
+    summary: 撤回商品
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: CreateMarketplaceOrder
+    method: POST
+    path: /api/v1/marketplace/orders
+    permission: marketplace:order_create
+    summary: 原子保留商品并创建订单
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    body: {fields: [{name: listing_id, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 201, kind: success}, {status: 409, kind: error}]

@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -190,6 +191,7 @@ func plan(root string, schema Schema, options Options) ([]outputFile, error) {
 		{"service.go.tmpl", "internal/modules/" + schema.Module + "/application/service.gen.go", false, true},
 		{"mysql_repository.go.tmpl", "internal/modules/" + schema.Module + "/infrastructure/repository.gen.go", false, true},
 		{"handler.go.tmpl", "internal/modules/" + schema.Module + "/api/handler.gen.go", false, true},
+		{"httpapi_adapter.go.tmpl", "internal/api/httpapi/" + schema.Module + "_adapter.gen.go", false, true},
 		{"module.go.tmpl", "internal/modules/" + schema.Module + "/module.go", false, true},
 		{"module_test.go.tmpl", "internal/modules/" + schema.Module + "/domain/rule_test.go", true, true},
 		{"openapi.yaml.tmpl", "api/modules/" + schema.Module + ".yaml", false, false},
@@ -305,6 +307,21 @@ func render(name string, data templateData) ([]byte, error) {
 		return nil, fmt.Errorf("read template %s: %w", name, err)
 	}
 	functions := template.FuncMap{
+		"lower": strings.ToLower,
+		"lowerFirst": func(value string) string {
+			if value == "" {
+				return value
+			}
+			return strings.ToLower(value[:1]) + value[1:]
+		},
+		"pathParams": func(path string) []string {
+			matches := regexp.MustCompile(`\{([A-Za-z][A-Za-z0-9_]*)\}`).FindAllStringSubmatch(path, -1)
+			values := make([]string, 0, len(matches))
+			for _, match := range matches {
+				values = append(values, match[1])
+			}
+			return values
+		},
 		"has": func(values []string, target string) bool {
 			for _, value := range values {
 				if value == target {

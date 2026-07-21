@@ -17,10 +17,10 @@ cmd/server → internal/app → HTTP/API
 ## 事实来源
 
 - `schemas/`：业务模块结构和生成输入。
-- `api/openapi.yaml`：平台公共 HTTP 契约；`api/modules/` 保存待合并的模块片段。
+- `api/openapi.yaml`：平台公共 HTTP 契约，由基础接口和带 `x-generated-module` 的模块 operation 共同组成；`api/modules/` 保存从模块 Schema 生成的片段。
 - `migrations/`：数据库历史事实；模块生成迁移位于 `migrations/modules/`，审核并编号后才能进入主迁移序列。
 - `.agent/modules.json`：已生成模块索引。
 
 ## 生成边界
 
-`.gen.go`、模块 OpenAPI、权限清单和模块迁移可由生成器覆盖。`domain/rule.go` 与 `domain/rule_test.go` 是手写扩展点，仅首次创建。生成器不自动注册路由、执行迁移或修改已编号迁移。
+`.gen.go`、模块 OpenAPI、全局 HTTP adapter、权限清单和模块迁移可由生成器覆盖。`domain/rule.go` 与 `domain/rule_test.go` 是手写扩展点，仅首次创建。模块 operation 会汇总到全局 OpenAPI，并由 oapi-codegen 注册路由；生成器不执行迁移或修改已编号迁移。

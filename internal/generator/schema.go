@@ -29,12 +29,13 @@ var (
 
 // Schema is the versioned declaration used to generate one business module.
 type Schema struct {
-	Version     int          `yaml:"version"`
-	Module      string       `yaml:"module"`
-	Entity      Entity       `yaml:"entity"`
-	Entities    []Entity     `yaml:"entities"`
-	CRUD        []string     `yaml:"crud"`
-	Permissions []Permission `yaml:"permissions"`
+	Version     int            `yaml:"version"`
+	Module      string         `yaml:"module"`
+	Entity      Entity         `yaml:"entity"`
+	Entities    []Entity       `yaml:"entities"`
+	CRUD        []string       `yaml:"crud"`
+	Permissions []Permission   `yaml:"permissions"`
+	Operations  []APIOperation `yaml:"operations,omitempty"`
 }
 
 // Entity describes the module's primary persistent entity.
@@ -84,6 +85,51 @@ type Permission struct {
 	Name    string   `yaml:"name" json:"name"`
 	Path    string   `yaml:"path" json:"path_pattern"`
 	Methods []string `yaml:"methods" json:"methods"`
+}
+
+// APIOperation declares one HTTP capability and its entry permission.
+type APIOperation struct {
+	OperationID string         `yaml:"operation_id"`
+	Method      string         `yaml:"method"`
+	Path        string         `yaml:"path"`
+	Permission  string         `yaml:"permission"`
+	Summary     string         `yaml:"summary,omitempty"`
+	Headers     []APIParameter `yaml:"headers,omitempty"`
+	Query       []APIParameter `yaml:"query,omitempty"`
+	Body        *APIObject     `yaml:"body,omitempty"`
+	Responses   []APIResponse  `yaml:"responses,omitempty"`
+}
+
+// APIParameter declares a generated header or query parameter.
+type APIParameter struct {
+	Name     string `yaml:"name"`
+	Type     string `yaml:"type"`
+	Required bool   `yaml:"required,omitempty"`
+	Format   string `yaml:"format,omitempty"`
+	Minimum  *int64 `yaml:"minimum,omitempty"`
+	Maximum  *int64 `yaml:"maximum,omitempty"`
+}
+
+// APIObject declares an inline JSON request object.
+type APIObject struct {
+	Fields []APIField `yaml:"fields"`
+}
+
+// APIField declares one JSON request field.
+type APIField struct {
+	Name     string `yaml:"name"`
+	Type     string `yaml:"type"`
+	Required bool   `yaml:"required,omitempty"`
+	Format   string `yaml:"format,omitempty"`
+	Items    string `yaml:"items,omitempty"`
+	Minimum  *int64 `yaml:"minimum,omitempty"`
+	Maximum  *int64 `yaml:"maximum,omitempty"`
+}
+
+// APIResponse declares one operation response status and shared envelope kind.
+type APIResponse struct {
+	Status int    `yaml:"status"`
+	Kind   string `yaml:"kind"`
 }
 
 // Load reads, strictly decodes, normalizes and validates one schema.
@@ -318,7 +364,133 @@ func (s *Schema) normalizeOperations() error {
 		sort.Strings(permission.Methods)
 	}
 	sort.Slice(s.Permissions, func(i, j int) bool { return s.Permissions[i].Name < s.Permissions[j].Name })
+	if err := s.normalizeAPIOperations(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (s *Schema) normalizeAPIOperations() error {
+	seenIDs := map[string]struct{}{}
+	seenRoutes := map[string]struct{}{}
+	for i := range s.Operations {
+		op := &s.Operations[i]
+		op.OperationID = strings.TrimSpace(op.OperationID)
+		op.Method = strings.ToUpper(strings.TrimSpace(op.Method))
+		op.Path = strings.TrimSpace(op.Path)
+		op.Permission = strings.TrimSpace(op.Permission)
+		if !typePattern.MatchString(op.OperationID) {
+			return fmt.Errorf("invalid operation_id %q", op.OperationID)
+		}
+		if !validMethod(op.Method) {
+			return fmt.Errorf("operation %q has invalid method %q", op.OperationID, op.Method)
+		}
+		if !strings.HasPrefix(op.Path, "/api/v1/") || strings.Contains(op.Path, "..") {
+			return fmt.Errorf("operation %q has invalid path %q", op.OperationID, op.Path)
+		}
+		if !permissionID.MatchString(op.Permission) {
+			return fmt.Errorf("operation %q has invalid permission %q", op.OperationID, op.Permission)
+		}
+		if _, exists := seenIDs[op.OperationID]; exists {
+			return fmt.Errorf("duplicate operation_id %q", op.OperationID)
+		}
+		seenIDs[op.OperationID] = struct{}{}
+		routeKey := op.Method + " " + op.Path
+		if _, exists := seenRoutes[routeKey]; exists {
+			return fmt.Errorf("duplicate operation route %q", routeKey)
+		}
+		seenRoutes[routeKey] = struct{}{}
+		for j := range op.Headers {
+			if err := normalizeAPIParameter(&op.Headers[j]); err != nil {
+				return fmt.Errorf("operation %q header: %w", op.OperationID, err)
+			}
+		}
+		for j := range op.Query {
+			if err := normalizeAPIParameter(&op.Query[j]); err != nil {
+				return fmt.Errorf("operation %q query: %w", op.OperationID, err)
+			}
+		}
+		if op.Body != nil {
+			for j := range op.Body.Fields {
+				if err := normalizeAPIField(&op.Body.Fields[j]); err != nil {
+					return fmt.Errorf("operation %q body: %w", op.OperationID, err)
+				}
+			}
+		}
+		if len(op.Responses) == 0 {
+			op.Responses = []APIResponse{{Status: 200, Kind: "success"}}
+		}
+		for _, response := range op.Responses {
+			if response.Status < 100 || response.Status > 599 || (response.Kind != "success" && response.Kind != "error") {
+				return fmt.Errorf("operation %q has invalid response", op.OperationID)
+			}
+		}
+	}
+	sort.Slice(s.Operations, func(i, j int) bool {
+		if s.Operations[i].Path == s.Operations[j].Path {
+			return s.Operations[i].Method < s.Operations[j].Method
+		}
+		return s.Operations[i].Path < s.Operations[j].Path
+	})
+	if len(s.Operations) > 0 {
+		s.Permissions = permissionsFromOperations(s.Operations)
+	}
+	return nil
+}
+
+func normalizeAPIParameter(parameter *APIParameter) error {
+	parameter.Name = strings.TrimSpace(parameter.Name)
+	parameter.Type = strings.ToLower(strings.TrimSpace(parameter.Type))
+	if parameter.Name == "" || !validAPIType(parameter.Type) {
+		return fmt.Errorf("invalid parameter %q", parameter.Name)
+	}
+	return nil
+}
+
+func normalizeAPIField(field *APIField) error {
+	field.Name = strings.TrimSpace(field.Name)
+	field.Type = strings.ToLower(strings.TrimSpace(field.Type))
+	if !tablePattern.MatchString(field.Name) || !validAPIType(field.Type) {
+		return fmt.Errorf("invalid field %q", field.Name)
+	}
+	if field.Type == "array" && !validAPIType(field.Items) {
+		return fmt.Errorf("array field %q has invalid items", field.Name)
+	}
+	return nil
+}
+
+func validAPIType(value string) bool {
+	switch value {
+	case "string", "integer", "boolean", "array":
+		return true
+	default:
+		return false
+	}
+}
+
+func permissionsFromOperations(operations []APIOperation) []Permission {
+	byKey := map[string]*Permission{}
+	for _, operation := range operations {
+		key := operation.Permission + "\x00" + operation.Path
+		permission, ok := byKey[key]
+		if !ok {
+			permission = &Permission{Name: operation.Permission, Path: operation.Path, Methods: []string{}}
+			byKey[key] = permission
+		}
+		permission.Methods = append(permission.Methods, operation.Method)
+	}
+	result := make([]Permission, 0, len(byKey))
+	for _, permission := range byKey {
+		sort.Strings(permission.Methods)
+		result = append(result, *permission)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Name == result[j].Name {
+			return result[i].Path < result[j].Path
+		}
+		return result[i].Name < result[j].Name
+	})
+	return result
 }
 
 func normalizeField(field *Field, seen map[string]struct{}) error {

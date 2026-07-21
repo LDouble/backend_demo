@@ -67,7 +67,7 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	}
 }
 func usage() error {
-	return errors.New("usage: campusctl migration up|down [steps] | campusctl admin bootstrap | campusctl module validate <schema> | campusctl module list [--root path] | campusctl generate module <schema> [--check] [--root path]")
+	return errors.New("usage: campusctl migration up|down [steps] | campusctl admin bootstrap | campusctl module validate <schema> | campusctl module list [--root path] | campusctl generate module <schema> [--check] [--root path] | campusctl generate modules [--check] [--root path] | campusctl generate openapi [--check] [--root path]")
 }
 func configPath() string {
 	if v := os.Getenv("CAMPUS_BOOTSTRAP_FILE"); v != "" {
@@ -168,6 +168,51 @@ func runModule(ctx context.Context, args []string, output io.Writer) error {
 }
 
 func runGenerate(ctx context.Context, args []string, output io.Writer) error {
+	if len(args) > 0 && args[0] == "modules" {
+		flags := flag.NewFlagSet("generate modules", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		check := flags.Bool("check", false, "check all generated modules")
+		root := flags.String("root", repositoryRoot(), "repository root")
+		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
+			return usage()
+		}
+		modules, err := generator.ListModules(ctx, *root)
+		if err != nil {
+			return err
+		}
+		for _, module := range modules {
+			schemaPath := filepath.Join(*root, filepath.FromSlash(module.Schema))
+			schema, loadErr := generator.Load(ctx, schemaPath)
+			if loadErr != nil {
+				return loadErr
+			}
+			_, generateErr := generator.Generate(ctx, schema, generator.Options{
+				Root:   *root,
+				Source: module.Schema,
+				Check:  *check,
+			})
+			if generateErr != nil {
+				return generateErr
+			}
+		}
+		_, err = fmt.Fprintf(output, "generated modules count=%d checked=%t\n", len(modules), *check)
+		return err
+	}
+	if len(args) > 0 && args[0] == "openapi" {
+		flags := flag.NewFlagSet("generate openapi", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		check := flags.Bool("check", false, "check global OpenAPI drift")
+		root := flags.String("root", repositoryRoot(), "repository root")
+		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
+			return usage()
+		}
+		changed, err := generator.GenerateOpenAPI(ctx, generator.GenerateOpenAPIOptions{Root: *root, Check: *check})
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(output, "generated openapi changed=%t\n", changed)
+		return err
+	}
 	if len(args) < 2 || args[0] != "module" {
 		return usage()
 	}

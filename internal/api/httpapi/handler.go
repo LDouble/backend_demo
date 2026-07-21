@@ -15,7 +15,9 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
+	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
 	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
+	tradeapp "github.com/weouc-plus/campus-platform/internal/modules/trade/application"
 	"go.uber.org/zap"
 )
 
@@ -26,6 +28,8 @@ type Handler struct {
 	permissions *permission.Service
 	configs     *configcenter.Service
 	notices     *noticeapp.Manager
+	marketplace *marketplaceapp.Manager
+	trades      *tradeapp.Manager
 	mysql       func(context.Context) error
 	redis       func(context.Context) error
 	log         *zap.Logger
@@ -33,6 +37,15 @@ type Handler struct {
 
 // WithNotices attaches the optional notification-center module.
 func (h *Handler) WithNotices(manager *noticeapp.Manager) *Handler { h.notices = manager; return h }
+
+// WithMarketplace attaches the marketplace domain service.
+func (h *Handler) WithMarketplace(manager *marketplaceapp.Manager) *Handler {
+	h.marketplace = manager
+	return h
+}
+
+// WithTrades attaches participant-scoped trade order queries.
+func (h *Handler) WithTrades(manager *tradeapp.Manager) *Handler { h.trades = manager; return h }
 
 // New creates an HTTP handler backed by the supplied core services.
 func New(authService *auth.Service, userService *user.Service, permissionService *permission.Service, configService *configcenter.Service, mysqlPing, redisPing func(context.Context) error, log *zap.Logger) *Handler {

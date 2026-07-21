@@ -2,6 +2,8 @@
 
 平台提供用户认证、Redis 会话、Casbin RBAC、配置中心、数据库迁移和健康检查，并已加入通知中心、Schema v2 多实体生成及 Asynq 异步投递。
 
+交易能力拆分为 Trade、Marketplace 和 Payment 三个边界：统一订单保存交易事实，Marketplace 仅保存商品与保留，Payment 预留在线支付、退款和回调模型。架构说明见 [`docs/trade-payment-architecture.md`](docs/trade-payment-architecture.md)。
+
 ## 本地启动
 
 ```bash
@@ -61,15 +63,17 @@ make test-compose
 
 `make test-compose` 使用隔离宿主机端口启动全新 Compose 环境，自动验证迁移升降级、真实 Redis 会话、Casbin 持久化、数据库密文、权限即时生效和 API 重启后持久化，结束后清理容器及数据卷。
 
-## API 代码生成
+## API 与模块代码生成
 
-`api/openapi.yaml` 是 HTTP 契约的唯一来源。修改契约后执行：
+平台基础接口直接维护在 `api/openapi.yaml`；业务模块在 `schemas/<module>.yaml` 的 `operations` 中声明 HTTP 方法、路径、请求参数、响应和入口权限。生成器据此产生模块 OpenAPI、权限清单和 HTTP 适配器，并将模块操作确定性汇总到公开契约 `api/openapi.yaml`。
+
+日常修改 Schema 后统一执行：
 
 ```bash
 make generate
 ```
 
-命令使用 Go 1.25 的 `tool` 依赖运行固定版本的 oapi-codegen，生成 `internal/api/generated/api.gen.go`。生成文件包含 DTO、ServerInterface、参数解析与 Gin 路由注册，禁止手工修改。请求结构由 OpenAPI 校验中间件统一校验；认证、Casbin 鉴权、请求 ID、日志和异常恢复同样集中在中间件中。
+生成顺序固定为：全部模块产物 → 全局 OpenAPI → oapi-codegen/GORM Query。生成文件包含 DTO、ServerInterface、参数解析、Gin 路由注册和模块适配器，禁止手工修改。请求结构由 OpenAPI 校验中间件统一校验；认证、Casbin 鉴权、请求 ID、日志和异常恢复同样集中在中间件中。
 
 ## 数据库代码生成
 
@@ -97,7 +101,7 @@ make generate-module SCHEMA=schemas/notice.yaml
 go run ./cmd/campusctl module list
 ```
 
-首次生成会创建 Domain、Application、GORM Query Repository、Handler、OpenAPI 片段、迁移草案和权限清单，并将所有模块实体登记到共享 GORM Gen。随后执行 `make generate-check` 生成类型安全 Query。`.gen.go` 可重复生成；`domain/rule.go` 与测试骨架只在不存在时创建。模块迁移必须审核并编号后才能进入主迁移目录，生成器不会自动执行迁移或注册路由。完整约束见 [`.agent/architecture.md`](.agent/architecture.md) 和 [`.agent/rules.md`](.agent/rules.md)。
+首次生成会创建 Domain、Application、GORM Query Repository、Handler、OpenAPI 片段、HTTP 适配器、迁移草案和权限清单，并将所有模块实体登记到共享 GORM Gen。后续只需维护 Schema 和手写业务 Handler，再执行 `make generate`；路由、契约、入口权限和适配签名无需重复配置。`.gen.go` 可重复生成；`domain/rule.go` 与测试骨架只在不存在时创建。模块迁移必须审核并编号后才能进入主迁移目录，生成器不会自动执行或编号迁移。完整流程见 [`docs/module-development.md`](docs/module-development.md)。
 
 ## 通知中心
 

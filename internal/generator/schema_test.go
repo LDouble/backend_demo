@@ -130,3 +130,35 @@ func TestLoadStrictAndContext(t *testing.T) {
 		t.Fatalf("Load(cancelled) error = %v", err)
 	}
 }
+
+func TestOperationsDerivePermissions(t *testing.T) {
+	minimum := int64(1)
+	schema := validSchema()
+	schema.Permissions = nil
+	schema.Operations = []APIOperation{{
+		OperationID: "CreateActivityRegistration",
+		Method:      "post",
+		Path:        "/api/v1/activities/{id}/registrations",
+		Permission:  "activity:register",
+		Headers:     []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}},
+		Body:        &APIObject{Fields: []APIField{{Name: "expected_version", Type: "integer", Format: "uint64", Required: true, Minimum: &minimum}}},
+	}}
+	if err := schema.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if len(schema.Permissions) != 1 || schema.Permissions[0].Methods[0] != "POST" {
+		t.Fatalf("derived permissions = %#v", schema.Permissions)
+	}
+}
+
+func TestOperationsRejectDuplicateRoute(t *testing.T) {
+	schema := validSchema()
+	schema.Operations = []APIOperation{
+		{OperationID: "CreateOne", Method: "POST", Path: "/api/v1/items", Permission: "activity:create"},
+		{OperationID: "CreateTwo", Method: "post", Path: "/api/v1/items", Permission: "activity:create_two"},
+	}
+	err := schema.Normalize()
+	if err == nil || !strings.Contains(err.Error(), "duplicate operation route") {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+}

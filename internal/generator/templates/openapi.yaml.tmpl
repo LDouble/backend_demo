@@ -4,7 +4,86 @@ openapi: 3.0.3
 info:
   title: {{.Module}} module
   version: 1.0.0
-paths:
+paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
+{{- if .Operations}}
+{{- range .Operations}}
+  {{.Path}}:
+    {{lower .Method}}:
+      operationId: {{.OperationID}}
+      tags: [{{$.Module}}]
+      summary: {{printf "%q" .Summary}}
+      x-generated-module: {{$.Module}}
+      x-permission: {{.Permission}}
+      security: [{bearerAuth: []}]
+{{- $pathParams := pathParams .Path}}
+{{- if or $pathParams .Headers .Query}}
+      parameters:
+{{- range $pathParams}}
+        - {name: {{.}}, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+{{- end}}
+{{- range .Headers}}
+        - name: {{.Name}}
+          in: header
+          required: {{.Required}}
+          schema:
+            type: {{.Type}}
+{{- if .Format}}
+            format: {{.Format}}
+{{- end}}
+{{- if .Minimum}}
+            minimum: {{.Minimum}}
+{{- end}}
+{{- if .Maximum}}
+            maximum: {{.Maximum}}
+{{- end}}
+{{- end}}
+{{- range .Query}}
+        - name: {{.Name}}
+          in: query
+          required: {{.Required}}
+          schema: {type: {{.Type}}{{if .Format}}, format: {{.Format}}{{end}}}
+{{- end}}
+{{- end}}
+{{- if .Body}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+{{- $hasRequired := false}}
+{{- range .Body.Fields}}{{if .Required}}{{$hasRequired = true}}{{end}}{{end}}
+{{- if $hasRequired}}
+              required:
+{{- range .Body.Fields}}{{if .Required}}
+                - {{.Name}}
+{{- end}}{{end}}
+{{- end}}
+              properties:
+{{- range .Body.Fields}}
+                {{.Name}}:
+                  type: {{.Type}}
+{{- if .Format}}
+                  format: {{.Format}}
+{{- end}}
+{{- if eq .Type "array"}}
+                  items: {type: {{.Items}}}
+{{- end}}
+{{- if .Minimum}}
+                  minimum: {{.Minimum}}
+{{- end}}
+{{- if .Maximum}}
+                  maximum: {{.Maximum}}
+{{- end}}
+{{- end}}
+{{- end}}
+      responses:
+{{- range .Responses}}
+        "{{.Status}}":
+          $ref: "#/components/responses/{{if eq .Kind "success"}}Success{{else}}Error{{end}}"
+{{- end}}
+{{- end}}
+{{- else}}
 {{- range .Routes}}
   {{.Path}}:
 {{- range .Methods}}
@@ -15,5 +94,6 @@ paths:
       responses:
         "501":
           description: Generated operation awaiting domain implementation
+{{- end}}
 {{- end}}
 {{- end}}

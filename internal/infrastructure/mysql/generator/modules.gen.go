@@ -3,16 +3,28 @@
 package main
 
 import (
+	marketplacedomain "github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	noticedomain "github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
+	paymentdomain "github.com/weouc-plus/campus-platform/internal/modules/payment/domain"
+	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 	"gorm.io/gen"
 )
 
 func applyGeneratedModules(generator *gen.Generator) {
 	generator.ApplyBasic(
+		marketplacedomain.Listing{},
+		marketplacedomain.ListingImage{},
+		marketplacedomain.MarketplaceReservation{},
 		noticedomain.Notice{},
 		noticedomain.NoticeAudience{},
 		noticedomain.NoticeRecipient{},
 		noticedomain.NoticeDelivery{},
 		noticedomain.OutboxEvent{},
+		paymentdomain.PaymentIntent{},
+		paymentdomain.PaymentTransaction{},
+		paymentdomain.PaymentRefund{},
+		paymentdomain.PaymentCallback{},
+		tradedomain.Order{},
+		tradedomain.OrderTransition{},
 	)
 }

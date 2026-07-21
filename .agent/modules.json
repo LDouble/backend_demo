@@ -2,6 +2,16 @@
   "version": 1,
   "modules": [
     {
+      "name": "marketplace",
+      "entity": "Listing",
+      "entities": [
+        "Listing",
+        "ListingImage",
+        "MarketplaceReservation"
+      ],
+      "schema": "schemas/marketplace.yaml"
+    },
+    {
       "name": "notice",
       "entity": "Notice",
       "entities": [
@@ -12,6 +22,26 @@
         "OutboxEvent"
       ],
       "schema": "schemas/notice.yaml"
+    },
+    {
+      "name": "payment",
+      "entity": "PaymentIntent",
+      "entities": [
+        "PaymentIntent",
+        "PaymentTransaction",
+        "PaymentRefund",
+        "PaymentCallback"
+      ],
+      "schema": "schemas/payment.yaml"
+    },
+    {
+      "name": "trade",
+      "entity": "Order",
+      "entities": [
+        "Order",
+        "OrderTransition"
+      ],
+      "schema": "schemas/trade.yaml"
     }
   ]
 }

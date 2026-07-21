@@ -232,6 +232,229 @@ paths:
       operationId: ReadNotice
       security: [{bearerAuth: []}]
       responses: {"200": {$ref: "#/components/responses/Success"}}
+  /api/v1/marketplace/listings:
+    post:
+      operationId: CreateMarketplaceListing
+      tags: [marketplace]
+      summary: "创建二手商品草稿"
+      x-generated-module: marketplace
+      x-permission: marketplace:create
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - price_cents
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price_cents:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                image_urls:
+                  type: array
+                  items: {type: string}
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/Error"
+  /api/v1/marketplace/listings/{id}/submit:
+    post:
+      operationId: SubmitMarketplaceListing
+      tags: [marketplace]
+      summary: "提交商品审核"
+      x-generated-module: marketplace
+      x-permission: marketplace:submit
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/marketplace/listings/{id}/withdraw:
+    post:
+      operationId: WithdrawMarketplaceListing
+      tags: [marketplace]
+      summary: "撤回商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:withdraw
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/marketplace/orders:
+    post:
+      operationId: CreateMarketplaceOrder
+      tags: [marketplace]
+      summary: "原子保留商品并创建订单"
+      x-generated-module: marketplace
+      x-permission: marketplace:order_create
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - listing_id
+              properties:
+                listing_id:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/marketplace/orders/{id}/cancel: {}
+  /api/v1/marketplace/orders/{id}/complete: {}
+  /api/v1/admin/notices/:id: {}
+  /api/v1/admin/notices/:id/deliveries: {}
+  /api/v1/admin/notices/:id/deliveries/retry: {}
+  /api/v1/admin/notices/:id/publish: {}
+  /api/v1/admin/notices/:id/revoke: {}
+  /api/v1/notices/:id: {}
+  /api/v1/notices/:id/read: {}
+  /api/v1/orders:
+    get:
+      operationId: ListMyTradeOrders
+      tags: [trade]
+      summary: "查询我的交易订单"
+      x-generated-module: trade
+      x-permission: trade:read
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/orders/{id}:
+    get:
+      operationId: GetMyTradeOrder
+      tags: [trade]
+      summary: "查询交易订单详情"
+      x-generated-module: trade
+      x-permission: trade:read_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/orders/{id}/cancel:
+    post:
+      operationId: CancelTradeOrder
+      tags: [trade]
+      summary: "取消交易订单"
+      x-generated-module: trade
+      x-permission: trade:cancel
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/orders/{id}/complete:
+    post:
+      operationId: CompleteTradeOrder
+      tags: [trade]
+      summary: "确认交易完成"
+      x-generated-module: trade
+      x-permission: trade:complete
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
