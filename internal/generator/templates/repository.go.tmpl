@@ -1,0 +1,25 @@
+// {{.Header}}
+// Source: {{.Source}}
+
+package domain
+
+import "context"
+
+// Repository defines persistence operations enabled by the module schema.
+type Repository interface {
+{{- if has .CRUD "create"}}
+	Create(context.Context, *{{.Entity.Name}}) error
+{{- end}}
+{{- if has .CRUD "get"}}
+	Get(context.Context, uint64) (*{{.Entity.Name}}, error)
+{{- end}}
+{{- if has .CRUD "list"}}
+	List(context.Context, int, int) ([]{{.Entity.Name}}, int64, error)
+{{- end}}
+{{- if has .CRUD "update"}}
+	Update(context.Context, *{{.Entity.Name}}) error
+{{- end}}
+{{- if has .CRUD "delete"}}
+	Delete(context.Context, uint64) error
+{{- end}}
+}

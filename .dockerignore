@@ -1,0 +1,5 @@
+.git
+.agent
+coverage*.out
+bootstrap.yaml
+.env

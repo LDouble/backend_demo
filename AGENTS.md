@@ -1,35 +1,47 @@
 # Repository Guidelines
 
-## 项目结构与模块组织
+## 项目结构与职责
 
-仓库目前处于方案设计阶段，核心文档为 `campus-platform-technical-design.md`，尚未提交可运行源码。实现时应遵循方案中的 Go 模块布局：入口放在 `cmd/server` 与 `cmd/campusctl`；基础能力放在 `internal/core`；业务按领域拆分到 `internal/modules/<module>`；数据库、Redis、日志和链路追踪适配器放在 `internal/infrastructure`。迁移、部署文件及 Agent 文档分别放入 `migrations/`、`deploy/` 和 `.agent/`。测试文件与被测代码同目录保存。
+服务入口位于 `cmd/server` 和 `cmd/campusctl`。业务实体、服务及 Repository 接口位于 `internal/core`；Gin Handler、中间件和 OpenAPI 生成代码位于 `internal/api`；MySQL、Redis、迁移和日志适配器位于 `internal/infrastructure`。SQL 迁移存放在 `migrations/`，公开 API 契约为 `api/openapi.yaml`，任务与 PRD 存放在 `.agent/`。
 
-## 构建、测试与本地开发
-
-当前仓库没有 `go.mod`、Makefile 或 Docker Compose 文件，暂不可构建。代码落地后应提供并保持以下标准命令可用：
+## 构建与验证
 
 ```bash
-go run ./cmd/server       # 启动本地 API 服务
-go test ./...             # 运行全部单元测试
-go test -race ./...       # 检查并发数据竞争
-go vet ./...              # 执行静态检查
-docker compose up -d      # 启动应用及 MySQL、Redis 等依赖
+make generate-check      # 检查 OpenAPI、GORM Query 与模块生成漂移
+make test-race           # 运行竞态和覆盖率测试
+make test-core-coverage  # 强制每个核心业务包覆盖率不低于 80%
+make test-generator      # 验证 Schema 生成器及其覆盖率门槛
+make test-compose        # 完整 MySQL/Redis/重启验收并自动清理
+make vet                 # Go 静态检查
+make lint                # golangci-lint
+make build               # 构建全部命令
+make env && make compose-up
 ```
 
-提交文档前至少运行 `git diff --check`，避免空白错误。
+提交前还需执行 `make check-architecture` 和 `git diff --check`。
 
-## 编码风格与命名约定
+## 数据库开发规范
 
-Go 代码必须通过 `gofmt`（建议执行 `gofmt -w .`）和 `go vet ./...`。包名使用简短小写单词；导出标识符使用 `PascalCase`，非导出标识符使用 `camelCase`；文件名采用小写蛇形命名，如 `signup_rule.go`。业务逻辑集中在 `domain`/`rule` 层，不直接修改生成器产出的代码。依赖方向保持 `API → Application → Domain`，基础设施层实现领域接口。
+版本化 SQL 迁移是表结构的唯一事实来源，禁止在运行时调用 `AutoMigrate`。领域实体和 Repository 接口由核心层手写；GORM Gen 只基于这些实体生成 `internal/infrastructure/mysql/query`，禁止手工修改生成文件，也禁止 `internal/core` 或 `internal/api` 引用该包。
 
-## 测试规范
+新增或修改 DB 逻辑必须按以下顺序：
 
-使用 Go 标准 `testing` 包，文件命名为 `*_test.go`，测试函数命名为 `Test<对象>_<场景>`。优先使用表驱动测试覆盖正常路径、权限失败、边界值和基础设施错误；外部 MySQL、Redis 或微信接口应通过接口替身隔离。新增或修复业务规则必须附带回归测试。
+1. 编写可升降级迁移。
+2. 更新核心实体及 Repository 接口。
+3. 在 `mysql/generator/main.go` 登记实体并执行 `make generate`。
+4. 在 MySQL Repository 内使用生成字段与 Query，实现核心接口。
+5. 添加 Repository 回归测试和必要的 MySQL 集成测试。
 
-## 提交与拉取请求
+所有查询必须使用 `WithContext(ctx)`。普通过滤、排序、分页和更新禁止使用字符串列名；特殊锁、数据库表达式或复杂 SQL 只能封装在 Repository 内，并注释说明生成 API 无法表达的原因。Casbin 策略表由其 Adapter 管理，不纳入生成。
 
-仓库尚无提交历史可供归纳。建议采用 Conventional Commits，例如 `feat(activity): add signup rule`、`docs: update architecture`。每次提交只包含一个逻辑变更。拉取请求应说明目的、实现范围、验证命令和配置/迁移影响；关联相关 Issue。涉及 API 或界面变化时，附请求示例、Swagger 差异或截图，并明确标注生成代码。
+## 模块生成规范
 
-## 安全与配置
+新增业务模块先定义 `schemas/<module>.yaml`，再执行 `campusctl module validate` 和 `campusctl generate module`。允许重新生成 `.gen.go`、模块 OpenAPI、权限清单和迁移草案；禁止覆盖 `domain/rule.go` 等人工扩展点。生成迁移经评审、编号后才能移入主迁移序列，生成器不得自动执行迁移或注册路由。
 
-禁止提交真实密钥、微信凭据或生产数据库地址。启动参数写入本地 `bootstrap.yaml` 或环境变量，并提供脱敏示例；运行时 Secret 应加密存储。任何新接口都需同时考虑认证、Casbin 权限、数据隔离和审计日志。
+## Go 风格与测试
+
+代码必须通过 `gofmt`，包名使用简短小写单词，导出标识符使用 `PascalCase`，文件名使用小写蛇形。优先编写表驱动测试，覆盖成功、边界、权限失败、乐观锁和基础设施错误。生成代码不得直接作为 HTTP 响应；API DTO 由 OpenAPI 生成并由 Handler 显式映射。
+
+## 安全与提交
+
+禁止提交 `.env`、真实密钥或生产地址。提交建议遵循 Conventional Commits，例如 `feat(db): add activity repository`。PR 必须说明迁移、生成文件、配置影响和实际执行的验证命令。

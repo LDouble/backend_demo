@@ -1,0 +1,19 @@
+# {{.Header}}
+# Source: {{.Source}}
+openapi: 3.0.3
+info:
+  title: {{.Module}} module
+  version: 1.0.0
+paths:
+{{- range .Routes}}
+  {{.Path}}:
+{{- range .Methods}}
+    {{.MethodLower}}:
+      operationId: {{.OperationID}}
+      tags: [{{$.Module}}]
+      x-permission: {{.Permission}}
+      responses:
+        "501":
+          description: Generated operation awaiting domain implementation
+{{- end}}
+{{- end}}

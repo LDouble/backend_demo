@@ -1,0 +1,41 @@
+version: 1
+module: activity
+entity:
+  name: Activity
+  table: activities
+  fields:
+    - name: title
+      type: string
+      size: 200
+      required: true
+      index: true
+    - name: description
+      type: text
+      required: true
+    - name: start_time
+      type: datetime
+      required: true
+      index: true
+    - name: capacity
+      type: uint64
+      required: true
+    - name: enabled
+      type: bool
+      required: true
+crud: [create, get, list, update, delete]
+permissions:
+  - name: activity:create
+    path: /api/v1/activities
+    methods: [POST]
+  - name: activity:list
+    path: /api/v1/activities
+    methods: [GET]
+  - name: activity:read
+    path: /api/v1/activities/:id
+    methods: [GET]
+  - name: activity:update
+    path: /api/v1/activities/:id
+    methods: [PUT, PATCH]
+  - name: activity:delete
+    path: /api/v1/activities/:id
+    methods: [DELETE]
