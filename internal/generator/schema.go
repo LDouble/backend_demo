@@ -21,10 +21,14 @@ const SchemaVersion = 2
 const RegistryVersion = 1
 
 var (
-	packagePattern = regexp.MustCompile(`^[a-z][a-z0-9_]{1,62}$`)
-	tablePattern   = regexp.MustCompile(`^[a-z][a-z0-9_]{1,63}$`)
-	typePattern    = regexp.MustCompile(`^[A-Z][A-Za-z0-9]{1,63}$`)
-	permissionID   = regexp.MustCompile(`^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$`)
+	packagePattern      = regexp.MustCompile(`^[a-z][a-z0-9_]{1,62}$`)
+	tablePattern        = regexp.MustCompile(`^[a-z][a-z0-9_]{1,63}$`)
+	typePattern         = regexp.MustCompile(`^[A-Z][A-Za-z0-9]{1,63}$`)
+	permissionID        = regexp.MustCompile(`^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$`)
+	apiLiteralSegment   = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+	apiPathParameter    = regexp.MustCompile(`^\{([a-z][a-z0-9_]{1,63})\}$`)
+	casbinPathParameter = regexp.MustCompile(`^:[a-z][a-z0-9_]{1,63}$`)
+	apiHeaderName       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]{0,63}$`)
 )
 
 // Schema is the versioned declaration used to generate one business module.
@@ -146,16 +150,36 @@ func Load(ctx context.Context, path string) (Schema, error) {
 	if err != nil {
 		return Schema{}, fmt.Errorf("read module schema: %w", err)
 	}
+	return decodeSchema(ctx, data)
+}
+
+func loadRepositorySchema(ctx context.Context, root, relative string) (Schema, error) {
+	if err := ctx.Err(); err != nil {
+		return Schema{}, err
+	}
+	data, err := repositoryReadFile(root, relative)
+	if err != nil {
+		return Schema{}, fmt.Errorf("read module schema: %w", err)
+	}
+	return decodeSchema(ctx, data)
+}
+
+// LoadRepository reads a schema through a symlink-safe repository file boundary.
+func LoadRepository(ctx context.Context, root, relative string) (Schema, error) {
+	return loadRepositorySchema(ctx, root, relative)
+}
+
+func decodeSchema(ctx context.Context, data []byte) (Schema, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	var schema Schema
-	if err = decoder.Decode(&schema); err != nil {
+	if err := decoder.Decode(&schema); err != nil {
 		return Schema{}, fmt.Errorf("decode module schema: %w", err)
 	}
-	if err = ctx.Err(); err != nil {
+	if err := ctx.Err(); err != nil {
 		return Schema{}, err
 	}
-	if err = schema.Normalize(); err != nil {
+	if err := schema.Normalize(); err != nil {
 		return Schema{}, err
 	}
 	return schema, nil
@@ -349,7 +373,7 @@ func (s *Schema) normalizeOperations() error {
 			return fmt.Errorf("duplicate permission %q", permission.Name)
 		}
 		seenPermissions[permission.Name] = struct{}{}
-		if !strings.HasPrefix(permission.Path, "/api/v1/") || strings.Contains(permission.Path, "..") {
+		if !validPermissionPath(permission.Path) {
 			return fmt.Errorf("invalid permission path %q", permission.Path)
 		}
 		if len(permission.Methods) == 0 {
@@ -391,7 +415,7 @@ func (s *Schema) normalizeAPIOperations() error {
 		if !validMethod(op.Method) {
 			return fmt.Errorf("operation %q has invalid method %q", op.OperationID, op.Method)
 		}
-		if !strings.HasPrefix(op.Path, "/api/v1/") || strings.Contains(op.Path, "..") {
+		if !validOperationPath(op.Path) {
 			return fmt.Errorf("operation %q has invalid path %q", op.OperationID, op.Path)
 		}
 		if !permissionID.MatchString(op.Permission) {
@@ -413,15 +437,26 @@ func (s *Schema) normalizeAPIOperations() error {
 		} else if op.Idempotency != "" {
 			return fmt.Errorf("read operation %q must not declare idempotency", op.OperationID)
 		}
+		seenHeaders := map[string]struct{}{}
 		for j := range op.Headers {
-			if err := normalizeAPIParameter(&op.Headers[j]); err != nil {
+			if err := normalizeAPIParameter(&op.Headers[j], "header"); err != nil {
 				return fmt.Errorf("operation %q header: %w", op.OperationID, err)
 			}
+			name := strings.ToLower(op.Headers[j].Name)
+			if _, exists := seenHeaders[name]; exists {
+				return fmt.Errorf("operation %q repeats header %q", op.OperationID, op.Headers[j].Name)
+			}
+			seenHeaders[name] = struct{}{}
 		}
+		seenQuery := map[string]struct{}{}
 		for j := range op.Query {
-			if err := normalizeAPIParameter(&op.Query[j]); err != nil {
+			if err := normalizeAPIParameter(&op.Query[j], "query"); err != nil {
 				return fmt.Errorf("operation %q query: %w", op.OperationID, err)
 			}
+			if _, exists := seenQuery[op.Query[j].Name]; exists {
+				return fmt.Errorf("operation %q repeats query parameter %q", op.OperationID, op.Query[j].Name)
+			}
+			seenQuery[op.Query[j].Name] = struct{}{}
 		}
 		if op.Body != nil {
 			if op.Body.Ref != "" && len(op.Body.Fields) > 0 {
@@ -457,11 +492,33 @@ func (s *Schema) normalizeAPIOperations() error {
 	return nil
 }
 
-func normalizeAPIParameter(parameter *APIParameter) error {
+func normalizeAPIParameter(parameter *APIParameter, location string) error {
 	parameter.Name = strings.TrimSpace(parameter.Name)
 	parameter.Type = strings.ToLower(strings.TrimSpace(parameter.Type))
-	if parameter.Name == "" || !validAPIType(parameter.Type) {
+	parameter.Format = strings.ToLower(strings.TrimSpace(parameter.Format))
+	if !validAPIType(parameter.Type) {
 		return fmt.Errorf("invalid parameter %q", parameter.Name)
+	}
+	switch location {
+	case "header":
+		if !apiHeaderName.MatchString(parameter.Name) {
+			return fmt.Errorf("invalid parameter %q", parameter.Name)
+		}
+	case "query":
+		if !tablePattern.MatchString(parameter.Name) {
+			return fmt.Errorf("invalid parameter %q", parameter.Name)
+		}
+	default:
+		return fmt.Errorf("invalid parameter location %q", location)
+	}
+	if !validAPIFormat(parameter.Type, parameter.Format) {
+		return fmt.Errorf("parameter %q has invalid format %q", parameter.Name, parameter.Format)
+	}
+	if (parameter.Minimum != nil || parameter.Maximum != nil) && parameter.Type != "integer" {
+		return fmt.Errorf("parameter %q has numeric bounds for non-integer type", parameter.Name)
+	}
+	if parameter.Minimum != nil && parameter.Maximum != nil && *parameter.Minimum > *parameter.Maximum {
+		return fmt.Errorf("parameter %q has minimum greater than maximum", parameter.Name)
 	}
 	if parameter.MaxLength != nil && (*parameter.MaxLength < 1 || parameter.Type != "string") {
 		return fmt.Errorf("parameter %q has invalid max_length", parameter.Name)
@@ -518,13 +575,64 @@ func pointer[T any](value T) *T { return &value }
 func normalizeAPIField(field *APIField) error {
 	field.Name = strings.TrimSpace(field.Name)
 	field.Type = strings.ToLower(strings.TrimSpace(field.Type))
+	field.Format = strings.ToLower(strings.TrimSpace(field.Format))
+	field.Items = strings.ToLower(strings.TrimSpace(field.Items))
 	if !tablePattern.MatchString(field.Name) || !validAPIType(field.Type) {
 		return fmt.Errorf("invalid field %q", field.Name)
 	}
-	if field.Type == "array" && !validAPIType(field.Items) {
+	if !validAPIFormat(field.Type, field.Format) {
+		return fmt.Errorf("field %q has invalid format %q", field.Name, field.Format)
+	}
+	if field.Type == "array" && (field.Items == "array" || !validAPIType(field.Items)) {
 		return fmt.Errorf("array field %q has invalid items", field.Name)
 	}
+	if field.Type != "array" && field.Items != "" {
+		return fmt.Errorf("non-array field %q must not declare items", field.Name)
+	}
+	if (field.Minimum != nil || field.Maximum != nil) && field.Type != "integer" {
+		return fmt.Errorf("field %q has numeric bounds for non-integer type", field.Name)
+	}
+	if field.Minimum != nil && field.Maximum != nil && *field.Minimum > *field.Maximum {
+		return fmt.Errorf("field %q has minimum greater than maximum", field.Name)
+	}
 	return nil
+}
+
+func validOperationPath(path string) bool {
+	return validAPIPath(path, func(segment string) bool {
+		return apiLiteralSegment.MatchString(segment) || apiPathParameter.MatchString(segment)
+	})
+}
+
+func validPermissionPath(path string) bool {
+	return validAPIPath(path, func(segment string) bool {
+		return apiLiteralSegment.MatchString(segment) || casbinPathParameter.MatchString(segment)
+	})
+}
+
+func validAPIPath(path string, validSegment func(string) bool) bool {
+	if !strings.HasPrefix(path, "/api/v1/") || strings.HasSuffix(path, "/") {
+		return false
+	}
+	for _, segment := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
+		if !validSegment(segment) {
+			return false
+		}
+	}
+	return true
+}
+
+func validAPIFormat(kind, format string) bool {
+	switch kind {
+	case "string":
+		return format == "" || format == "date" || format == "date-time"
+	case "integer":
+		return format == "" || format == "int32" || format == "int64" || format == "uint64"
+	case "boolean", "array":
+		return format == ""
+	default:
+		return false
+	}
 }
 
 func validAPIType(value string) bool {

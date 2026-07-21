@@ -7,6 +7,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
+	"github.com/weouc-plus/campus-platform/internal/core/user"
 	platformmysql "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
 	"gorm.io/gorm"
 )
@@ -38,6 +39,11 @@ func testDB(t *testing.T) *gorm.DB {
 	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}); err != nil {
 		t.Fatalf("迁移测试数据库: %v", err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("获取底层数据库: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	return db
 }
 
@@ -45,7 +51,7 @@ func testUserRepository(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	ctx := context.Background()
 	repository := platformmysql.NewUserRepository(db)
-	created := &model.User{Username: "alice", PasswordHash: "hash", Status: model.UserActive}
+	created := &model.User{Username: "alice", PasswordHash: "hash", Status: model.UserActive, SessionVersion: 7}
 	if err := repository.Create(ctx, created); err != nil {
 		t.Fatalf("创建用户: %v", err)
 	}
@@ -53,12 +59,20 @@ func testUserRepository(t *testing.T, db *gorm.DB) {
 	if err != nil || got.ID != created.ID {
 		t.Fatalf("按用户名查询: got=%v err=%v", got, err)
 	}
-	got.Status = model.UserDisabled
-	if err = repository.Update(ctx, got); err != nil {
+	username := "alice.updated"
+	if err = repository.UpdateFields(ctx, got.ID, user.UpdateFields{Username: &username}); err != nil {
 		t.Fatalf("更新用户: %v", err)
 	}
+	got, err = repository.GetByID(ctx, got.ID)
+	if err != nil || got.Username != username || got.PasswordHash != "hash" || got.Status != model.UserActive || got.SessionVersion != 7 {
+		t.Fatalf("字段更新覆盖了并发安全列: got=%+v err=%v", got, err)
+	}
+	passwordHash := "new-hash"
+	if err = repository.UpdateFields(ctx, got.ID, user.UpdateFields{PasswordHash: &passwordHash, IncrementSessionVersion: true}); err != nil {
+		t.Fatalf("更新密码: %v", err)
+	}
 	rows, total, err := repository.List(ctx, 1, 10)
-	if err != nil || total != 1 || len(rows) != 1 || rows[0].Status != model.UserDisabled {
+	if err != nil || total != 1 || len(rows) != 1 || rows[0].PasswordHash != passwordHash || rows[0].SessionVersion != 8 {
 		t.Fatalf("用户列表: rows=%v total=%d err=%v", rows, total, err)
 	}
 }
@@ -76,7 +90,7 @@ func testRoleRepository(t *testing.T, db *gorm.DB) {
 		t.Fatalf("按名称查询角色: got=%v err=%v", got, err)
 	}
 	got.Description = "读取配置"
-	if err = repository.Update(ctx, got); err != nil {
+	if err = repository.UpdateDescription(ctx, got.ID, got.Description); err != nil {
 		t.Fatalf("更新角色: %v", err)
 	}
 	rows, total, err := repository.List(ctx, 1, 10)

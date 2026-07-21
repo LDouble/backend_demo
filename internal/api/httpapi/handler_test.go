@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -27,16 +28,191 @@ import (
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
 	activitydomain "github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
 	activityinfra "github.com/weouc-plus/campus-platform/internal/modules/activity/infrastructure"
+	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
+	carpooldomain "github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type handlerFixture struct {
 	router       http.Handler
+	handler      *httpapi.Handler
 	users        *user.Service
 	permissions  *permission.Service
 	adminToken   string
 	userPassword string
+}
+
+type accountFailureLimiter struct {
+	failures int
+	loginIPs []string
+}
+
+func (l *accountFailureLimiter) AllowLoginIP(_ context.Context, ip string) (bool, error) {
+	l.loginIPs = append(l.loginIPs, ip)
+	return true, nil
+}
+
+func (l *accountFailureLimiter) RecordLoginFailure(context.Context, string) (bool, error) {
+	l.failures++
+	return l.failures <= 5, nil
+}
+
+func (l *accountFailureLimiter) ClearLoginFailures(context.Context, string) error {
+	l.failures = 0
+	return nil
+}
+
+func (*accountFailureLimiter) AllowRefresh(context.Context, string, string) (bool, error) {
+	return true, nil
+}
+
+type failingCarpoolStore struct{ err error }
+
+func (s failingCarpoolStore) CreateTrip(context.Context, uint64, carpooldomain.TripInput, time.Time) (*carpooldomain.Trip, error) {
+	return nil, s.err
+}
+
+func (failingCarpoolStore) GetTrip(context.Context, uint64, uint64) (*carpooldomain.Trip, bool, error) {
+	return nil, false, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) SearchTrips(context.Context, carpooldomain.Search, int, int, time.Time) ([]carpooldomain.Trip, int64, error) {
+	return nil, 0, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) Join(context.Context, uint64, uint64, uint64, time.Time) (*carpooldomain.Trip, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) Leave(context.Context, uint64, uint64, uint64, time.Time) (*carpooldomain.Trip, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) Cancel(context.Context, uint64, uint64, uint64, time.Time) (*carpooldomain.Trip, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) CompleteDue(context.Context, time.Time) (int64, error) {
+	return 0, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) RevealContact(*carpooldomain.Trip) (string, error) {
+	return "", errors.New("not implemented")
+}
+
+func TestLoginFailuresDoNotLockOutCorrectPassword(t *testing.T) {
+	limiter := &accountFailureLimiter{}
+	fixture := newHandlerFixtureWithLimiter(t, limiter)
+	for attempt := 0; attempt < 6; attempt++ {
+		response := performJSON(t, fixture.router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
+			"username": "admin",
+			"password": "wrong-password",
+		})
+		want := http.StatusUnauthorized
+		if attempt == 5 {
+			want = http.StatusTooManyRequests
+		}
+		if response.Code != want {
+			t.Fatalf("attempt=%d status=%d body=%s", attempt+1, response.Code, response.Body.String())
+		}
+	}
+	response := performJSON(t, fixture.router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
+		"username": "admin",
+		"password": fixture.userPassword,
+	})
+	if response.Code != http.StatusOK {
+		t.Fatalf("correct password remained locked: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if got := response.Header().Get("Cache-Control"); got != "no-store, private" {
+		t.Fatalf("cache control=%q", got)
+	}
+}
+
+func TestInfrastructureErrorsAreNotExposed(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	fixture.handler.WithCarpools(carpoolapp.NewManager(failingCarpoolStore{
+		err: errors.New("mysql users password=secret"),
+	}))
+	response := performJSON(t, fixture.router, http.MethodPost, "/api/v1/carpool/trips", fixture.adminToken, map[string]any{
+		"title": "Campus ride", "origin": "Station", "destination": "Campus",
+		"departure_at": time.Now().UTC().Add(time.Hour).Format(time.RFC3339),
+		"total_seats":  2, "contact_type": "phone", "contact": "13800138000",
+	})
+	assertErrorEnvelope(t, response, http.StatusInternalServerError, "internal_error")
+	if strings.Contains(response.Body.String(), "mysql") || strings.Contains(response.Body.String(), "secret") {
+		t.Fatalf("internal error leaked: %s", response.Body.String())
+	}
+}
+
+func TestSecurityHeaders(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	response := perform(t, fixture.router, http.MethodGet, "/health/live", "", nil)
+	for name, want := range map[string]string{
+		"Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+		"Referrer-Policy":         "no-referrer",
+		"X-Content-Type-Options":  "nosniff",
+		"X-Frame-Options":         "DENY",
+	} {
+		if got := response.Header().Get(name); got != want {
+			t.Fatalf("%s=%q want=%q", name, got, want)
+		}
+	}
+}
+
+func TestTrustedProxyClientIPAndHTTPSBoundary(t *testing.T) {
+	limiter := &accountFailureLimiter{}
+	fixture := newHandlerFixtureWithLimiter(t, limiter)
+	fixture.handler.WithProxyPolicy([]string{"10.0.0.0/8"}, false)
+	router, err := fixture.handler.Router()
+	if err != nil {
+		t.Fatal(err)
+	}
+	direct := loginRequest(t, "203.0.113.9:1234", "198.51.100.10", "")
+	router.ServeHTTP(httptest.NewRecorder(), direct)
+	proxied := loginRequest(t, "10.1.0.2:1234", "198.51.100.20, 10.2.0.3", "")
+	router.ServeHTTP(httptest.NewRecorder(), proxied)
+	if len(limiter.loginIPs) < 2 || limiter.loginIPs[len(limiter.loginIPs)-2] != "203.0.113.9" || limiter.loginIPs[len(limiter.loginIPs)-1] != "198.51.100.20" {
+		t.Fatalf("login IPs=%v", limiter.loginIPs)
+	}
+
+	fixture.handler.WithProxyPolicy([]string{"10.0.0.0/8"}, true)
+	secureRouter, err := fixture.handler.Router()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, request := range []*http.Request{
+		loginRequest(t, "10.1.0.2:1234", "198.51.100.20", ""),
+		loginRequest(t, "203.0.113.9:1234", "198.51.100.20", "https"),
+	} {
+		response := httptest.NewRecorder()
+		secureRouter.ServeHTTP(response, request)
+		assertErrorEnvelope(t, response, http.StatusForbidden, "secure_proxy_required")
+	}
+	request := loginRequest(t, "10.1.0.2:1234", "198.51.100.20", "https")
+	response := httptest.NewRecorder()
+	secureRouter.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized || response.Header().Get("Strict-Transport-Security") == "" {
+		t.Fatalf("trusted HTTPS status=%d HSTS=%q body=%s", response.Code, response.Header().Get("Strict-Transport-Security"), response.Body.String())
+	}
+}
+
+func loginRequest(t *testing.T, remoteAddress, forwardedFor, forwardedProto string) *http.Request {
+	t.Helper()
+	body, err := json.Marshal(map[string]string{"username": "admin", "password": "wrong-password"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
+	request.RemoteAddr = remoteAddress
+	request.Header.Set("Content-Type", "application/json")
+	if forwardedFor != "" {
+		request.Header.Set("X-Forwarded-For", forwardedFor)
+	}
+	if forwardedProto != "" {
+		request.Header.Set("X-Forwarded-Proto", forwardedProto)
+	}
+	return request
 }
 
 type casbinRule struct {
@@ -505,6 +681,10 @@ func TestCoreManagementWriteIdempotency(t *testing.T) {
 }
 
 func newHandlerFixture(t *testing.T) *handlerFixture {
+	return newHandlerFixtureWithLimiter(t, nil)
+}
+
+func newHandlerFixtureWithLimiter(t *testing.T, limiter httpapi.AuthLimiter) *handlerFixture {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{TranslateError: true})
@@ -514,7 +694,12 @@ func newHandlerFixture(t *testing.T) *handlerFixture {
 	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}, &casbinRule{}, &permissionPolicyOutbox{}, &idempotency.Record{}, &activitydomain.Activity{}, &activitydomain.ActivityRegistration{}, &domainevent.Event{}); err != nil {
 		t.Fatal(err)
 	}
-	permissions, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	permissions, err := permission.NewService(context.Background(), db, platformmysql.NewRoleRepository(db))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -537,11 +722,17 @@ func newHandlerFixture(t *testing.T) *handlerFixture {
 	handler := httpapi.New(authService, users, permissions, configcenter.NewService(platformmysql.NewConfigRepository(db), cipher), func(context.Context) error { return nil }, func(context.Context) error { return nil }, zap.NewNop()).
 		WithDatabase(db).
 		WithActivities(activities)
+	if limiter != nil {
+		handler.WithAuthLimiter(limiter)
+	}
 	router, err := handler.Router()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &handlerFixture{router: router, users: users, permissions: permissions, adminToken: loginToken(t, router, admin.Username, password), userPassword: password}
+	return &handlerFixture{
+		router: router, handler: handler, users: users, permissions: permissions,
+		adminToken: loginToken(t, router, admin.Username, password), userPassword: password,
+	}
 }
 
 func loginToken(t *testing.T, router http.Handler, username, password string) string {

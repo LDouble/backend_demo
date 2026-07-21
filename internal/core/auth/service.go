@@ -115,7 +115,7 @@ func (s *Service) Refresh(ctx context.Context, raw string) (TokenPair, error) {
 		return TokenPair{}, apperror.New(401, "invalid_refresh_token", "刷新令牌无效")
 	}
 	u, err := s.users.GetByID(ctx, uid)
-	if err != nil || u.Status != model.UserActive || claims.SessionVersion != effectiveSessionVersion(u) {
+	if err != nil || u == nil || u.Status != model.UserActive || claims.SessionVersion != effectiveSessionVersion(u) {
 		return TokenPair{}, apperror.New(401, "invalid_refresh_token", "刷新令牌无效")
 	}
 	pair, newHash, err := s.issue(uid, claims.SessionID, effectiveSessionVersion(u))
@@ -170,7 +170,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (uint64, string,
 		return 0, "", apperror.New(401, "session_expired", "会话已失效")
 	}
 	u, err := s.users.GetByID(ctx, uid)
-	if err != nil || u.Status != model.UserActive || claims.SessionVersion != effectiveSessionVersion(u) {
+	if err != nil || u == nil || u.Status != model.UserActive || claims.SessionVersion != effectiveSessionVersion(u) {
 		return 0, "", apperror.New(403, "user_disabled", "用户已禁用")
 	}
 	return uid, claims.SessionID, nil
@@ -215,7 +215,7 @@ func (s *Service) parse(raw, typ string) (*Claims, error) {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
 		return s.key, nil
-	}, jwt.WithIssuer(s.issuer), jwt.WithValidMethods([]string{"HS256"}))
+	}, jwt.WithIssuer(s.issuer), jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired(), jwt.WithIssuedAt(), jwt.WithTimeFunc(s.now))
 	if err != nil || !token.Valid || claims.Type != typ || claims.SessionID == "" || claims.FamilyID != claims.SessionID || claims.SessionVersion == 0 {
 		return nil, errors.New("invalid token")
 	}

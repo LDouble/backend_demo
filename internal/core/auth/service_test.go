@@ -6,12 +6,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
 	"gorm.io/gorm"
 )
 
 type authUsers struct{ u *model.User }
+
+type nilAuthUsers struct{}
+
+func (nilAuthUsers) GetByID(context.Context, uint64) (*model.User, error) { return nil, nil }
+func (nilAuthUsers) GetByUsername(context.Context, string) (*model.User, error) {
+	return nil, nil
+}
 
 func (f authUsers) GetByID(_ context.Context, id uint64) (*model.User, error) {
 	if f.u.ID != id {
@@ -211,5 +219,44 @@ func TestSessionVersionInvalidatesTokensWithoutRedisDeletion(t *testing.T) {
 	}
 	if !store.exists {
 		t.Fatal("test requires the Redis session to remain present")
+	}
+}
+
+func TestAuthenticateAndRefreshRejectNilRepositoryResults(t *testing.T) {
+	store := &memorySession{sid: "session", exists: true}
+	service := NewService(nilAuthUsers{}, store, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	pair, refreshHash, err := service.issue(1, store.sid, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.hash = refreshHash
+	if _, _, err = service.Authenticate(context.Background(), pair.AccessToken); err == nil {
+		t.Fatal("nil user authenticated")
+	}
+	if _, err = service.Refresh(context.Background(), pair.RefreshToken); err == nil {
+		t.Fatal("nil user refreshed")
+	}
+}
+
+func TestParseRequiresExpiration(t *testing.T) {
+	service := NewService(authUsers{}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	now := time.Now().UTC()
+	claims := Claims{
+		Type:           accessType,
+		SessionID:      "session",
+		FamilyID:       "session",
+		SessionVersion: 1,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:   "issuer",
+			Subject:  "1",
+			IssuedAt: jwt.NewNumericDate(now),
+		},
+	}
+	raw, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(service.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = service.parse(raw, accessType); err == nil {
+		t.Fatal("token without expiration was accepted")
 	}
 }

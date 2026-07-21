@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -96,7 +95,7 @@ func (h *Handler) createAdminActivity(c *gin.Context) {
 	}
 	activity, err := h.activities.Create(c.Request.Context(), c.GetUint64(userIDKey), activityInput(req))
 	if err != nil {
-		failure(c, apperror.Wrap(http.StatusBadRequest, "invalid_activity", err.Error(), err))
+		failure(c, err)
 		return
 	}
 	h.successActivity(c, http.StatusCreated, activity)
@@ -126,12 +125,7 @@ func (h *Handler) updateAdminActivity(c *gin.Context) {
 	}
 	activity, err := h.activities.Update(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, activityInput(req))
 	if err != nil {
-		var appErr *apperror.Error
-		if errors.As(err, &appErr) {
-			failure(c, err)
-		} else {
-			failure(c, apperror.Wrap(http.StatusBadRequest, "invalid_activity", err.Error(), err))
-		}
+		failure(c, err)
 		return
 	}
 	h.successActivity(c, http.StatusOK, activity)
@@ -157,12 +151,7 @@ func (h *Handler) approveAdminActivity(c *gin.Context) {
 	}
 	activity, err := h.activities.Approve(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, req.ReviewComment)
 	if err != nil {
-		var appErr *apperror.Error
-		if errors.As(err, &appErr) {
-			failure(c, err)
-		} else {
-			failure(c, apperror.Wrap(http.StatusBadRequest, "invalid_activity_review", err.Error(), err))
-		}
+		failure(c, err)
 		return
 	}
 	h.successActivity(c, http.StatusOK, activity)
@@ -179,12 +168,7 @@ func (h *Handler) rejectAdminActivity(c *gin.Context) {
 	}
 	activity, err := h.activities.Reject(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, req.ReviewComment)
 	if err != nil {
-		var appErr *apperror.Error
-		if errors.As(err, &appErr) {
-			failure(c, err)
-		} else {
-			failure(c, apperror.Wrap(http.StatusBadRequest, "invalid_activity_review", err.Error(), err))
-		}
+		failure(c, err)
 		return
 	}
 	h.successActivity(c, http.StatusOK, activity)

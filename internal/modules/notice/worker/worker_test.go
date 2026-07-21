@@ -28,6 +28,11 @@ func TestProcessorDeliveryIsIdempotent(t *testing.T) {
 	if err = db.AutoMigrate(&model.User{}, &domain.Notice{}, &domain.NoticeDelivery{}, &domain.NoticeAudience{}, &domain.NoticeRecipient{}, &domain.OutboxEvent{}); err != nil {
 		t.Fatal(err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	user := model.User{Username: "member", PasswordHash: "hash", Status: model.UserActive}
 	if err = db.Create(&user).Error; err != nil {
 		t.Fatal(err)

@@ -78,8 +78,9 @@ func (h *Handler) idempotent(c *gin.Context, operationID string, work func()) {
 		return
 	}
 	originalWriter := c.Writer
+	executionContext, afterCommit := idempotency.WithAfterCommit(c.Request.Context())
 	result, err := idempotency.Execute(
-		c.Request.Context(),
+		executionContext,
 		h.db,
 		idempotency.Request{
 			ActorID: c.GetUint64(userIDKey), OperationID: operationID,
@@ -93,7 +94,7 @@ func (h *Handler) idempotent(c *gin.Context, operationID string, work func()) {
 				c.Request = originalRequest
 			}()
 			c.Writer = buffered
-			request := c.Request.WithContext(idempotency.WithTransaction(c.Request.Context(), tx))
+			request := c.Request.WithContext(idempotency.WithTransaction(executionContext, tx))
 			c.Request = request
 			work()
 			body := append([]byte(nil), buffered.body.Bytes()...)
@@ -118,10 +119,8 @@ func (h *Handler) idempotent(c *gin.Context, operationID string, work func()) {
 		failure(c, err)
 		return
 	}
-	if h.permissions != nil {
-		if reloadErr := h.permissions.ReloadPolicy(); reloadErr != nil {
-			h.log.Error("reload permissions after idempotent commit", zap.Error(reloadErr), zap.String("operation_id", operationID))
-		}
+	if callbackErr := afterCommit.Run(executionContext); callbackErr != nil {
+		h.log.Error("run idempotency after-commit callbacks", zap.Error(callbackErr), zap.String("operation_id", operationID))
 	}
 	applyReplayHeaders(originalWriter.Header(), result.Headers)
 	originalWriter.WriteHeader(result.HTTPStatus)

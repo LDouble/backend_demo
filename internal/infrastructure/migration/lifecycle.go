@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -61,7 +60,7 @@ func Snapshot(ctx context.Context, root, module string) error {
 	if pathErr != nil {
 		return pathErr
 	}
-	if !fileExists(manifestPath) {
+	if !lifecycleFileExists(root, manifestPath) {
 		if err = refreshManifest(root); err != nil {
 			return err
 		}
@@ -82,7 +81,7 @@ func Plan(ctx context.Context, root, module string) (ChangePlan, error) {
 		return ChangePlan{}, err
 	}
 	// #nosec G304 -- repositoryPath confines snapshots to the repository root.
-	data, err := os.ReadFile(path)
+	data, err := readLifecycleFile(root, path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return planSchemas(generator.Schema{Version: current.Version, Module: module}, current), nil
 	}
@@ -119,14 +118,14 @@ func NewDraft(ctx context.Context, root, name, module string) (Migration, error)
 	if err != nil {
 		return Migration{}, err
 	}
-	if fileExists(upPath) || fileExists(downPath) {
+	if lifecycleFileExists(root, upPath) || lifecycleFileExists(root, downPath) {
 		return Migration{}, fmt.Errorf("migration draft %q already exists", name)
 	}
 	header := "-- module: " + module + "\n"
-	if err = atomicWriteLifecycle(upPath, []byte(header+sqlOrNoop(plan.UpSQL))); err != nil {
+	if err = atomicWriteLifecycle(root, upPath, []byte(header+sqlOrNoop(plan.UpSQL))); err != nil {
 		return Migration{}, err
 	}
-	if err = atomicWriteLifecycle(downPath, []byte(header+sqlOrNoop(plan.DownSQL))); err != nil {
+	if err = atomicWriteLifecycle(root, downPath, []byte(header+sqlOrNoop(plan.DownSQL))); err != nil {
 		return Migration{}, err
 	}
 	return Migration{Name: name, Up: upPath, Down: downPath}, nil
@@ -151,12 +150,12 @@ func Promote(ctx context.Context, root, draft string, now time.Time) (Migration,
 		return Migration{}, err
 	}
 	// #nosec G304 -- repositoryPath and draftNamePattern confine this draft to migrations/drafts.
-	up, err := os.ReadFile(upDraft)
+	up, err := readLifecycleFile(root, upDraft)
 	if err != nil {
 		return Migration{}, fmt.Errorf("read up draft: %w", err)
 	}
 	// #nosec G304 -- repositoryPath and draftNamePattern confine this draft to migrations/drafts.
-	down, err := os.ReadFile(downDraft)
+	down, err := readLifecycleFile(root, downDraft)
 	if err != nil {
 		return Migration{}, fmt.Errorf("read down draft: %w", err)
 	}
@@ -171,7 +170,7 @@ func Promote(ctx context.Context, root, draft string, now time.Time) (Migration,
 	if err != nil {
 		return Migration{}, err
 	}
-	if fileExists(manifestPath) {
+	if lifecycleFileExists(root, manifestPath) {
 		if err = checkManifest(root); err != nil {
 			return Migration{}, err
 		}
@@ -183,30 +182,30 @@ func Promote(ctx context.Context, root, draft string, now time.Time) (Migration,
 	base := version + "_" + name
 	upFinal, _ := repositoryPath(root, "migrations/"+base+".up.sql")
 	downFinal, _ := repositoryPath(root, "migrations/"+base+".down.sql")
-	if err = atomicWriteLifecycle(upFinal, up); err != nil {
+	if err = atomicWriteLifecycle(root, upFinal, up); err != nil {
 		return Migration{}, err
 	}
-	if err = atomicWriteLifecycle(downFinal, down); err != nil {
-		_ = os.Remove(upFinal)
+	if err = atomicWriteLifecycle(root, downFinal, down); err != nil {
+		_ = removeLifecycleFile(root, upFinal)
 		return Migration{}, err
 	}
 	// Promote is the only lifecycle operation allowed to extend the immutable
 	// manifest. Snapshot must reject checksum or membership mismatches.
 	if err = refreshManifest(root); err != nil {
-		_ = os.Remove(upFinal)
-		_ = os.Remove(downFinal)
+		_ = removeLifecycleFile(root, upFinal)
+		_ = removeLifecycleFile(root, downFinal)
 		return Migration{}, err
 	}
 	if err = Snapshot(ctx, root, module); err != nil {
-		_ = os.Remove(upFinal)
-		_ = os.Remove(downFinal)
+		_ = removeLifecycleFile(root, upFinal)
+		_ = removeLifecycleFile(root, downFinal)
 		_ = refreshManifest(root)
 		return Migration{}, err
 	}
-	if err = os.Remove(upDraft); err != nil {
+	if err = removeLifecycleFile(root, upDraft); err != nil {
 		return Migration{}, fmt.Errorf("remove promoted up draft: %w", err)
 	}
-	if err = os.Remove(downDraft); err != nil {
+	if err = removeLifecycleFile(root, downDraft); err != nil {
 		return Migration{}, fmt.Errorf("remove promoted down draft: %w", err)
 	}
 	return Migration{Version: version, Name: name, Up: upFinal, Down: downFinal}, nil
@@ -224,9 +223,19 @@ func Check(ctx context.Context, root string) error {
 	if err = checkManifest(root); err != nil {
 		return err
 	}
-	drafts, err := filepath.Glob(filepath.Join(root, "migrations", "drafts", "*.sql"))
+	draftDirectory, err := repositoryPath(root, "migrations/drafts")
 	if err != nil {
+		return err
+	}
+	draftEntries, err := readLifecycleDir(root, draftDirectory)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("list migration drafts: %w", err)
+	}
+	drafts := []string{}
+	for _, entry := range draftEntries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".sql") {
+			drafts = append(drafts, filepath.Join(draftDirectory, entry.Name()))
+		}
 	}
 	if len(drafts) > 0 {
 		return fmt.Errorf("unpromoted migration drafts: %s", strings.Join(drafts, ", "))
@@ -253,7 +262,7 @@ func List(root string) ([]Migration, error) {
 	if err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(directory)
+	entries, err := readLifecycleDir(root, directory)
 	if err != nil {
 		return nil, fmt.Errorf("read migrations directory: %w", err)
 	}
@@ -400,11 +409,7 @@ func loadModuleSchema(ctx context.Context, root, module string) (generator.Schem
 	if !draftNamePattern.MatchString(module) {
 		return generator.Schema{}, fmt.Errorf("invalid module %q", module)
 	}
-	path, err := repositoryPath(root, "schemas/"+module+".yaml")
-	if err != nil {
-		return generator.Schema{}, err
-	}
-	return generator.Load(ctx, path)
+	return generator.LoadRepository(ctx, root, "schemas/"+module+".yaml")
 }
 
 func writeSnapshot(root string, schema generator.Schema) error {
@@ -416,17 +421,28 @@ func writeSnapshot(root string, schema generator.Schema) error {
 	if err != nil {
 		return err
 	}
-	return atomicReplaceLifecycle(path, data)
+	return atomicReplaceLifecycle(root, path, data)
 }
 
 func nextVersion(root string, now time.Time) (string, error) {
+	directory, err := repositoryPath(root, "migrations")
+	if err != nil {
+		return "", err
+	}
+	entries, err := readLifecycleDir(root, directory)
+	if err != nil {
+		return "", fmt.Errorf("check migration version: %w", err)
+	}
 	for attempts := 0; attempts < 60; attempts++ {
 		version := now.Add(time.Duration(attempts) * time.Second).Format("20060102150405")
-		matches, err := filepath.Glob(filepath.Join(root, "migrations", version+"_*.sql"))
-		if err != nil {
-			return "", fmt.Errorf("check migration version: %w", err)
+		available := true
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), version+"_") && strings.HasSuffix(entry.Name(), ".sql") {
+				available = false
+				break
+			}
 		}
-		if len(matches) == 0 {
+		if available {
 			return version, nil
 		}
 	}
@@ -446,7 +462,7 @@ func refreshManifest(root string) error {
 	for _, migration := range migrations {
 		for _, path := range []string{migration.Up, migration.Down} {
 			// #nosec G304 -- List returns only paired migration files discovered under the repository migration root.
-			data, readErr := os.ReadFile(path)
+			data, readErr := readLifecycleFile(root, path)
 			if readErr != nil {
 				return readErr
 			}
@@ -466,7 +482,7 @@ func refreshManifest(root string) error {
 	if err != nil {
 		return err
 	}
-	return atomicReplaceLifecycle(path, append(data, '\n'))
+	return atomicReplaceLifecycle(root, path, append(data, '\n'))
 }
 
 func checkManifest(root string) error {
@@ -475,7 +491,7 @@ func checkManifest(root string) error {
 		return err
 	}
 	// #nosec G304 -- repositoryPath confines the manifest to the repository root.
-	data, err := os.ReadFile(path)
+	data, err := readLifecycleFile(root, path)
 	if err != nil {
 		return fmt.Errorf("read migration manifest: %w", err)
 	}
@@ -515,7 +531,7 @@ func checkManifest(root string) error {
 			return pathErr
 		}
 		// #nosec G304 -- repositoryPath rejects absolute and non-local manifest entries.
-		content, readErr := os.ReadFile(migrationPath)
+		content, readErr := readLifecycleFile(root, migrationPath)
 		if readErr != nil {
 			return fmt.Errorf("read immutable migration %s: %w", entry.Path, readErr)
 		}
@@ -546,48 +562,6 @@ func repositoryPath(root, relative string) (string, error) {
 		return "", fmt.Errorf("path escapes repository root: %q", relative)
 	}
 	return path, nil
-}
-
-func atomicWriteLifecycle(path string, data []byte) error {
-	return atomicFileLifecycle(path, data, false)
-}
-
-func atomicReplaceLifecycle(path string, data []byte) error {
-	return atomicFileLifecycle(path, data, true)
-}
-
-func atomicFileLifecycle(path string, data []byte, replace bool) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return fmt.Errorf("create migration directory: %w", err)
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".campus-migration-*")
-	if err != nil {
-		return fmt.Errorf("create migration temporary file: %w", err)
-	}
-	name := temporary.Name()
-	defer func() { _ = os.Remove(name) }()
-	if err = temporary.Chmod(0o640); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if _, err = temporary.Write(data); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if err = temporary.Sync(); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if err = temporary.Close(); err != nil {
-		return err
-	}
-	if !replace && fileExists(path) {
-		return fmt.Errorf("refusing to overwrite %s", path)
-	}
-	if err = os.Rename(name, path); err != nil {
-		return fmt.Errorf("promote migration file: %w", err)
-	}
-	return nil
 }
 
 func schemaEntities(schema generator.Schema) []generator.Entity {
@@ -650,9 +624,4 @@ func sqlOrNoop(sql string) string {
 		return "-- no schema changes\n"
 	}
 	return sql + "\n"
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }

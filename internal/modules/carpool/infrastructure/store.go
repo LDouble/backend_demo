@@ -153,7 +153,7 @@ func (s *Store) Join(ctx context.Context, id, user, version uint64, now time.Tim
 
 // Leave removes a participant and releases one occupied seat.
 func (s *Store) Leave(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
-	return s.changeParticipant(ctx, id, user, version, now, false)
+	return s.changeParticipant(ctx, id, user, version, now)
 }
 
 // Cancel marks an organizer-owned trip as cancelled.
@@ -181,7 +181,7 @@ func (s *Store) Cancel(ctx context.Context, id, user, version uint64, now time.T
 	})
 	return &trip, err
 }
-func (s *Store) changeParticipant(ctx context.Context, id, user, version uint64, now time.Time, _ bool) (*domain.Trip, error) {
+func (s *Store) changeParticipant(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
 	var trip domain.Trip
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&trip, id).Error; err != nil {
@@ -194,7 +194,11 @@ func (s *Store) changeParticipant(ctx context.Context, id, user, version uint64,
 			return conflict("trip_unavailable", "当前行程不能退出")
 		}
 		var p domain.Participant
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("trip_id = ? AND user_id = ?", id, user).First(&p).Error; err != nil || p.Status != domain.ParticipantJoined {
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("trip_id = ? AND user_id = ?", id, user).First(&p).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) || p.Status != domain.ParticipantJoined {
 			return apperror.New(403, "not_participant", "仅有效参与者可以退出")
 		}
 		p.Status, p.CancelledAt, p.Version = domain.ParticipantLeft, &now, p.Version+1
@@ -215,7 +219,11 @@ func (s *Store) changeParticipant(ctx context.Context, id, user, version uint64,
 // CompleteDue marks departed active trips completed.
 func (s *Store) CompleteDue(ctx context.Context, now time.Time) (int64, error) {
 	var rows []domain.Trip
-	if err := idempotency.DB(ctx, s.db).Where("status IN ? AND departure_at <= ?", []string{domain.TripOpen, domain.TripFull}, now).Find(&rows).Error; err != nil {
+	if err := idempotency.DB(ctx, s.db).
+		Where("status IN ? AND departure_at <= ?", []string{domain.TripOpen, domain.TripFull}, now).
+		Order("id").
+		Limit(100).
+		Find(&rows).Error; err != nil {
 		return 0, err
 	}
 	var completed int64

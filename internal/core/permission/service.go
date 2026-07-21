@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/casbin/casbin/v3"
 	casbinmodel "github.com/casbin/casbin/v3/model"
@@ -41,7 +43,7 @@ type RoleRepository interface {
 	Get(context.Context, uint64) (*model.Role, error)
 	GetByName(context.Context, string) (*model.Role, error)
 	List(context.Context, int, int) ([]model.Role, int64, error)
-	Update(context.Context, *model.Role) error
+	UpdateDescription(context.Context, uint64, string) error
 	Delete(context.Context, uint64) error
 }
 
@@ -55,7 +57,8 @@ type Permission struct {
 type Service struct {
 	db                *gorm.DB
 	roles             RoleRepository
-	enforcer          *casbin.SyncedEnforcer
+	enforcer          atomic.Pointer[casbin.SyncedEnforcer]
+	reloadMu          sync.Mutex
 	memberPolicies    []policyRule
 	permissionCatalog map[string]map[string]struct{}
 	sync              policySync
@@ -63,14 +66,10 @@ type Service struct {
 }
 
 // NewService creates a DB-backed Casbin service.
-func NewService(db *gorm.DB, roles RoleRepository) (*Service, error) {
-	m, err := casbinmodel.NewModelFromString(modelText)
+func NewService(ctx context.Context, db *gorm.DB, roles RoleRepository) (*Service, error) {
+	e, err := newPolicyEnforcer(ctx, db)
 	if err != nil {
-		return nil, fmt.Errorf("parse casbin model: %w", err)
-	}
-	e, err := casbin.NewSyncedEnforcer(m, newGORMPolicyAdapter(db))
-	if err != nil {
-		return nil, fmt.Errorf("create casbin enforcer: %w", err)
+		return nil, err
 	}
 	manifestRules, err := permissionmanifest.MemberRules()
 	if err != nil {
@@ -102,7 +101,24 @@ func NewService(db *gorm.DB, roles RoleRepository) (*Service, error) {
 			methods[method] = struct{}{}
 		}
 	}
-	return &Service{db: db, roles: roles, enforcer: e, memberPolicies: memberPolicies, permissionCatalog: catalog, log: zap.NewNop()}, nil
+	service := &Service{db: db, roles: roles, memberPolicies: memberPolicies, permissionCatalog: catalog, log: zap.NewNop()}
+	service.enforcer.Store(e)
+	return service, nil
+}
+
+func newPolicyEnforcer(ctx context.Context, db *gorm.DB) (*casbin.SyncedEnforcer, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	m, err := casbinmodel.NewModelFromString(modelText)
+	if err != nil {
+		return nil, fmt.Errorf("parse casbin model: %w", err)
+	}
+	e, err := casbin.NewSyncedEnforcer(m, newGORMPolicyAdapter(db.WithContext(ctx)))
+	if err != nil {
+		return nil, fmt.Errorf("create casbin enforcer: %w", err)
+	}
+	return e, nil
 }
 
 // WithLogger attaches structured policy synchronization logging.
@@ -120,7 +136,7 @@ func (s *Service) Enforce(ctx context.Context, userID uint64, path, method strin
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
-	ok, err := s.enforcer.Enforce(subject(userID), path, method)
+	ok, err := s.enforcer.Load().Enforce(subject(userID), path, method)
 	if err != nil {
 		return false, fmt.Errorf("enforce permission: %w", err)
 	}
@@ -164,7 +180,7 @@ func (s *Service) UpdateRole(ctx context.Context, id uint64, description string)
 		return nil, err
 	}
 	r.Description = strings.TrimSpace(description)
-	if err := s.roles.Update(ctx, r); err != nil {
+	if err := s.roles.UpdateDescription(ctx, r.ID, r.Description); err != nil {
 		return nil, fmt.Errorf("update role: %w", err)
 	}
 	return r, nil
@@ -218,7 +234,7 @@ func (s *Service) GetUserRoles(ctx context.Context, userID uint64) ([]string, er
 		sort.Strings(roles)
 		return roles, nil
 	}
-	roles, err := s.enforcer.GetRolesForUser(subject(userID))
+	roles, err := s.enforcer.Load().GetRolesForUser(subject(userID))
 	sort.Strings(roles)
 	return roles, err
 }
@@ -300,7 +316,7 @@ func (s *Service) GetPermissions(ctx context.Context, roleID uint64) ([]Permissi
 		}
 		return out, nil
 	}
-	rows, err := s.enforcer.GetPermissionsForUser(r.Name)
+	rows, err := s.enforcer.Load().GetPermissionsForUser(r.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +404,7 @@ func (s *Service) CanDisable(ctx context.Context, userID uint64) (bool, error) {
 	if !contains(roles, model.SuperAdminRole) {
 		return true, nil
 	}
-	users, err := s.enforcer.GetUsersForRole(model.SuperAdminRole)
+	users, err := s.enforcer.Load().GetUsersForRole(model.SuperAdminRole)
 	return len(users) > 1, err
 }
 
@@ -562,8 +578,7 @@ func assignedUserIDs(rows []policyRule) []uint64 {
 }
 
 func (s *Service) reloadAfterMutation(ctx context.Context) error {
-	if idempotency.InTransaction(ctx) {
-		return nil
-	}
-	return s.reloadPolicy()
+	return idempotency.DeferAfterCommit(ctx, func(callbackContext context.Context) error {
+		return s.reloadPolicy(callbackContext)
+	})
 }

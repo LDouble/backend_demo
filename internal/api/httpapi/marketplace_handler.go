@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	marketplacedomain "github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 )
 
@@ -33,7 +32,7 @@ func (h *Handler) createMarketplaceListing(c *gin.Context) {
 	}
 	listing, err := h.marketplace.Create(c.Request.Context(), c.GetUint64(userIDKey), marketplaceListingInput(req))
 	if err != nil {
-		failure(c, apperror.Wrap(http.StatusBadRequest, "invalid_listing", err.Error(), err))
+		failure(c, err)
 		return
 	}
 	contact, err := h.marketplace.Contact(c.Request.Context(), listing, c.GetUint64(userIDKey))

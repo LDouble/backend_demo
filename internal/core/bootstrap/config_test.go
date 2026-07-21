@@ -74,6 +74,9 @@ func TestLoadProductionRedisTLSValidation(t *testing.T) {
 		t.Fatal("production accepted plaintext Redis")
 	}
 	t.Setenv("CAMPUS_REDIS_TLS", "true")
+	t.Setenv("CAMPUS_TRUSTED_PROXY_CIDRS", "10.0.0.0/8")
+	t.Setenv("CAMPUS_REQUIRE_PROXY_HTTPS", "true")
+	t.Setenv("CAMPUS_REDIS_TLS_FILES_ROOT", t.TempDir())
 	t.Setenv("CAMPUS_REDIS_CLIENT_CERT_FILE", "client.pem")
 	if _, err := Load(""); err == nil {
 		t.Fatal("accepted client certificate without key")
@@ -85,6 +88,25 @@ func TestLoadProductionRedisTLSValidation(t *testing.T) {
 	}
 	if !cfg.Redis.TLS || cfg.Environment != "production" {
 		t.Fatalf("cfg=%+v", cfg)
+	}
+}
+
+func TestLoadNormalizesAndValidatesEnvironment(t *testing.T) {
+	setRequired(t)
+	t.Setenv("CAMPUS_ENV", " Production ")
+	t.Setenv("CAMPUS_REDIS_TLS", "true")
+	t.Setenv("CAMPUS_TRUSTED_PROXY_CIDRS", "10.0.0.0/8")
+	t.Setenv("CAMPUS_REQUIRE_PROXY_HTTPS", "true")
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.IsProduction() || cfg.Environment != EnvironmentProduction {
+		t.Fatalf("environment=%q", cfg.Environment)
+	}
+	t.Setenv("CAMPUS_ENV", "prod")
+	if _, err = Load(""); err == nil {
+		t.Fatal("invalid environment alias was accepted")
 	}
 }
 func TestLoadYAML(t *testing.T) {
@@ -119,5 +141,53 @@ func TestLoadRejectsInvalidYAML(t *testing.T) {
 	}
 	if _, err := Load(path); err == nil {
 		t.Fatal("expected YAML decoding error")
+	}
+}
+
+func TestLoadRejectsInvalidWorkerSettings(t *testing.T) {
+	setRequired(t)
+	tests := []struct {
+		name string
+		yaml string
+	}{
+		{name: "zero concurrency", yaml: "worker:\n  concurrency: 0\n  poll_interval: 1s\n"},
+		{name: "excessive concurrency", yaml: "worker:\n  concurrency: 1025\n  poll_interval: 1s\n"},
+		{name: "zero interval", yaml: "worker:\n  concurrency: 1\n  poll_interval: 0s\n"},
+		{name: "too short interval", yaml: "worker:\n  concurrency: 1\n  poll_interval: 1ms\n"},
+		{name: "excessive interval", yaml: "worker:\n  concurrency: 1\n  poll_interval: 2h\n"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "bootstrap.yaml")
+			if err := os.WriteFile(path, []byte(test.yaml), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Load(path); err == nil {
+				t.Fatal("invalid worker settings were accepted")
+			}
+		})
+	}
+}
+
+func TestLoadRejectsMalformedWorkerOverrides(t *testing.T) {
+	setRequired(t)
+	t.Setenv("CAMPUS_WORKER_CONCURRENCY", "many")
+	if _, err := Load(""); err == nil {
+		t.Fatal("malformed concurrency was accepted")
+	}
+	t.Setenv("CAMPUS_WORKER_CONCURRENCY", "10")
+	t.Setenv("CAMPUS_WORKER_POLL_INTERVAL", "often")
+	if _, err := Load(""); err == nil {
+		t.Fatal("malformed poll interval was accepted")
+	}
+}
+
+func TestLoadRejectsRedisTLSPathEscape(t *testing.T) {
+	setRequired(t)
+	t.Setenv("CAMPUS_REDIS_TLS", "true")
+	t.Setenv("CAMPUS_REDIS_TLS_FILES_ROOT", t.TempDir())
+	t.Setenv("CAMPUS_REDIS_CA_FILE", "../ca.pem")
+	if _, err := Load(""); err == nil {
+		t.Fatal("Redis CA path escape was accepted")
 	}
 }

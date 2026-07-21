@@ -14,13 +14,18 @@ import (
 )
 
 func TestExecuteReplayAndConflict(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:idempotency?mode=memory&cache=shared"), &gorm.Config{TranslateError: true})
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{TranslateError: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = db.AutoMigrate(&Record{}); err != nil {
 		t.Fatal(err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	hash, err := RequestHash(map[string]any{"listing_id": 7})
 	if err != nil {
 		t.Fatal(err)
@@ -135,5 +140,41 @@ func TestDBUsesRequestTransaction(t *testing.T) {
 	}
 	if got := DB(context.Background(), db); got.Statement.ConnPool != db.Statement.ConnPool {
 		t.Fatal("fallback database was not used")
+	}
+}
+
+func TestAfterCommitCallbacks(t *testing.T) {
+	ctx, callbacks := WithAfterCommit(context.Background())
+	var calls atomic.Int64
+	if err := DeferAfterCommit(ctx, func(context.Context) error {
+		calls.Add(1)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 0 {
+		t.Fatal("callback ran before commit")
+	}
+	if err := callbacks.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("callback calls=%d", calls.Load())
+	}
+	if err := callbacks.Run(ctx); err != nil || calls.Load() != 1 {
+		t.Fatalf("second run err=%v calls=%d", err, calls.Load())
+	}
+}
+
+func TestDeferAfterCommitRunsImmediatelyWithoutRegistry(t *testing.T) {
+	called := false
+	if err := DeferAfterCommit(context.Background(), func(context.Context) error {
+		called = true
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("callback did not run outside a transaction boundary")
 	}
 }

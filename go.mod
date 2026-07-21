@@ -2,6 +2,8 @@ module github.com/weouc-plus/campus-platform
 
 go 1.25.0
 
+toolchain go1.25.12
+
 require (
 	github.com/casbin/casbin/v3 v3.10.0
 	github.com/getkin/kin-openapi v0.142.0

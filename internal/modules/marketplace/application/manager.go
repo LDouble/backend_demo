@@ -3,8 +3,10 @@ package application
 
 import (
 	"context"
+	"net/http"
 	"time"
 
+	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 )
@@ -41,7 +43,7 @@ func NewManager(store Store) *Manager { return &Manager{store: store, now: time.
 // Create validates and creates an owned listing draft.
 func (m *Manager) Create(ctx context.Context, ownerID uint64, input domain.ListingInput) (*domain.Listing, error) {
 	if err := domain.ValidateListingInput(input); err != nil {
-		return nil, err
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_listing", err.Error(), err)
 	}
 	return m.store.CreateListing(ctx, ownerID, input)
 }
@@ -49,7 +51,7 @@ func (m *Manager) Create(ctx context.Context, ownerID uint64, input domain.Listi
 // Update changes editable listing content with optimistic locking.
 func (m *Manager) Update(ctx context.Context, id, ownerID, version uint64, input domain.ListingInput) (*domain.Listing, error) {
 	if err := domain.ValidateListingUpdateInput(input); err != nil {
-		return nil, err
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_listing", err.Error(), err)
 	}
 	return m.store.UpdateListing(ctx, id, ownerID, version, input)
 }

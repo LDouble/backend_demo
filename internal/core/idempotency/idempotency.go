@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
@@ -70,6 +71,63 @@ type Result struct {
 }
 
 type transactionContextKey struct{}
+
+type afterCommitContextKey struct{}
+
+// AfterCommit holds side effects that must run only after the owning database
+// transaction commits successfully.
+type AfterCommit struct {
+	mu        sync.Mutex
+	callbacks []func(context.Context) error
+	ran       bool
+}
+
+// WithAfterCommit adds a post-commit callback registry to ctx.
+func WithAfterCommit(ctx context.Context) (context.Context, *AfterCommit) {
+	registry := &AfterCommit{callbacks: []func(context.Context) error{}}
+	return context.WithValue(ctx, afterCommitContextKey{}, registry), registry
+}
+
+// DeferAfterCommit registers callback when ctx owns a transaction callback
+// registry. Outside that boundary it executes callback immediately.
+func DeferAfterCommit(ctx context.Context, callback func(context.Context) error) error {
+	if callback == nil {
+		return nil
+	}
+	registry, ok := ctx.Value(afterCommitContextKey{}).(*AfterCommit)
+	if !ok || registry == nil {
+		return callback(ctx)
+	}
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	if registry.ran {
+		return fmt.Errorf("idempotency after-commit callbacks already ran")
+	}
+	registry.callbacks = append(registry.callbacks, callback)
+	return nil
+}
+
+// Run executes every registered callback once and joins their errors.
+func (a *AfterCommit) Run(ctx context.Context) error {
+	if a == nil {
+		return nil
+	}
+	a.mu.Lock()
+	if a.ran {
+		a.mu.Unlock()
+		return nil
+	}
+	a.ran = true
+	callbacks := append([]func(context.Context) error(nil), a.callbacks...)
+	a.callbacks = nil
+	a.mu.Unlock()
+
+	var result error
+	for _, callback := range callbacks {
+		result = errors.Join(result, callback(ctx))
+	}
+	return result
+}
 
 // WithTransaction attaches the owning idempotency transaction to a request context.
 func WithTransaction(ctx context.Context, tx *gorm.DB) context.Context {

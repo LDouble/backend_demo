@@ -7,6 +7,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
@@ -35,8 +37,7 @@ func TLSConfig(config bootstrap.RedisConfig) (*tls.Config, error) {
 		InsecureSkipVerify: config.InsecureSkipVerify, // #nosec G402 -- production validation forbids this escape hatch.
 	}
 	if config.CAFile != "" {
-		// Security boundary: this operator-controlled path is read only at startup.
-		pem, err := os.ReadFile(config.CAFile)
+		pem, err := readTLSFile(config.TLSFilesRoot, config.CAFile, false)
 		if err != nil {
 			return nil, fmt.Errorf("read Redis CA file: %w", err)
 		}
@@ -50,13 +51,43 @@ func TLSConfig(config bootstrap.RedisConfig) (*tls.Config, error) {
 		tlsConfig.RootCAs = pool
 	}
 	if config.ClientCertFile != "" {
-		certificate, err := tls.LoadX509KeyPair(config.ClientCertFile, config.ClientKeyFile)
+		certificatePEM, err := readTLSFile(config.TLSFilesRoot, config.ClientCertFile, false)
+		if err != nil {
+			return nil, fmt.Errorf("read Redis client certificate: %w", err)
+		}
+		keyPEM, err := readTLSFile(config.TLSFilesRoot, config.ClientKeyFile, true)
+		if err != nil {
+			return nil, fmt.Errorf("read Redis client key: %w", err)
+		}
+		certificate, err := tls.X509KeyPair(certificatePEM, keyPEM)
 		if err != nil {
 			return nil, fmt.Errorf("load Redis client certificate: %w", err)
 		}
 		tlsConfig.Certificates = []tls.Certificate{certificate}
 	}
 	return tlsConfig, nil
+}
+
+func readTLSFile(root, name string, privateKey bool) ([]byte, error) {
+	if strings.TrimSpace(root) == "" || filepath.IsAbs(name) || !filepath.IsLocal(name) {
+		return nil, fmt.Errorf("TLS file must be relative to the configured root")
+	}
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, fmt.Errorf("open TLS file root: %w", err)
+	}
+	defer func() { _ = files.Close() }()
+	info, err := files.Stat(filepath.FromSlash(name))
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("TLS file is not a regular file")
+	}
+	if privateKey && info.Mode().Perm()&0o077 != 0 {
+		return nil, fmt.Errorf("Redis client key must not be group- or world-accessible")
+	}
+	return files.ReadFile(filepath.FromSlash(name))
 }
 
 // Open creates and verifies a Redis client.

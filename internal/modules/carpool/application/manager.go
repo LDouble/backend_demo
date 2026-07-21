@@ -3,8 +3,10 @@ package application
 
 import (
 	"context"
+	"net/http"
 	"time"
 
+	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
 )
 
@@ -33,7 +35,7 @@ func NewManager(store Store) *Manager { return &Manager{store: store, now: time.
 func (m *Manager) Create(ctx context.Context, user uint64, in domain.TripInput) (*domain.Trip, error) {
 	now := m.now().UTC()
 	if err := domain.ValidateTripInput(in, now); err != nil {
-		return nil, err
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_carpool_trip", err.Error(), err)
 	}
 	return m.store.CreateTrip(ctx, user, in, now)
 }

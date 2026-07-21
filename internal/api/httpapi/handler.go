@@ -17,6 +17,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/auth"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
@@ -31,31 +32,36 @@ import (
 
 // Handler wires core services to HTTP.
 type Handler struct {
-	auth           *auth.Service
-	users          *user.Service
-	permissions    *permission.Service
-	configs        *configcenter.Service
-	notices        *noticeapp.Manager
-	activities     *activityapp.Manager
-	marketplace    *marketplaceapp.Manager
-	errands        *errandapp.Manager
-	carpools       *carpoolapp.Manager
-	trades         *tradeapp.Manager
-	mysql          func(context.Context) error
-	redis          func(context.Context) error
-	log            *zap.Logger
-	maxBodyBytes   int64
-	maxHeaderBytes int
-	readinessMu    sync.Mutex
-	readinessAt    time.Time
-	readinessErr   error
-	authLimiter    AuthLimiter
-	db             *gorm.DB
+	auth              *auth.Service
+	users             *user.Service
+	permissions       *permission.Service
+	configs           *configcenter.Service
+	notices           *noticeapp.Manager
+	activities        *activityapp.Manager
+	marketplace       *marketplaceapp.Manager
+	errands           *errandapp.Manager
+	carpools          *carpoolapp.Manager
+	trades            *tradeapp.Manager
+	mysql             func(context.Context) error
+	redis             func(context.Context) error
+	log               *zap.Logger
+	maxBodyBytes      int64
+	maxHeaderBytes    int
+	readinessMu       sync.Mutex
+	readinessAt       time.Time
+	readinessErr      error
+	authLimiter       AuthLimiter
+	db                *gorm.DB
+	trustedProxyCIDRs []string
+	trustedProxyNets  []*net.IPNet
+	requireProxyHTTPS bool
 }
 
 // AuthLimiter is the distributed brute-force boundary used by auth endpoints.
 type AuthLimiter interface {
-	AllowLogin(context.Context, string, string) (bool, error)
+	AllowLoginIP(context.Context, string) (bool, error)
+	RecordLoginFailure(context.Context, string) (bool, error)
+	ClearLoginFailures(context.Context, string) error
 	AllowRefresh(context.Context, string, string) (bool, error)
 }
 
@@ -115,6 +121,13 @@ func (h *Handler) WithAuthLimiter(limiter AuthLimiter) *Handler {
 	return h
 }
 
+// WithProxyPolicy configures the only peers allowed to supply client IP and HTTPS metadata.
+func (h *Handler) WithProxyPolicy(trustedCIDRs []string, requireHTTPS bool) *Handler {
+	h.trustedProxyCIDRs = append([]string(nil), trustedCIDRs...)
+	h.requireProxyHTTPS = requireHTTPS
+	return h
+}
+
 // WithDatabase attaches the transaction boundary used by idempotent writes.
 func (h *Handler) WithDatabase(db *gorm.DB) *Handler {
 	h.db = db
@@ -130,13 +143,24 @@ func (h *Handler) Router() (*gin.Engine, error) {
 	// Host validation is deployment-specific; paths and payloads remain validated.
 	swagger.Servers = nil
 	r := gin.New()
+	h.trustedProxyNets = make([]*net.IPNet, 0, len(h.trustedProxyCIDRs))
+	for _, cidr := range h.trustedProxyCIDRs {
+		_, network, parseErr := net.ParseCIDR(cidr)
+		if parseErr != nil {
+			return nil, fmt.Errorf("parse trusted proxy CIDR %q: %w", cidr, parseErr)
+		}
+		h.trustedProxyNets = append(h.trustedProxyNets, network)
+	}
+	if err = r.SetTrustedProxies(h.trustedProxyCIDRs); err != nil {
+		return nil, fmt.Errorf("configure trusted proxies: %w", err)
+	}
 	validator := ginmiddleware.OapiRequestValidatorWithOptions(swagger, &ginmiddleware.Options{
 		Options: openapi3filter.Options{AuthenticationFunc: func(context.Context, *openapi3filter.AuthenticationInput) error { return nil }},
 		ErrorHandler: func(c *gin.Context, _ string, status int) {
 			failure(c, apperror.New(status, "invalid_request", "请求不符合 API 契约"))
 		},
 	})
-	r.Use(requestID(), requestLimits(h.maxBodyBytes, h.maxHeaderBytes), recovery(h.log), accessLog(h.log), h.security(), validator)
+	r.Use(requestID(), requestLimits(h.maxBodyBytes, h.maxHeaderBytes), recovery(h.log), accessLog(h.log), securityHeaders(), h.proxyBoundary(), h.security(), validator)
 	generated.RegisterHandlersWithOptions(r, h, generated.GinServerOptions{ErrorHandler: func(c *gin.Context, err error, status int) {
 		failure(c, apperror.Wrap(status, "invalid_parameter", "路径参数无效", err))
 	}})
@@ -224,14 +248,22 @@ func (h *Handler) login(c *gin.Context) {
 	if !bind(c, &req) {
 		return
 	}
-	if !h.allowLogin(c, req.Username) {
+	if !h.allowLogin(c) {
 		return
 	}
 	pair, err := h.auth.Login(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
+		if appErr, ok := apperror.As(err); ok && appErr.Code == "invalid_credentials" {
+			if !h.recordLoginFailure(c, req.Username) {
+				return
+			}
+		}
 		failure(c, err)
 		return
 	}
+	h.clearLoginFailures(c, req.Username)
+	c.Header("Cache-Control", "no-store, private")
+	c.Header("Pragma", "no-cache")
 	success(c, 200, pair)
 }
 func (h *Handler) refresh(c *gin.Context) {
@@ -247,22 +279,41 @@ func (h *Handler) refresh(c *gin.Context) {
 		failure(c, err)
 		return
 	}
+	c.Header("Cache-Control", "no-store, private")
+	c.Header("Pragma", "no-cache")
 	success(c, 200, pair)
 }
 
-func (h *Handler) allowLogin(c *gin.Context, username string) bool {
+func (h *Handler) allowLogin(c *gin.Context) bool {
 	if h.authLimiter == nil {
 		return true
 	}
-	allowed, err := h.authLimiter.AllowLogin(c.Request.Context(), username, remoteIP(c.Request))
+	allowed, err := h.authLimiter.AllowLoginIP(c.Request.Context(), h.clientIP(c.Request))
 	return h.handleRateLimit(c, allowed, err)
+}
+
+func (h *Handler) recordLoginFailure(c *gin.Context, username string) bool {
+	if h.authLimiter == nil {
+		return true
+	}
+	allowed, err := h.authLimiter.RecordLoginFailure(c.Request.Context(), username)
+	return h.handleRateLimit(c, allowed, err)
+}
+
+func (h *Handler) clearLoginFailures(c *gin.Context, username string) {
+	if h.authLimiter == nil {
+		return
+	}
+	if err := h.authLimiter.ClearLoginFailures(c.Request.Context(), username); err != nil {
+		h.log.Warn("clear login failure limiter", zap.Error(err), zap.String("request_id", c.GetString(requestIDKey)))
+	}
 }
 
 func (h *Handler) allowRefresh(c *gin.Context, token string) bool {
 	if h.authLimiter == nil {
 		return true
 	}
-	allowed, err := h.authLimiter.AllowRefresh(c.Request.Context(), h.auth.RefreshFamily(token), remoteIP(c.Request))
+	allowed, err := h.authLimiter.AllowRefresh(c.Request.Context(), h.auth.RefreshFamily(token), h.clientIP(c.Request))
 	return h.handleRateLimit(c, allowed, err)
 }
 
@@ -272,18 +323,70 @@ func (h *Handler) handleRateLimit(c *gin.Context, allowed bool, err error) bool 
 		return false
 	}
 	if !allowed {
+		c.Header("Retry-After", "60")
 		failure(c, apperror.New(http.StatusTooManyRequests, "rate_limited", "请求过于频繁，请稍后重试"))
 		return false
 	}
 	return true
 }
 
-func remoteIP(request *http.Request) string {
+func peerIP(request *http.Request) net.IP {
 	host, _, err := net.SplitHostPort(request.RemoteAddr)
-	if err == nil {
-		return host
+	if err != nil {
+		host = request.RemoteAddr
 	}
-	return request.RemoteAddr
+	return net.ParseIP(strings.TrimSpace(host))
+}
+
+func (h *Handler) clientIP(request *http.Request) string {
+	peer := peerIP(request)
+	if peer == nil {
+		return request.RemoteAddr
+	}
+	if !h.isTrustedProxy(peer) {
+		return peer.String()
+	}
+	current := peer
+	forwarded := strings.Split(request.Header.Get("X-Forwarded-For"), ",")
+	for index := len(forwarded) - 1; index >= 0 && h.isTrustedProxy(current); index-- {
+		candidate := net.ParseIP(strings.TrimSpace(forwarded[index]))
+		if candidate == nil {
+			return peer.String()
+		}
+		current = candidate
+	}
+	return current.String()
+}
+
+func (h *Handler) isTrustedProxy(ip net.IP) bool {
+	for _, network := range h.trustedProxyNets {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *Handler) proxyBoundary() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !h.requireProxyHTTPS {
+			c.Next()
+			return
+		}
+		peer := peerIP(c.Request)
+		if peer == nil || !h.isTrustedProxy(peer) || forwardedProto(c.Request) != "https" {
+			failure(c, apperror.New(http.StatusForbidden, "secure_proxy_required", "请求必须通过受信任的 HTTPS 代理"))
+			c.Abort()
+			return
+		}
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Next()
+	}
+}
+
+func forwardedProto(request *http.Request) string {
+	values := strings.Split(request.Header.Get("X-Forwarded-Proto"), ",")
+	return strings.ToLower(strings.TrimSpace(values[len(values)-1]))
 }
 func (h *Handler) logout(c *gin.Context) {
 	if err := h.auth.Logout(c.Request.Context(), c.GetString(sessionIDKey)); err != nil {
@@ -404,7 +507,9 @@ func (h *Handler) setUserRoles(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	if err := h.auth.RevokeUser(c.Request.Context(), id); err != nil {
+	if err := idempotency.DeferAfterCommit(c.Request.Context(), func(callbackContext context.Context) error {
+		return h.auth.RevokeUser(callbackContext, id)
+	}); err != nil {
 		failure(c, err)
 		return
 	}

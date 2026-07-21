@@ -86,12 +86,12 @@ func (s *Service) runReloadLoop(ctx context.Context, notifier PolicyNotifier) {
 	go func() {
 		defer close(done)
 		for ctx.Err() == nil {
-			if err := s.reloadPolicy(); err != nil {
+			if err := s.reloadPolicy(ctx); err != nil {
 				s.sync.failures.Add(1)
 				s.log.Error("reload permissions before notifier subscription", zap.Error(err))
 			}
 			err := notifier.Run(ctx, func(version string) error {
-				if reloadErr := s.reloadPolicy(); reloadErr != nil {
+				if reloadErr := s.reloadPolicy(ctx); reloadErr != nil {
 					s.sync.failures.Add(1)
 					s.log.Error("reload permissions from notification", zap.Error(reloadErr), zap.String("policy_version", version))
 					return reloadErr
@@ -120,7 +120,7 @@ func (s *Service) runReloadLoop(ctx context.Context, notifier PolicyNotifier) {
 			<-done
 			return
 		case <-ticker.C:
-			if err := s.reloadPolicy(); err != nil {
+			if err := s.reloadPolicy(ctx); err != nil {
 				s.sync.failures.Add(1)
 				s.log.Error("periodic permission reload", zap.Error(err))
 			}
@@ -184,15 +184,22 @@ func (s *Service) relayPolicyChanges(ctx context.Context, notifier PolicyNotifie
 	return nil
 }
 
-func (s *Service) reloadPolicy() error {
-	if err := s.enforcer.LoadPolicy(); err != nil {
+func (s *Service) reloadPolicy(ctx context.Context) error {
+	s.reloadMu.Lock()
+	defer s.reloadMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	enforcer, err := newPolicyEnforcer(ctx, s.db)
+	if err != nil {
 		return fmt.Errorf("reload permission policy: %w", err)
 	}
+	s.enforcer.Store(enforcer)
 	return nil
 }
 
 // ReloadPolicy reloads the committed policy snapshot into the local enforcer.
-func (s *Service) ReloadPolicy() error { return s.reloadPolicy() }
+func (s *Service) ReloadPolicy(ctx context.Context) error { return s.reloadPolicy(ctx) }
 
 func recordPolicyChange(tx *gorm.DB) error {
 	version := uuid.NewString()

@@ -71,8 +71,8 @@ func (r syncRoleRepository) List(ctx context.Context, page, size int) ([]model.R
 	}
 	return roles, total, db.Offset((page - 1) * size).Limit(size).Find(&roles).Error
 }
-func (r syncRoleRepository) Update(ctx context.Context, role *model.Role) error {
-	return r.db.WithContext(ctx).Save(role).Error
+func (r syncRoleRepository) UpdateDescription(ctx context.Context, id uint64, description string) error {
+	return r.db.WithContext(ctx).Model(&model.Role{}).Where("id = ?", id).Update("description", description).Error
 }
 func (r syncRoleRepository) Delete(ctx context.Context, id uint64) error {
 	return r.db.WithContext(ctx).Delete(&model.Role{}, id).Error
@@ -80,7 +80,7 @@ func (r syncRoleRepository) Delete(ctx context.Context, id uint64) error {
 
 func newSyncService(t *testing.T, db *gorm.DB) *Service {
 	t.Helper()
-	service, err := NewService(db, syncRoleRepository{db: db})
+	service, err := NewService(context.Background(), db, syncRoleRepository{db: db})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestPolicyOutboxRelayAndCrossInstanceReload(t *testing.T) {
 	writer := newSyncService(t, db)
 	reader := newSyncService(t, db)
 	writer.WithLogger(zap.NewNop())
-	if err = writer.ReloadPolicy(); err != nil {
+	if err = writer.ReloadPolicy(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	role, err := writer.CreateRole(context.Background(), "sync_reader", "", false)

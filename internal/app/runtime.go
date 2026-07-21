@@ -55,19 +55,26 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create logger: %w", err)
 	}
+	runtime := &Runtime{Config: cfg, Logger: log}
+	initialized := false
+	defer func() {
+		if !initialized {
+			_ = runtime.Close()
+		}
+	}()
 	db, err := mysql.Open(ctx, cfg.MySQL.DSN)
 	if err != nil {
-		_ = log.Sync()
 		return nil, err
 	}
+	runtime.DB = db
 	rdb, err := redisclient.Open(ctx, cfg.Redis, cfg.Redis.DB)
 	if err != nil {
-		_ = log.Sync()
 		return nil, err
 	}
+	runtime.Redis = rdb
 	userRepo := mysql.NewUserRepository(db)
 	roleRepo := mysql.NewRoleRepository(db)
-	permissionService, err := permission.NewService(db, roleRepo)
+	permissionService, err := permission.NewService(ctx, db, roleRepo)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +99,8 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	h := httpapi.New(authService, userService, permissionService, configService, sqlDB.PingContext, func(c context.Context) error { return rdb.Ping(c).Err() }, log).
 		WithDatabase(db).
 		WithRequestLimits(cfg.Server.MaxBodyBytes, cfg.Server.MaxHeaderBytes).
-		WithAuthLimiter(redisclient.NewAuthLimiter(rdb, cfg.Environment == "production")).
+		WithProxyPolicy(cfg.Server.TrustedProxyCIDRs, cfg.Server.RequireProxyHTTPS).
+		WithAuthLimiter(redisclient.NewAuthLimiter(rdb, cfg.IsProduction())).
 		WithNotices(noticeService).
 		WithActivities(activityService).
 		WithMarketplace(marketplaceService).
@@ -104,7 +112,17 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		return nil, err
 	}
 	permissionService.StartSync(ctx, redisclient.NewPolicyNotifier(rdb))
-	return &Runtime{Config: cfg, DB: db, Redis: rdb, Logger: log, Router: router, Users: userService, Permissions: permissionService, Notices: noticeService, Activities: activityService, Marketplace: marketplaceService, Errands: errandService, Carpools: carpoolService, Trades: tradeService}, nil
+	runtime.Router = router
+	runtime.Users = userService
+	runtime.Permissions = permissionService
+	runtime.Notices = noticeService
+	runtime.Activities = activityService
+	runtime.Marketplace = marketplaceService
+	runtime.Errands = errandService
+	runtime.Carpools = carpoolService
+	runtime.Trades = tradeService
+	initialized = true
+	return runtime, nil
 }
 
 // Close releases runtime resources.

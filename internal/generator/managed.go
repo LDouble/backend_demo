@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -35,7 +33,7 @@ func GlobalManagedFiles(ctx context.Context, root string, modules []ModuleInfo) 
 		"internal/infrastructure/mysql/query/configs.gen.go",
 	}
 	for _, module := range modules {
-		schema, err := Load(ctx, filepath.Join(root, filepath.FromSlash(module.Schema)))
+		schema, err := loadRepositorySchema(ctx, root, module.Schema)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +54,7 @@ func FindStaleManagedFiles(root string, expected []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(manifestPath) // #nosec G304 -- safeJoin confines the manifest to the repository root.
+	data, err := repositoryReadFile(root, manifestPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
@@ -81,7 +79,7 @@ func ReconcileManagedFiles(ctx context.Context, root string, expected []string, 
 		return nil, err
 	}
 	previous := managedManifest{Version: managedManifestVersion, Files: []string{}}
-	data, readErr := os.ReadFile(manifestPath) // #nosec G304 -- safeJoin confines the manifest to the repository root.
+	data, readErr := repositoryReadFile(root, manifestPath)
 	switch {
 	case readErr == nil:
 		if err = json.Unmarshal(data, &previous); err != nil || previous.Version != managedManifestVersion {
@@ -113,7 +111,7 @@ func ReconcileManagedFiles(ctx context.Context, root string, expected []string, 
 			if joinErr != nil {
 				return nil, joinErr
 			}
-			if removeErr := removeGeneratedArtifact(path); removeErr != nil {
+			if removeErr := removeGeneratedArtifact(root, path); removeErr != nil {
 				return nil, fmt.Errorf("prune generated artifact %q: %w", relative, removeErr)
 			}
 		}
@@ -122,14 +120,14 @@ func ReconcileManagedFiles(ctx context.Context, root string, expected []string, 
 	if err != nil {
 		return nil, err
 	}
-	if err = atomicWrite(manifestPath, encoded); err != nil {
+	if err = atomicWrite(root, manifestPath, encoded); err != nil {
 		return nil, err
 	}
 	return stale, nil
 }
 
-func removeGeneratedArtifact(path string) error {
-	data, err := os.ReadFile(path) // #nosec G304 -- path is resolved through safeJoin from the prior managed manifest.
+func removeGeneratedArtifact(root, path string) error {
+	data, err := repositoryReadFile(root, path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -143,7 +141,7 @@ func removeGeneratedArtifact(path string) error {
 	if !generated {
 		return fmt.Errorf("refusing to delete file without a generated marker")
 	}
-	return os.Remove(path)
+	return repositoryRemove(root, path)
 }
 
 func encodeManagedManifest(files []string) ([]byte, error) {

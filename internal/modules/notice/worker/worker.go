@@ -16,7 +16,12 @@ import (
 	"go.uber.org/zap"
 )
 
-const taskType = "notice:outbox"
+const (
+	taskType              = "notice:outbox"
+	taskTimeout           = 30 * time.Second
+	outboxLeaseDuration   = 2 * time.Minute
+	deliveryLeaseDuration = 2 * time.Minute
+)
 
 type taskPayload struct {
 	EventID   uint64          `json:"event_id"`
@@ -72,22 +77,28 @@ func (r *Relay) Run(ctx context.Context) error {
 }
 
 func (r *Relay) tick(ctx context.Context) error {
-	events, err := r.store.LeaseOutbox(ctx, 100, time.Now().UTC(), 30*time.Second)
+	events, err := r.store.LeaseOutbox(ctx, 100, time.Now().UTC(), outboxLeaseDuration)
 	if err != nil {
 		return err
 	}
 	for _, event := range events {
+		if event.LockedAt == nil {
+			return fmt.Errorf("outbox event %d has no lease token", event.ID)
+		}
 		payload, marshalErr := json.Marshal(taskPayload{EventID: event.ID, EventType: event.EventType, Payload: event.Payload})
 		if marshalErr != nil {
 			return marshalErr
 		}
-		task := asynq.NewTask(taskType, payload, asynq.TaskID(fmt.Sprintf("notice-outbox-%d", event.ID)), asynq.MaxRetry(5), asynq.Timeout(30*time.Second), asynq.Queue("notifications"))
+		task := asynq.NewTask(taskType, payload, asynq.TaskID(fmt.Sprintf("notice-outbox-%d", event.ID)), asynq.MaxRetry(5), asynq.Timeout(taskTimeout), asynq.Queue("notifications"))
 		_, enqueueErr := r.client.EnqueueContext(ctx, task)
 		if enqueueErr != nil && !errors.Is(enqueueErr, asynq.ErrTaskIDConflict) {
-			_ = r.store.ReleaseOutbox(ctx, event.ID, enqueueErr, time.Now().UTC())
+			releaseErr := r.store.ReleaseOutbox(ctx, event.ID, *event.LockedAt, enqueueErr, time.Now().UTC())
+			if releaseErr != nil && !errors.Is(releaseErr, infrastructure.ErrLeaseLost) {
+				return errors.Join(enqueueErr, releaseErr)
+			}
 			continue
 		}
-		if err := r.store.MarkOutboxDispatched(ctx, event.ID); err != nil {
+		if err := r.store.MarkOutboxDispatched(ctx, event.ID, *event.LockedAt); err != nil && !errors.Is(err, infrastructure.ErrLeaseLost) {
 			return err
 		}
 	}
@@ -137,7 +148,7 @@ func (p *Processor) Handle(ctx context.Context, task *asynq.Task) error {
 }
 
 func (p *Processor) deliver(ctx context.Context, id uint64) error {
-	claimed, err := p.store.ClaimDelivery(ctx, id, time.Now().UTC(), 30*time.Second)
+	lockedAt, claimed, err := p.store.ClaimDelivery(ctx, id, time.Now().UTC(), deliveryLeaseDuration)
 	if err != nil {
 		return err
 	}
@@ -152,16 +163,26 @@ func (p *Processor) deliver(ctx context.Context, id uint64) error {
 		return nil
 	}
 	if notice.Status == domain.StatusRevoked {
-		return p.store.FailDelivery(ctx, id, errors.New("notice revoked"), true)
+		return ignoreLostLease(p.store.FailDelivery(ctx, id, lockedAt, errors.New("notice revoked"), true))
 	}
 	providerID, err := p.provider.Send(ctx, user, notice, delivery.Channel, strconv.FormatUint(delivery.ID, 10))
 	if err == nil {
-		return p.store.CompleteDelivery(ctx, id, providerID)
+		return ignoreLostLease(p.store.CompleteDelivery(ctx, id, lockedAt, providerID))
 	}
 	retry, _ := asynq.GetRetryCount(ctx)
 	maxRetry, _ := asynq.GetMaxRetry(ctx)
-	if updateErr := p.store.FailDelivery(ctx, id, err, retry >= maxRetry); updateErr != nil {
+	if updateErr := p.store.FailDelivery(ctx, id, lockedAt, err, retry >= maxRetry); updateErr != nil {
+		if errors.Is(updateErr, infrastructure.ErrLeaseLost) {
+			return nil
+		}
 		return updateErr
+	}
+	return err
+}
+
+func ignoreLostLease(err error) error {
+	if errors.Is(err, infrastructure.ErrLeaseLost) {
+		return nil
 	}
 	return err
 }

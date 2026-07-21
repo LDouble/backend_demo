@@ -65,6 +65,17 @@ func requestLimits(maxBodyBytes int64, maxHeaderBytes int) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func securityHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		c.Header("Permissions-Policy", "camera=(), geolocation=(), microphone=()")
+		c.Header("Referrer-Policy", "no-referrer")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Next()
+	}
+}
 func recovery(log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {

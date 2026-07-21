@@ -57,6 +57,11 @@ func TestRelayDispatchesAndRetriesEvents(t *testing.T) {
 			if err = db.AutoMigrate(&core.Event{}); err != nil {
 				t.Fatal(err)
 			}
+			sqlDB, err := db.DB()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = sqlDB.Close() })
 			now := time.Date(2026, 7, 22, 9, 0, 0, 0, time.UTC)
 			event := core.Event{
 				AggregateType:  "activity",

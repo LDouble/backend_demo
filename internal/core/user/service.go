@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -23,7 +24,16 @@ type Repository interface {
 	GetByID(context.Context, uint64) (*model.User, error)
 	GetByUsername(context.Context, string) (*model.User, error)
 	List(context.Context, int, int) ([]model.User, int64, error)
-	Update(context.Context, *model.User) error
+	UpdateFields(context.Context, uint64, UpdateFields) error
+}
+
+// UpdateFields contains only the columns an account operation may change.
+// IncrementSessionVersion is applied atomically by the repository.
+type UpdateFields struct {
+	Username                *string
+	PasswordHash            *string
+	Status                  *string
+	IncrementSessionVersion bool
 }
 
 // RoleGuard prevents the last super administrator from being disabled.
@@ -124,12 +134,14 @@ func (s *Service) Update(ctx context.Context, id uint64, username, password *str
 	if err != nil {
 		return nil, err
 	}
+	changes := UpdateFields{}
 	if username != nil {
 		v := strings.TrimSpace(*username)
 		if !usernamePattern.MatchString(v) {
 			return nil, apperror.New(400, "invalid_username", "用户名格式无效")
 		}
 		u.Username = v
+		changes.Username = &v
 	}
 	if password != nil {
 		hash, e := HashPassword(*password)
@@ -138,12 +150,22 @@ func (s *Service) Update(ctx context.Context, id uint64, username, password *str
 		}
 		u.PasswordHash = hash
 		u.SessionVersion++
+		changes.PasswordHash = &hash
+		changes.IncrementSessionVersion = true
 	}
-	if err := s.repo.Update(ctx, u); err != nil {
+	if username == nil && password == nil {
+		return u, nil
+	}
+	if err := s.repo.UpdateFields(ctx, id, changes); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return nil, apperror.New(http.StatusConflict, "username_exists", "用户名已存在")
+		}
 		return nil, fmt.Errorf("update user: %w", err)
 	}
 	if password != nil && s.revoker != nil {
-		if err := s.revoker.RevokeUser(ctx, id); err != nil {
+		if err := idempotency.DeferAfterCommit(ctx, func(callbackContext context.Context) error {
+			return s.revoker.RevokeUser(callbackContext, id)
+		}); err != nil {
 			return nil, err
 		}
 	}
@@ -169,7 +191,9 @@ func (s *Service) SetStatus(ctx context.Context, id uint64, status string) (*mod
 			u.Status = status
 			u.SessionVersion++
 			if s.revoker != nil {
-				if err = s.revoker.RevokeUser(ctx, id); err != nil {
+				if err = idempotency.DeferAfterCommit(ctx, func(callbackContext context.Context) error {
+					return s.revoker.RevokeUser(callbackContext, id)
+				}); err != nil {
 					return nil, err
 				}
 			}
@@ -185,11 +209,16 @@ func (s *Service) SetStatus(ctx context.Context, id uint64, status string) (*mod
 	}
 	u.Status = status
 	u.SessionVersion++
-	if err := s.repo.Update(ctx, u); err != nil {
+	if err := s.repo.UpdateFields(ctx, id, UpdateFields{
+		Status:                  &status,
+		IncrementSessionVersion: true,
+	}); err != nil {
 		return nil, fmt.Errorf("update status: %w", err)
 	}
 	if status == model.UserDisabled && s.revoker != nil {
-		if err := s.revoker.RevokeUser(ctx, id); err != nil {
+		if err := idempotency.DeferAfterCommit(ctx, func(callbackContext context.Context) error {
+			return s.revoker.RevokeUser(callbackContext, id)
+		}); err != nil {
 			return nil, err
 		}
 	}

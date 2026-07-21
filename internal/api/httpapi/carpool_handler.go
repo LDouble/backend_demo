@@ -62,7 +62,7 @@ func (h *Handler) createCarpoolTrip(c *gin.Context) {
 	}
 	trip, err := h.carpools.Create(c.Request.Context(), c.GetUint64(userIDKey), carpool.TripInput{Title: req.Title, Origin: req.Origin, Destination: req.Destination, DepartureAt: req.DepartureAt, TotalSeats: req.TotalSeats, ContactType: req.ContactType, Contact: req.Contact})
 	if err != nil {
-		failure(c, apperror.Wrap(400, "invalid_carpool_trip", err.Error(), err))
+		failure(c, err)
 		return
 	}
 	success(c, http.StatusCreated, h.carpoolView(trip, true))

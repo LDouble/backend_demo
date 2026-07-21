@@ -113,11 +113,11 @@ func TestRedisPermissionPropagationAcrossInstances(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = firstRedis.Close(); _ = secondRedis.Close() })
-	writer, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
+	writer, err := permission.NewService(ctx, db, platformmysql.NewRoleRepository(db))
 	if err != nil {
 		t.Fatal(err)
 	}
-	reader, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
+	reader, err := permission.NewService(ctx, db, platformmysql.NewRoleRepository(db))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +339,7 @@ func TestCasbinPolicyPersistence(t *testing.T) {
 		}
 	})
 	roles := platformmysql.NewRoleRepository(db)
-	first, err := permission.NewService(db, roles)
+	first, err := permission.NewService(ctx, db, roles)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +355,7 @@ func TestCasbinPolicyPersistence(t *testing.T) {
 	if err = first.SetUserRoles(ctx, userID, []string{roleName}); err != nil {
 		t.Fatal(err)
 	}
-	reloaded, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
+	reloaded, err := permission.NewService(ctx, db, platformmysql.NewRoleRepository(db))
 	if err != nil {
 		t.Fatal(err)
 	}

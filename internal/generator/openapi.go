@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -36,7 +35,7 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 		return false, err
 	}
 	// #nosec G304 -- safeJoin confines the generated contract path to the repository root.
-	current, err := os.ReadFile(contractPath)
+	current, err := repositoryReadFile(root, contractPath)
 	if err != nil {
 		return false, fmt.Errorf("read public OpenAPI contract: %w", err)
 	}
@@ -60,7 +59,7 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 			return false, joinErr
 		}
 		// #nosec G304 -- safeJoin confines generated module fragments to the repository root.
-		fragmentData, readErr := os.ReadFile(fragmentPath)
+		fragmentData, readErr := repositoryReadFile(root, fragmentPath)
 		if errors.Is(readErr, fs.ErrNotExist) {
 			return false, fmt.Errorf("module OpenAPI fragment missing: %s", fragmentPath)
 		}
@@ -94,7 +93,7 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 	if err != nil {
 		return false, err
 	}
-	currentPermissions, permissionReadErr := os.ReadFile(permissionPath) // #nosec G304 -- safeJoin confines this generated output.
+	currentPermissions, permissionReadErr := repositoryReadFile(root, permissionPath)
 	if permissionReadErr != nil && !errors.Is(permissionReadErr, fs.ErrNotExist) {
 		return false, fmt.Errorf("read core permission manifest: %w", permissionReadErr)
 	}
@@ -111,12 +110,12 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 		return false, nil
 	}
 	if contractChanged {
-		if err := atomicWrite(contractPath, content); err != nil {
+		if err := atomicWrite(root, contractPath, content); err != nil {
 			return false, err
 		}
 	}
 	if permissionsChanged {
-		if err := atomicWrite(permissionPath, permissionContent); err != nil {
+		if err := atomicWrite(root, permissionPath, permissionContent); err != nil {
 			return false, err
 		}
 	}

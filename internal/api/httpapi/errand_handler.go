@@ -1,13 +1,11 @@
 package httpapi
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	erraddomain "github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
 )
 
@@ -61,7 +59,7 @@ func (h *Handler) createErrand(c *gin.Context) {
 	}
 	task, err := h.errands.Create(c.Request.Context(), c.GetUint64(userIDKey), errandInput(req))
 	if err != nil {
-		failure(c, apperror.Wrap(400, "invalid_errand", err.Error(), err))
+		failure(c, err)
 		return
 	}
 	h.successErrand(c, http.StatusCreated, task)
@@ -89,12 +87,7 @@ func (h *Handler) updateErrand(c *gin.Context) {
 	}
 	task, err := h.errands.Update(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, errandInput(req))
 	if err != nil {
-		var appErr *apperror.Error
-		if errors.As(err, &appErr) {
-			failure(c, err)
-		} else {
-			failure(c, apperror.Wrap(400, "invalid_errand", err.Error(), err))
-		}
+		failure(c, err)
 		return
 	}
 	h.successErrand(c, http.StatusOK, task)

@@ -4,9 +4,11 @@ package application
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
 )
 
@@ -46,7 +48,7 @@ func NewManager(store Store) *Manager { return &Manager{store: store, now: time.
 func (m *Manager) Create(ctx context.Context, actorID uint64, input domain.ActivityInput) (*domain.Activity, error) {
 	now := m.now().UTC()
 	if err := domain.ValidateActivityInput(input, true, now); err != nil {
-		return nil, err
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_activity", err.Error(), err)
 	}
 	return m.store.Create(ctx, actorID, input)
 }
@@ -55,7 +57,7 @@ func (m *Manager) Create(ctx context.Context, actorID uint64, input domain.Activ
 func (m *Manager) Update(ctx context.Context, id, actorID, version uint64, input domain.ActivityInput) (*domain.Activity, error) {
 	now := m.now().UTC()
 	if err := domain.ValidateActivityInput(input, false, now); err != nil {
-		return nil, err
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_activity", err.Error(), err)
 	}
 	return m.store.Update(ctx, id, actorID, version, input, now)
 }
@@ -118,7 +120,8 @@ func (m *Manager) Approve(ctx context.Context, id, actorID, version uint64, comm
 // Reject records a rejection decision for a pending activity.
 func (m *Manager) Reject(ctx context.Context, id, actorID, version uint64, comment string) (*domain.Activity, error) {
 	if strings.TrimSpace(comment) == "" {
-		return nil, fmt.Errorf("审核驳回意见不能为空")
+		err := fmt.Errorf("审核驳回意见不能为空")
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_activity_review", err.Error(), err)
 	}
 	return m.store.Reject(ctx, id, actorID, version, comment)
 }

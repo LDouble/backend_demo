@@ -25,7 +25,7 @@ services:
       MYSQL_PASSWORD: "${CAMPUS_MYSQL_PASSWORD:?请先运行 make env}"
       MYSQL_ROOT_PASSWORD: "${CAMPUS_MYSQL_ROOT_PASSWORD:?请先运行 make env}"
     ports:
-      - "${CAMPUS_MYSQL_PORT:-3306}:3306"
+      - "127.0.0.1:${CAMPUS_MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
@@ -41,7 +41,7 @@ services:
     environment:
       CAMPUS_REDIS_PASSWORD: "${CAMPUS_REDIS_PASSWORD:?请先运行 make env}"
     ports:
-      - "${CAMPUS_REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${CAMPUS_REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$CAMPUS_REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
@@ -72,7 +72,7 @@ services:
     build: *app-build
     environment: *app-environment
     ports:
-      - "${CAMPUS_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${CAMPUS_HTTP_PORT:-8080}:8080"
     depends_on:
       bootstrap:
         condition: service_completed_successfully

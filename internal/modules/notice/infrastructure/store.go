@@ -4,6 +4,7 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -18,6 +19,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// ErrLeaseLost indicates that another worker or a state transition owns the row.
+var ErrLeaseLost = errors.New("notice work lease lost")
 
 // Outbox states and event names shared with the relay.
 const (
@@ -251,18 +255,20 @@ func (s *NoticeStore) RetryDeliveries(ctx context.Context, noticeID uint64, now 
 }
 
 // ClaimDelivery obtains a conditional provider lease for one delivery.
-func (s *NoticeStore) ClaimDelivery(ctx context.Context, id uint64, now time.Time, lease time.Duration) (bool, error) {
+func (s *NoticeStore) ClaimDelivery(ctx context.Context, id uint64, now time.Time, lease time.Duration) (time.Time, bool, error) {
+	lockedAt := now.UTC().Truncate(time.Millisecond)
 	result := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).
-		Where("id = ? AND (status = ? OR (status = ? AND locked_at < ?))", id, "pending", "delivering", now.Add(-lease)).
-		Updates(map[string]any{"status": "delivering", "locked_at": now})
-	return result.RowsAffected == 1, result.Error
+		Where("id = ? AND (status = ? OR (status = ? AND locked_at < ?))", id, "pending", "delivering", lockedAt.Add(-lease)).
+		Updates(map[string]any{"status": "delivering", "locked_at": lockedAt})
+	return lockedAt, result.RowsAffected == 1, result.Error
 }
 
 // LeaseOutbox atomically claims due work using a timeout lease.
 func (s *NoticeStore) LeaseOutbox(ctx context.Context, limit int, now time.Time, lease time.Duration) ([]domain.OutboxEvent, error) {
 	var events []domain.OutboxEvent
+	lockedAt := now.UTC().Truncate(time.Millisecond)
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
-		query := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).Where("available_at <= ? AND (status = ? OR (status = ? AND locked_at < ?))", now, OutboxPending, OutboxLeased, now.Add(-lease)).Order("id").Limit(limit)
+		query := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).Where("available_at <= ? AND (status = ? OR (status = ? AND locked_at < ?))", lockedAt, OutboxPending, OutboxLeased, lockedAt.Add(-lease)).Order("id").Limit(limit)
 		if err := query.Find(&events).Error; err != nil {
 			return err
 		}
@@ -272,24 +278,31 @@ func (s *NoticeStore) LeaseOutbox(ctx context.Context, limit int, now time.Time,
 		ids := make([]uint64, len(events))
 		for i := range events {
 			ids[i] = events[i].ID
+			events[i].LockedAt = &lockedAt
 		}
-		return tx.Model(&domain.OutboxEvent{}).Where("id IN ?", ids).Updates(map[string]any{"status": OutboxLeased, "locked_at": now}).Error
+		return tx.Model(&domain.OutboxEvent{}).Where("id IN ?", ids).Updates(map[string]any{"status": OutboxLeased, "locked_at": lockedAt}).Error
 	})
 	return events, err
 }
 
 // MarkOutboxDispatched releases a successfully enqueued outbox row.
-func (s *NoticeStore) MarkOutboxDispatched(ctx context.Context, id uint64) error {
-	return idempotency.DB(ctx, s.db).Model(&domain.OutboxEvent{}).Where("id = ?", id).Updates(map[string]any{"status": OutboxDispatched, "locked_at": nil}).Error
+func (s *NoticeStore) MarkOutboxDispatched(ctx context.Context, id uint64, lockedAt time.Time) error {
+	result := idempotency.DB(ctx, s.db).Model(&domain.OutboxEvent{}).
+		Where("id = ? AND status = ? AND locked_at = ?", id, OutboxLeased, lockedAt).
+		Updates(map[string]any{"status": OutboxDispatched, "locked_at": nil})
+	return requireLease(result)
 }
 
 // ReleaseOutbox returns a failed relay row to the pending pool.
-func (s *NoticeStore) ReleaseOutbox(ctx context.Context, id uint64, cause error, now time.Time) error {
+func (s *NoticeStore) ReleaseOutbox(ctx context.Context, id uint64, lockedAt time.Time, cause error, now time.Time) error {
 	message := cause.Error()
 	if len(message) > 1000 {
 		message = message[:1000]
 	}
-	return idempotency.DB(ctx, s.db).Model(&domain.OutboxEvent{}).Where("id = ?", id).Updates(map[string]any{"status": OutboxPending, "locked_at": nil, "available_at": now.Add(time.Second), "attempts": gorm.Expr("attempts + 1"), "last_error": message}).Error
+	result := idempotency.DB(ctx, s.db).Model(&domain.OutboxEvent{}).
+		Where("id = ? AND status = ? AND locked_at = ?", id, OutboxLeased, lockedAt).
+		Updates(map[string]any{"status": OutboxPending, "locked_at": nil, "available_at": now.Add(time.Second), "attempts": gorm.Expr("attempts + 1"), "last_error": message})
+	return requireLease(result)
 }
 
 // Publish snapshots recipients and creates external delivery events atomically.
@@ -353,12 +366,15 @@ func (s *NoticeStore) LoadDelivery(ctx context.Context, id uint64) (*domain.Noti
 }
 
 // CompleteDelivery records a provider success idempotently.
-func (s *NoticeStore) CompleteDelivery(ctx context.Context, id uint64, providerID string) error {
-	return idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).Where("id = ? AND status = ?", id, "delivering").Updates(map[string]any{"status": "sent", "locked_at": nil, "provider_message_id": providerID, "attempts": gorm.Expr("attempts + 1"), "last_error": ""}).Error
+func (s *NoticeStore) CompleteDelivery(ctx context.Context, id uint64, lockedAt time.Time, providerID string) error {
+	result := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).
+		Where("id = ? AND status = ? AND locked_at = ?", id, "delivering", lockedAt).
+		Updates(map[string]any{"status": "sent", "locked_at": nil, "provider_message_id": providerID, "attempts": gorm.Expr("attempts + 1"), "last_error": ""})
+	return requireLease(result)
 }
 
 // FailDelivery records a retryable or final provider failure.
-func (s *NoticeStore) FailDelivery(ctx context.Context, id uint64, cause error, final bool) error {
+func (s *NoticeStore) FailDelivery(ctx context.Context, id uint64, lockedAt time.Time, cause error, final bool) error {
 	status := "pending"
 	if final {
 		status = "failed"
@@ -367,7 +383,20 @@ func (s *NoticeStore) FailDelivery(ctx context.Context, id uint64, cause error, 
 	if len(message) > 1000 {
 		message = message[:1000]
 	}
-	return idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).Where("id = ? AND status = ?", id, "delivering").Updates(map[string]any{"status": status, "locked_at": nil, "attempts": gorm.Expr("attempts + 1"), "last_error": message}).Error
+	result := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).
+		Where("id = ? AND status = ? AND locked_at = ?", id, "delivering", lockedAt).
+		Updates(map[string]any{"status": status, "locked_at": nil, "attempts": gorm.Expr("attempts + 1"), "last_error": message})
+	return requireLease(result)
+}
+
+func requireLease(result *gorm.DB) error {
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return ErrLeaseLost
+	}
+	return nil
 }
 
 func createOutbox(tx *gorm.DB, aggregateID uint64, eventType string, payload any, at time.Time) error {

@@ -182,7 +182,7 @@ func bootstrapAdmin(parent context.Context, cfg bootstrap.Config, output io.Writ
 	}
 	repo := mysql.NewUserRepository(db)
 	roles := mysql.NewRoleRepository(db)
-	permissions, err := permission.NewService(db, roles)
+	permissions, err := permission.NewService(ctx, db, roles)
 	if err != nil {
 		return err
 	}

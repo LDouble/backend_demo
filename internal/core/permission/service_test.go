@@ -2,6 +2,7 @@ package permission_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -42,11 +43,28 @@ func testService(t *testing.T) *permission.Service {
 	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &casbinRule{}, &permissionPolicyOutbox{}); err != nil {
 		t.Fatal(err)
 	}
-	svc, err := permission.NewService(db, mysql.NewRoleRepository(db))
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	svc, err := permission.NewService(context.Background(), db, mysql.NewRoleRepository(db))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return svc
+}
+
+func TestPolicyLoadingHonorsContextCancellation(t *testing.T) {
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := permission.NewService(canceled, nil, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("NewService canceled error=%v", err)
+	}
+	service := testService(t)
+	if err := service.ReloadPolicy(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("ReloadPolicy canceled error=%v", err)
+	}
 }
 
 func TestRBACLifecycle(t *testing.T) {

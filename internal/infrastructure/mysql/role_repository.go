@@ -45,8 +45,10 @@ func (r *roleRepository) List(ctx context.Context, page, size int) ([]model.Role
 	return roleValues(rows), total, nil
 }
 
-func (r *roleRepository) Update(ctx context.Context, v *model.Role) error {
-	return query.Use(idempotency.DB(ctx, r.db)).Role.WithContext(ctx).Save(v)
+func (r *roleRepository) UpdateDescription(ctx context.Context, id uint64, description string) error {
+	q := query.Use(idempotency.DB(ctx, r.db)).Role
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).UpdateSimple(q.Description.Value(description))
+	return err
 }
 
 func (r *roleRepository) Delete(ctx context.Context, id uint64) error {

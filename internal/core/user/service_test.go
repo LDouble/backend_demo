@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"gorm.io/gorm"
 )
@@ -82,9 +83,20 @@ func (f *fakeRepo) GetByUsername(_ context.Context, name string) (*model.User, e
 func (f *fakeRepo) List(_ context.Context, _, _ int) ([]model.User, int64, error) {
 	return nil, int64(len(f.users)), nil
 }
-func (f *fakeRepo) Update(_ context.Context, u *model.User) error {
-	clone := *u
-	f.users[u.ID] = &clone
+func (f *fakeRepo) UpdateFields(_ context.Context, id uint64, changes UpdateFields) error {
+	u := f.users[id]
+	if changes.Username != nil {
+		u.Username = *changes.Username
+	}
+	if changes.PasswordHash != nil {
+		u.PasswordHash = *changes.PasswordHash
+	}
+	if changes.Status != nil {
+		u.Status = *changes.Status
+	}
+	if changes.IncrementSessionVersion {
+		u.SessionVersion++
+	}
 	return nil
 }
 func TestCreateAndPassword(t *testing.T) {
@@ -222,5 +234,29 @@ func TestAtomicDisableAndSessionRevocation(t *testing.T) {
 	revoker.err = errors.New("redis unavailable")
 	if _, err = service.SetStatus(ctx, created.ID, model.UserDisabled); err == nil {
 		t.Fatal("atomic disable ignored session revocation failure")
+	}
+}
+
+func TestSessionRevocationIsDeferredUntilCommit(t *testing.T) {
+	ctx, callbacks := idempotency.WithAfterCommit(context.Background())
+	repo := newFakeRepo()
+	revoker := &fakeRevoker{}
+	service := NewService(repo, fakeGuard{allowed: true}).WithSessionRevoker(revoker)
+	created, err := service.Create(ctx, "deferred.user", "initial-password-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	password := "changed-password-123"
+	if _, err = service.Update(ctx, created.ID, nil, &password); err != nil {
+		t.Fatal(err)
+	}
+	if len(revoker.users) != 0 {
+		t.Fatalf("sessions revoked before commit: %v", revoker.users)
+	}
+	if err = callbacks.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if len(revoker.users) != 1 || revoker.users[0] != created.ID {
+		t.Fatalf("sessions not revoked after commit: %v", revoker.users)
 	}
 }

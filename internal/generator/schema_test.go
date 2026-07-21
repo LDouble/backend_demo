@@ -46,6 +46,7 @@ func TestSchemaNormalize(t *testing.T) {
 		{name: "unsupported CRUD", mutate: func(s *Schema) { s.CRUD[0] = "publish" }, want: "unsupported CRUD"},
 		{name: "duplicate permission", mutate: func(s *Schema) { s.Permissions = append(s.Permissions, s.Permissions[0]) }, want: "duplicate permission"},
 		{name: "invalid permission path", mutate: func(s *Schema) { s.Permissions[0].Path = "/admin/notices" }, want: "invalid permission path"},
+		{name: "permission path YAML injection", mutate: func(s *Schema) { s.Permissions[0].Path = "/api/v1/activities\ninjected: true" }, want: "invalid permission path"},
 		{name: "missing permission methods", mutate: func(s *Schema) { s.Permissions[0].Methods = nil }, want: "has no methods"},
 		{name: "duplicate permission method", mutate: func(s *Schema) { s.Permissions[0].Methods = []string{"GET", "get"} }, want: "repeats method"},
 	}
@@ -67,6 +68,40 @@ func TestSchemaNormalize(t *testing.T) {
 			}
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("Normalize() error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestOperationsRejectUnsafeTemplateValues(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*APIOperation)
+	}{
+		{name: "path newline", mutate: func(op *APIOperation) { op.Path = "/api/v1/items\ninjected: true" }},
+		{name: "path YAML metacharacter", mutate: func(op *APIOperation) { op.Path = "/api/v1/items#hidden" }},
+		{name: "header newline", mutate: func(op *APIOperation) { op.Headers = []APIParameter{{Name: "X-Test\ninjected", Type: "string"}} }},
+		{name: "query metacharacter", mutate: func(op *APIOperation) { op.Query = []APIParameter{{Name: "page: injected", Type: "integer"}} }},
+		{name: "parameter format", mutate: func(op *APIOperation) {
+			op.Query = []APIParameter{{Name: "start_date", Type: "string", Format: "date\ninjected"}}
+		}},
+		{name: "field format", mutate: func(op *APIOperation) {
+			op.Body = &APIObject{Fields: []APIField{{Name: "start_at", Type: "string", Format: "date-time # injected"}}}
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			schema := validSchema()
+			schema.Permissions = nil
+			schema.Operations = []APIOperation{{
+				OperationID: "ListItems",
+				Method:      "GET",
+				Path:        "/api/v1/items",
+				Permission:  "activity:list",
+			}}
+			test.mutate(&schema.Operations[0])
+			if err := schema.Normalize(); err == nil {
+				t.Fatal("Normalize() accepted unsafe template value")
 			}
 		})
 	}

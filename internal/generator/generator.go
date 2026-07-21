@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"go/format"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -106,7 +105,7 @@ func Generate(ctx context.Context, schema Schema, options Options) (Result, erro
 		if err = ctx.Err(); err != nil {
 			return Result{}, err
 		}
-		current, readErr := os.ReadFile(file.path)
+		current, readErr := repositoryReadFile(root, file.path)
 		exists := readErr == nil
 		if readErr != nil && !errors.Is(readErr, fs.ErrNotExist) {
 			return Result{}, fmt.Errorf("read generated output %s: %w", file.path, readErr)
@@ -140,13 +139,13 @@ func Generate(ctx context.Context, schema Schema, options Options) (Result, erro
 	}
 	for _, file := range files {
 		if file.preserve {
-			if _, statErr := os.Stat(file.path); statErr == nil {
+			if _, statErr := repositoryStat(root, file.path); statErr == nil {
 				continue
 			} else if !errors.Is(statErr, fs.ErrNotExist) {
 				return Result{}, fmt.Errorf("inspect preserved output %s: %w", file.path, statErr)
 			}
 		}
-		if err = atomicWrite(file.path, file.content); err != nil {
+		if err = atomicWrite(root, file.path, file.content); err != nil {
 			return Result{}, err
 		}
 	}
@@ -163,7 +162,7 @@ func ListModules(ctx context.Context, root string) ([]ModuleInfo, error) {
 		return nil, err
 	}
 	// #nosec G304 -- safeJoin confines the registry to the repository root.
-	data, err := os.ReadFile(path)
+	data, err := repositoryReadFile(root, path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return []ModuleInfo{}, nil
 	}
@@ -188,7 +187,7 @@ func DiscoverModules(ctx context.Context, root string) ([]ModuleInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(directory)
+	entries, err := repositoryReadDir(root, directory)
 	if err != nil {
 		return nil, fmt.Errorf("read schema directory: %w", err)
 	}
@@ -202,7 +201,7 @@ func DiscoverModules(ctx context.Context, root string) ([]ModuleInfo, error) {
 			continue
 		}
 		relative := filepath.ToSlash(filepath.Join("schemas", entry.Name()))
-		schema, loadErr := Load(ctx, filepath.Join(directory, entry.Name()))
+		schema, loadErr := loadRepositorySchema(ctx, root, relative)
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -239,14 +238,14 @@ func SyncModuleRegistry(ctx context.Context, root string, modules []ModuleInfo, 
 		return fmt.Errorf("encode module registry: %w", err)
 	}
 	content = append(content, '\n')
-	current, readErr := os.ReadFile(path) // #nosec G304 -- safeJoin confines the registry to the repository root.
+	current, readErr := repositoryReadFile(root, path)
 	if check {
 		if readErr != nil || !bytes.Equal(current, content) {
 			return fmt.Errorf("%w: .agent/modules.json", ErrDrift)
 		}
 		return nil
 	}
-	return atomicWrite(path, content)
+	return atomicWrite(root, path, content)
 }
 
 func plan(root string, schema Schema, options Options) ([]outputFile, error) {
@@ -342,7 +341,7 @@ func planRegistry(root string, schema Schema, source string) (registry, outputFi
 	}
 	value := registry{Version: RegistryVersion, Modules: []ModuleInfo{}}
 	// #nosec G304 -- safeJoin confines the registry to the repository root.
-	if data, readErr := os.ReadFile(path); readErr == nil {
+	if data, readErr := repositoryReadFile(root, path); readErr == nil {
 		if err = json.Unmarshal(data, &value); err != nil {
 			return registry{}, outputFile{}, fmt.Errorf("decode module registry: %w", err)
 		}
@@ -457,31 +456,4 @@ func safeJoin(root, relative string) (string, error) {
 		return "", fmt.Errorf("output path escapes repository root: %s", relative)
 	}
 	return joined, nil
-}
-
-func atomicWrite(path string, content []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return fmt.Errorf("create generated directory: %w", err)
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".campus-generate-*")
-	if err != nil {
-		return fmt.Errorf("create generated temporary file: %w", err)
-	}
-	temporaryName := temporary.Name()
-	defer func() { _ = os.Remove(temporaryName) }()
-	if err = temporary.Chmod(0o644); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("set generated file mode: %w", err)
-	}
-	if _, err = temporary.Write(content); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("write generated temporary file: %w", err)
-	}
-	if err = temporary.Close(); err != nil {
-		return fmt.Errorf("close generated temporary file: %w", err)
-	}
-	if err = os.Rename(temporaryName, path); err != nil {
-		return fmt.Errorf("replace generated file: %w", err)
-	}
-	return nil
 }

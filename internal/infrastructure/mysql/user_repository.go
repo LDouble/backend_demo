@@ -7,6 +7,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -50,8 +51,26 @@ func (r *userRepository) List(ctx context.Context, page, size int) ([]model.User
 	return userValues(rows), total, nil
 }
 
-func (r *userRepository) Update(ctx context.Context, u *model.User) error {
-	return r.user(ctx).Save(u)
+func (r *userRepository) UpdateFields(ctx context.Context, id uint64, changes user.UpdateFields) error {
+	q := query.Use(idempotency.DB(ctx, r.db)).User
+	assignments := make([]field.AssignExpr, 0, 4)
+	if changes.Username != nil {
+		assignments = append(assignments, q.Username.Value(*changes.Username))
+	}
+	if changes.PasswordHash != nil {
+		assignments = append(assignments, q.PasswordHash.Value(*changes.PasswordHash))
+	}
+	if changes.Status != nil {
+		assignments = append(assignments, q.Status.Value(*changes.Status))
+	}
+	if changes.IncrementSessionVersion {
+		assignments = append(assignments, q.SessionVersion.Add(1))
+	}
+	if len(assignments) == 0 {
+		return nil
+	}
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).UpdateSimple(assignments...)
+	return err
 }
 
 func userValues(rows []*model.User) []model.User {

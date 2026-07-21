@@ -24,6 +24,9 @@ func failure(c *gin.Context, err error) {
 		code = app.Code
 		message = app.Message
 	}
+	if err != nil {
+		_ = c.Error(err)
+	}
 	c.AbortWithStatusJSON(status, gin.H{"error": gin.H{"code": code, "message": message}, "request_id": c.GetString(requestIDKey)})
 }
 func pageData(items any, page, size int, total int64) gin.H {

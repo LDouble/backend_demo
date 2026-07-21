@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -24,6 +25,11 @@ func testStore(t *testing.T) (*NoticeStore, *gorm.DB) {
 	if err = db.Exec("CREATE TABLE casbin_rule (id INTEGER PRIMARY KEY, ptype TEXT, v0 TEXT, v1 TEXT, v2 TEXT, v3 TEXT, v4 TEXT, v5 TEXT)").Error; err != nil {
 		t.Fatal(err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	return NewNoticeStore(db), db
 }
 
@@ -71,6 +77,62 @@ func TestStoreAudiencePublishInboxAndRead(t *testing.T) {
 	var deliveries int64
 	if err = db.Model(&domain.NoticeDelivery{}).Count(&deliveries).Error; err != nil || deliveries != 1 {
 		t.Fatalf("deliveries=%d err=%v", deliveries, err)
+	}
+}
+
+func TestLeaseOwnershipRejectsStaleWorkers(t *testing.T) {
+	store, db := testStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	delivery := domain.NoticeDelivery{
+		NoticeId:       1,
+		UserId:         1,
+		Channel:        domain.ChannelPush,
+		Status:         "pending",
+		IdempotencyKey: "lease-delivery",
+	}
+	if err := db.Create(&delivery).Error; err != nil {
+		t.Fatal(err)
+	}
+	firstLease, claimed, err := store.ClaimDelivery(ctx, delivery.ID, now, time.Minute)
+	if err != nil || !claimed {
+		t.Fatalf("first delivery claim=%v err=%v", claimed, err)
+	}
+	secondLease, claimed, err := store.ClaimDelivery(ctx, delivery.ID, now.Add(2*time.Minute), time.Minute)
+	if err != nil || !claimed {
+		t.Fatalf("second delivery claim=%v err=%v", claimed, err)
+	}
+	if err = store.FailDelivery(ctx, delivery.ID, firstLease, errors.New("stale"), true); !errors.Is(err, ErrLeaseLost) {
+		t.Fatalf("stale delivery worker error=%v", err)
+	}
+	if err = store.CompleteDelivery(ctx, delivery.ID, secondLease, "provider-id"); err != nil {
+		t.Fatal(err)
+	}
+
+	event := domain.OutboxEvent{
+		AggregateType: "notice",
+		AggregateId:   1,
+		EventType:     EventPublish,
+		Payload:       []byte(`{"notice_id":1}`),
+		Status:        OutboxPending,
+		AvailableAt:   now,
+	}
+	if err = db.Create(&event).Error; err != nil {
+		t.Fatal(err)
+	}
+	firstBatch, err := store.LeaseOutbox(ctx, 1, now, time.Minute)
+	if err != nil || len(firstBatch) != 1 || firstBatch[0].LockedAt == nil {
+		t.Fatalf("first outbox lease=%+v err=%v", firstBatch, err)
+	}
+	secondBatch, err := store.LeaseOutbox(ctx, 1, now.Add(2*time.Minute), time.Minute)
+	if err != nil || len(secondBatch) != 1 || secondBatch[0].LockedAt == nil {
+		t.Fatalf("second outbox lease=%+v err=%v", secondBatch, err)
+	}
+	if err = store.ReleaseOutbox(ctx, event.ID, *firstBatch[0].LockedAt, errors.New("stale"), now); !errors.Is(err, ErrLeaseLost) {
+		t.Fatalf("stale outbox worker error=%v", err)
+	}
+	if err = store.MarkOutboxDispatched(ctx, event.ID, *secondBatch[0].LockedAt); err != nil {
+		t.Fatal(err)
 	}
 }
 

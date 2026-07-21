@@ -3,8 +3,10 @@ package application
 
 import (
 	"context"
+	"net/http"
 	"time"
 
+	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 )
@@ -43,7 +45,7 @@ func NewManager(store Store) *Manager { return &Manager{store: store, now: time.
 // Create validates and creates a task.
 func (m *Manager) Create(ctx context.Context, requester uint64, input domain.TaskInput) (*domain.Task, error) {
 	if err := domain.ValidateTaskInput(input, m.now().UTC()); err != nil {
-		return nil, err
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_errand", err.Error(), err)
 	}
 	return m.store.Create(ctx, requester, input)
 }
@@ -51,7 +53,7 @@ func (m *Manager) Create(ctx context.Context, requester uint64, input domain.Tas
 // Update validates and updates an editable task.
 func (m *Manager) Update(ctx context.Context, id, requester, version uint64, input domain.TaskInput) (*domain.Task, error) {
 	if err := domain.ValidateTaskUpdateInput(input, m.now().UTC()); err != nil {
-		return nil, err
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_errand", err.Error(), err)
 	}
 	return m.store.Update(ctx, id, requester, version, input, m.now().UTC())
 }
