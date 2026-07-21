@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -20,6 +21,9 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
 	platformmysql "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
+	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
+	activitydomain "github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
+	activityinfra "github.com/weouc-plus/campus-platform/internal/modules/activity/infrastructure"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -27,6 +31,7 @@ import (
 type handlerFixture struct {
 	router       http.Handler
 	users        *user.Service
+	permissions  *permission.Service
 	adminToken   string
 	userPassword string
 }
@@ -158,6 +163,204 @@ func TestHandlerFailureScenarios(t *testing.T) {
 	}
 }
 
+func TestActivityHTTPFlow(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	ownerToken, _, ownerID := fixture.createUserWithPermissions(t, "activity_owner", activityAdminPermissions(), activityUserPermissions())
+	participantToken, _, _ := fixture.createUserWithPermissions(t, "activity_participant", activityUserPermissions())
+	bystanderToken, _, _ := fixture.createUserWithPermissions(t, "activity_bystander", activityUserPermissions())
+
+	now := time.Now().UTC()
+	startDate := now.Add(2 * time.Hour)
+	createResponse := performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities", ownerToken, map[string]any{
+		"title":           "Campus Run",
+		"summary":         "Morning training event",
+		"body":            "Gather at the east gate",
+		"location":        "East Gate Plaza",
+		"signup_start_at": now.Add(-time.Hour).Format(time.RFC3339),
+		"signup_end_at":   now.Add(time.Hour).Format(time.RFC3339),
+		"start_at":        startDate.Format(time.RFC3339),
+		"end_at":          startDate.Add(2 * time.Hour).Format(time.RFC3339),
+		"capacity":        2,
+		"contact_type":    "wechat",
+		"contact":         "owner_wechat_42",
+	})
+	if createResponse.Code != http.StatusCreated {
+		t.Fatalf("create activity status=%d body=%s", createResponse.Code, createResponse.Body.String())
+	}
+	created := decodeActivityView(t, createResponse)
+	if created.CreatedBy != ownerID || created.Contact != "owner_wechat_42" {
+		t.Fatalf("created activity = %+v", created)
+	}
+
+	adminList := perform(t, fixture.router, http.MethodGet, "/api/v1/admin/activities?keyword=training&status=draft&review_status=draft&page=1&page_size=10", ownerToken, nil)
+	assertStatusCode(t, adminList, http.StatusOK)
+	var adminPage pageEnvelope[activityView]
+	decodeDataRecorder(t, adminList, &adminPage)
+	if len(adminPage.Items) != 1 || adminPage.Items[0].ID != created.ID {
+		t.Fatalf("admin page items=%+v", adminPage.Items)
+	}
+
+	assertStatusCode(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/submit-review", ownerToken, map[string]any{
+		"expected_version": created.Version,
+	}), http.StatusOK)
+	submitted := decodeActivityView(t, perform(t, fixture.router, http.MethodGet, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10), ownerToken, nil))
+	if submitted.ReviewStatus != activitydomain.ReviewStatusPendingReview {
+		t.Fatalf("submitted review status=%s", submitted.ReviewStatus)
+	}
+
+	assertStatusCode(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/approve", fixture.adminToken, map[string]any{
+		"expected_version": submitted.Version,
+		"review_comment":   "looks good",
+	}), http.StatusOK)
+	approved := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/publish", ownerToken, map[string]any{
+		"expected_version": submitted.Version + 1,
+	}))
+	if approved.Status != activitydomain.ActivityStatusPublished || approved.ReviewStatus != activitydomain.ReviewStatusApproved {
+		t.Fatalf("approved activity=%+v", approved)
+	}
+
+	publicList := perform(t, fixture.router, http.MethodGet, "/api/v1/activities?keyword=East%20Gate&page=1&page_size=10", participantToken, nil)
+	assertStatusCode(t, publicList, http.StatusOK)
+	var publicPage pageEnvelope[activityView]
+	decodeDataRecorder(t, publicList, &publicPage)
+	if len(publicPage.Items) != 1 || publicPage.Items[0].ID != approved.ID {
+		t.Fatalf("public page=%+v", publicPage.Items)
+	}
+
+	bystanderDetail := decodeActivityView(t, perform(t, fixture.router, http.MethodGet, "/api/v1/activities/"+strconv.FormatUint(approved.ID, 10), bystanderToken, nil))
+	if bystanderDetail.Contact == "owner_wechat_42" || bystanderDetail.Contact == "" {
+		t.Fatalf("bystander detail contact=%q", bystanderDetail.Contact)
+	}
+
+	registerResponse := perform(t, fixture.router, http.MethodPost, "/api/v1/activities/"+strconv.FormatUint(approved.ID, 10)+"/registrations", participantToken, nil)
+	assertStatusCode(t, registerResponse, http.StatusCreated)
+	registration := decodeRegistrationResult(t, registerResponse)
+	if registration.Registration.Status != activitydomain.RegistrationStatusActive || registration.Activity.RegisteredCount != 1 {
+		t.Fatalf("registration result=%+v", registration)
+	}
+
+	participantDetail := decodeActivityView(t, perform(t, fixture.router, http.MethodGet, "/api/v1/activities/"+strconv.FormatUint(approved.ID, 10), participantToken, nil))
+	if participantDetail.Contact != "owner_wechat_42" {
+		t.Fatalf("participant contact=%q", participantDetail.Contact)
+	}
+
+	myRegistrations := perform(t, fixture.router, http.MethodGet, "/api/v1/activities/registrations/mine?page=1&page_size=10", participantToken, nil)
+	assertStatusCode(t, myRegistrations, http.StatusOK)
+	var registrationsPage pageEnvelope[myActivityRegistrationView]
+	decodeDataRecorder(t, myRegistrations, &registrationsPage)
+	if len(registrationsPage.Items) != 1 || registrationsPage.Items[0].ActivityID != approved.ID || registrationsPage.Items[0].Activity.CreatedBy != ownerID {
+		t.Fatalf("mine page=%+v", registrationsPage.Items)
+	}
+
+	cancelResponse := performJSON(t, fixture.router, http.MethodDelete, "/api/v1/activities/"+strconv.FormatUint(approved.ID, 10)+"/registrations/me", participantToken, map[string]any{
+		"expected_version": registration.Registration.RegistrationVersion,
+	})
+	assertStatusCode(t, cancelResponse, http.StatusOK)
+	cancelled := decodeRegistrationResult(t, cancelResponse)
+	if cancelled.Registration.Status != activitydomain.RegistrationStatusCancelled || cancelled.Activity.RegisteredCount != 0 {
+		t.Fatalf("cancelled result=%+v", cancelled)
+	}
+
+	afterCancelDetail := decodeActivityView(t, perform(t, fixture.router, http.MethodGet, "/api/v1/activities/"+strconv.FormatUint(approved.ID, 10), participantToken, nil))
+	if afterCancelDetail.Contact == "owner_wechat_42" || afterCancelDetail.Contact == "" {
+		t.Fatalf("after cancel contact=%q", afterCancelDetail.Contact)
+	}
+}
+
+func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	ownerToken, _, _ := fixture.createUserWithPermissions(t, "activity_editor", activityAdminPermissions(), activityUserPermissions())
+
+	startDate := time.Date(2026, 7, 23, 14, 0, 0, 0, time.UTC)
+	created := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities", ownerToken, map[string]any{
+		"title":           "Rejected Draft",
+		"summary":         "Needs review",
+		"body":            "Initial copy",
+		"location":        "Library Hall",
+		"signup_start_at": startDate.Add(-48 * time.Hour).Format(time.RFC3339),
+		"signup_end_at":   startDate.Add(-24 * time.Hour).Format(time.RFC3339),
+		"start_at":        startDate.Format(time.RFC3339),
+		"end_at":          startDate.Add(2 * time.Hour).Format(time.RFC3339),
+		"capacity":        5,
+		"contact_type":    "qq",
+		"contact":         "998877",
+	}))
+
+	submitted := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/submit-review", ownerToken, map[string]any{
+		"expected_version": created.Version,
+	}))
+	rejected := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/reject", fixture.adminToken, map[string]any{
+		"expected_version": submitted.Version,
+		"review_comment":   "need clearer agenda",
+	}))
+	if rejected.ReviewStatus != activitydomain.ReviewStatusRejected || rejected.ReviewComment == nil || *rejected.ReviewComment == "" {
+		t.Fatalf("rejected activity=%+v", rejected)
+	}
+
+	updated := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPatch, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10), ownerToken, map[string]any{
+		"title":            "Rejected Draft Revised",
+		"summary":          "Updated summary",
+		"body":             "Rewritten agenda",
+		"location":         "Gym Annex",
+		"signup_start_at":  startDate.Add(-48 * time.Hour).Format(time.RFC3339),
+		"signup_end_at":    startDate.Add(-25 * time.Hour).Format(time.RFC3339),
+		"start_at":         startDate.Format(time.RFC3339),
+		"end_at":           startDate.Add(3 * time.Hour).Format(time.RFC3339),
+		"capacity":         6,
+		"expected_version": rejected.Version,
+		"contact_type":     "qq",
+		"contact":          "99887766",
+	}))
+	if updated.ReviewStatus != activitydomain.ReviewStatusDraft || updated.ReviewComment != nil {
+		t.Fatalf("updated review state=%+v", updated)
+	}
+
+	submittedAgain := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/submit-review", ownerToken, map[string]any{
+		"expected_version": updated.Version,
+	}))
+	approved := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/approve", fixture.adminToken, map[string]any{
+		"expected_version": submittedAgain.Version,
+	}))
+	published := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/publish", ownerToken, map[string]any{
+		"expected_version": approved.Version,
+	}))
+	finished := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/finish", ownerToken, map[string]any{
+		"expected_version": published.Version,
+	}))
+	if finished.Status != activitydomain.ActivityStatusFinished || finished.Contact == "99887766" {
+		t.Fatalf("finished activity=%+v", finished)
+	}
+
+	second := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities", ownerToken, map[string]any{
+		"title":           "Cancel Flow",
+		"summary":         "Cancel summary",
+		"body":            "Cancel body",
+		"location":        "South Court",
+		"signup_start_at": startDate.Add(-72 * time.Hour).Format(time.RFC3339),
+		"signup_end_at":   startDate.Add(-48 * time.Hour).Format(time.RFC3339),
+		"start_at":        startDate.Add(24 * time.Hour).Format(time.RFC3339),
+		"end_at":          startDate.Add(26 * time.Hour).Format(time.RFC3339),
+		"capacity":        3,
+		"contact_type":    "phone",
+		"contact":         "13800138000",
+	}))
+	second = decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/submit-review", ownerToken, map[string]any{
+		"expected_version": second.Version,
+	}))
+	second = decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/approve", fixture.adminToken, map[string]any{
+		"expected_version": second.Version,
+	}))
+	second = decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/publish", ownerToken, map[string]any{
+		"expected_version": second.Version,
+	}))
+	cancelled := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/cancel", ownerToken, map[string]any{
+		"expected_version": second.Version,
+	}))
+	if cancelled.Status != activitydomain.ActivityStatusCancelled || cancelled.Contact == "13800138000" {
+		t.Fatalf("cancelled activity=%+v", cancelled)
+	}
+}
+
 func newHandlerFixture(t *testing.T) *handlerFixture {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -165,7 +368,7 @@ func newHandlerFixture(t *testing.T) *handlerFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}); err != nil {
+	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &model.Config{}, &activitydomain.Activity{}, &activitydomain.ActivityRegistration{}); err != nil {
 		t.Fatal(err)
 	}
 	permissions, err := permission.NewService(db, platformmysql.NewRoleRepository(db))
@@ -187,12 +390,14 @@ func newHandlerFixture(t *testing.T) *handlerFixture {
 	}
 	sessions := &memorySessionStore{session: make(map[string]string)}
 	authService := auth.NewService(platformmysql.NewUserRepository(db), sessions, "test", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
-	handler := httpapi.New(authService, users, permissions, configcenter.NewService(platformmysql.NewConfigRepository(db), cipher), func(context.Context) error { return nil }, func(context.Context) error { return nil }, zap.NewNop())
+	activities := activityapp.NewManager(activityinfra.NewStore(db, cipher))
+	handler := httpapi.New(authService, users, permissions, configcenter.NewService(platformmysql.NewConfigRepository(db), cipher), func(context.Context) error { return nil }, func(context.Context) error { return nil }, zap.NewNop()).
+		WithActivities(activities)
 	router, err := handler.Router()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &handlerFixture{router: router, users: users, adminToken: loginToken(t, router, admin.Username, password), userPassword: password}
+	return &handlerFixture{router: router, users: users, permissions: permissions, adminToken: loginToken(t, router, admin.Username, password), userPassword: password}
 }
 
 func loginToken(t *testing.T, router http.Handler, username, password string) string {
@@ -254,4 +459,138 @@ func decodeRecorder(t *testing.T, response *httptest.ResponseRecorder, dst any) 
 	if err := json.Unmarshal(response.Body.Bytes(), dst); err != nil {
 		t.Fatalf("decode response: %v body=%s", err, response.Body.String())
 	}
+}
+
+type activityView struct {
+	ID              uint64  `json:"id"`
+	Title           string  `json:"title"`
+	Summary         string  `json:"summary"`
+	Location        string  `json:"location"`
+	Status          string  `json:"status"`
+	ReviewStatus    string  `json:"review_status"`
+	ReviewComment   *string `json:"review_comment"`
+	CreatedBy       uint64  `json:"created_by"`
+	Contact         string  `json:"contact"`
+	Version         uint64  `json:"version"`
+	RegisteredCount int64   `json:"registered_count"`
+}
+
+type pageEnvelope[T any] struct {
+	Items []T `json:"items"`
+}
+
+type registrationEnvelope struct {
+	Registration struct {
+		ID                  uint64     `json:"id"`
+		ActivityID          uint64     `json:"activity_id"`
+		Status              string     `json:"status"`
+		CancelledAt         *time.Time `json:"cancelled_at"`
+		RegistrationVersion uint64     `json:"registration_version"`
+	} `json:"registration"`
+	Activity activityView `json:"activity"`
+}
+
+type myActivityRegistrationView struct {
+	RegistrationID      uint64       `json:"registration_id"`
+	ActivityID          uint64       `json:"activity_id"`
+	Status              string       `json:"status"`
+	RegistrationVersion uint64       `json:"registration_version"`
+	Activity            activityView `json:"activity"`
+}
+
+func (f *handlerFixture) createUserWithPermissions(t *testing.T, prefix string, permissionGroups ...[]permission.Permission) (string, string, uint64) {
+	t.Helper()
+	username := sanitizeRoleName(prefix)
+	if len(username) > 18 {
+		username = username[:18]
+	}
+	username += strconv.FormatInt(time.Now().UnixNano()%1_000_000, 10)
+	created, err := f.users.Create(context.Background(), username, f.userPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roleName := sanitizeRoleName(prefix) + "_role"
+	role, err := f.permissions.CreateRole(context.Background(), roleName, "test role", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var permissions []permission.Permission
+	for _, group := range permissionGroups {
+		permissions = append(permissions, group...)
+	}
+	if err := f.permissions.SetPermissions(context.Background(), role.ID, permissions); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.permissions.SetUserRoles(context.Background(), created.ID, []string{role.Name}); err != nil {
+		t.Fatal(err)
+	}
+	return loginToken(t, f.router, created.Username, f.userPassword), created.Username, created.ID
+}
+
+func activityAdminPermissions() []permission.Permission {
+	return []permission.Permission{
+		{PathPattern: "/api/v1/admin/activities", Methods: []string{"GET", "POST"}},
+		{PathPattern: "/api/v1/admin/activities/:id", Methods: []string{"GET", "PATCH"}},
+		{PathPattern: "/api/v1/admin/activities/:id/submit-review", Methods: []string{"POST"}},
+		{PathPattern: "/api/v1/admin/activities/:id/publish", Methods: []string{"POST"}},
+		{PathPattern: "/api/v1/admin/activities/:id/cancel", Methods: []string{"POST"}},
+		{PathPattern: "/api/v1/admin/activities/:id/finish", Methods: []string{"POST"}},
+	}
+}
+
+func activityUserPermissions() []permission.Permission {
+	return []permission.Permission{
+		{PathPattern: "/api/v1/activities", Methods: []string{"GET"}},
+		{PathPattern: "/api/v1/activities/:id", Methods: []string{"GET"}},
+		{PathPattern: "/api/v1/activities/:id/registrations", Methods: []string{"POST"}},
+		{PathPattern: "/api/v1/activities/:id/registrations/me", Methods: []string{"DELETE"}},
+		{PathPattern: "/api/v1/activities/registrations/mine", Methods: []string{"GET"}},
+	}
+}
+
+func decodeActivityView(t *testing.T, response *httptest.ResponseRecorder) activityView {
+	t.Helper()
+	assertStatusCode(t, response, response.Code)
+	var envelope struct {
+		Data activityView `json:"data"`
+	}
+	decodeRecorder(t, response, &envelope)
+	return envelope.Data
+}
+
+func decodeRegistrationResult(t *testing.T, response *httptest.ResponseRecorder) registrationEnvelope {
+	t.Helper()
+	var envelope struct {
+		Data registrationEnvelope `json:"data"`
+	}
+	decodeRecorder(t, response, &envelope)
+	return envelope.Data
+}
+
+func decodeDataRecorder(t *testing.T, response *httptest.ResponseRecorder, dst any) {
+	t.Helper()
+	var envelope struct {
+		Data json.RawMessage `json:"data"`
+	}
+	decodeRecorder(t, response, &envelope)
+	if err := json.Unmarshal(envelope.Data, dst); err != nil {
+		t.Fatalf("decode data: %v body=%s", err, response.Body.String())
+	}
+}
+
+func assertStatusCode(t *testing.T, response *httptest.ResponseRecorder, want int) {
+	t.Helper()
+	if response.Code != want {
+		t.Fatalf("status=%d want=%d body=%s", response.Code, want, response.Body.String())
+	}
+}
+
+func sanitizeRoleName(prefix string) string {
+	prefix = strings.ToLower(prefix)
+	replacer := strings.NewReplacer(" ", "_", "-", "_", "/", "_")
+	prefix = replacer.Replace(prefix)
+	if len(prefix) < 3 {
+		prefix += "xxx"
+	}
+	return prefix
 }

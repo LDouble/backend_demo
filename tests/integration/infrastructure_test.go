@@ -110,16 +110,19 @@ func TestMigrationsUpDownUp(t *testing.T) {
 	}
 	assertTableExists(t, admin, databaseName, "users", true)
 	assertTableExists(t, admin, databaseName, "notices", true)
+	assertTableExists(t, admin, databaseName, "activities", true)
 	if err = migration.Run(ctx, dsn, "down", 1); err != nil {
 		t.Fatalf("migration down: %v", err)
 	}
-	assertTableExists(t, admin, databaseName, "notices", false)
+	assertTableExists(t, admin, databaseName, "activities", false)
+	assertTableExists(t, admin, databaseName, "notices", true)
 	assertTableExists(t, admin, databaseName, "users", true)
 	if err = migration.Run(ctx, dsn, "up", 0); err != nil {
 		t.Fatalf("second migration up: %v", err)
 	}
 	assertTableExists(t, admin, databaseName, "configs", true)
 	assertTableExists(t, admin, databaseName, "notices", true)
+	assertTableExists(t, admin, databaseName, "activities", true)
 }
 
 func TestGeneratedModuleMigrationUpDownUp(t *testing.T) {

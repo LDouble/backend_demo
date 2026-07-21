@@ -15,6 +15,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
+	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
 	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
@@ -30,6 +31,7 @@ type Handler struct {
 	permissions *permission.Service
 	configs     *configcenter.Service
 	notices     *noticeapp.Manager
+	activities  *activityapp.Manager
 	marketplace *marketplaceapp.Manager
 	errands     *errandapp.Manager
 	carpools    *carpoolapp.Manager
@@ -42,6 +44,12 @@ type Handler struct {
 // WithNotices attaches the optional notification-center module.
 func (h *Handler) WithNotices(manager *noticeapp.Manager) *Handler { h.notices = manager; return h }
 
+// WithActivities attaches the activity domain service.
+func (h *Handler) WithActivities(manager *activityapp.Manager) *Handler {
+	h.activities = manager
+	return h
+}
+
 // WithMarketplace attaches the marketplace domain service.
 func (h *Handler) WithMarketplace(manager *marketplaceapp.Manager) *Handler {
 	h.marketplace = manager
@@ -49,8 +57,16 @@ func (h *Handler) WithMarketplace(manager *marketplaceapp.Manager) *Handler {
 }
 
 // WithErrands attaches the errand fulfillment service.
-func (h *Handler) WithErrands(manager *errandapp.Manager) *Handler   { h.errands = manager; return h }
-func (h *Handler) WithCarpools(manager *carpoolapp.Manager) *Handler { h.carpools = manager; return h }
+func (h *Handler) WithErrands(manager *errandapp.Manager) *Handler {
+	h.errands = manager
+	return h
+}
+
+// WithCarpools attaches the carpool domain service.
+func (h *Handler) WithCarpools(manager *carpoolapp.Manager) *Handler {
+	h.carpools = manager
+	return h
+}
 
 // WithTrades attaches participant-scoped trade order queries.
 func (h *Handler) WithTrades(manager *tradeapp.Manager) *Handler { h.trades = manager; return h }

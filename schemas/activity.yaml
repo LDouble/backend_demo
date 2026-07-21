@@ -1,0 +1,190 @@
+version: 2
+module: activity
+entities:
+  - name: Activity
+    table: activities
+    primary: true
+    fields:
+      - {name: title, type: string, size: 200, required: true}
+      - {name: summary, type: string, size: 500, required: true}
+      - {name: body, type: text, required: true}
+      - {name: location, type: string, size: 500, required: true}
+      - {name: signup_start_at, type: datetime, required: true, index: true}
+      - {name: signup_end_at, type: datetime, required: true, index: true}
+      - {name: start_at, type: datetime, required: true, index: true}
+      - {name: end_at, type: datetime, required: true, index: true}
+      - {name: capacity, type: int64, required: true}
+      - {name: registered_count, type: int64, required: true}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: review_status, type: string, size: 24, required: true, index: true}
+      - {name: review_comment, type: string, size: 500}
+      - {name: contact_type, type: string, size: 16, required: true}
+      - {name: contact_ciphertext, type: string, size: 4096, required: true}
+      - {name: created_by, type: uint64, required: true, index: true}
+      - {name: updated_by, type: uint64, required: true, index: true}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: idx_activity_public_list, fields: [status, review_status, start_at]}
+      - {name: idx_activity_admin_list, fields: [review_status, status, start_at]}
+  - name: ActivityRegistration
+    table: activity_registrations
+    fields:
+      - {name: activity_id, type: uint64, required: true}
+      - {name: user_id, type: uint64, required: true}
+      - {name: status, type: string, size: 16, required: true, index: true}
+      - {name: registered_at, type: datetime, required: true}
+      - {name: cancelled_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: uk_activity_registration_user, fields: [activity_id, user_id], unique: true}
+      - {name: idx_activity_registration_user, fields: [user_id, status, registered_at]}
+    foreign_keys:
+      - {field: activity_id, references: activities.id, on_delete: CASCADE}
+crud: [create, get, list, update]
+operations:
+  - operation_id: ListAdminActivities
+    method: GET
+    path: /api/v1/admin/activities
+    permission: activity:admin_list
+    summary: 管理端查询活动列表
+    query:
+      - {name: keyword, type: string}
+      - {name: status, type: string}
+      - {name: review_status, type: string}
+      - {name: start_date, type: string, format: date}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success}]
+  - operation_id: CreateAdminActivity
+    method: POST
+    path: /api/v1/admin/activities
+    permission: activity:admin_create
+    summary: 管理端创建活动草稿
+    body:
+      fields:
+        - {name: title, type: string, required: true}
+        - {name: summary, type: string, required: true}
+        - {name: body, type: string, required: true}
+        - {name: location, type: string, required: true}
+        - {name: signup_start_at, type: string, format: date-time, required: true}
+        - {name: signup_end_at, type: string, format: date-time, required: true}
+        - {name: start_at, type: string, format: date-time, required: true}
+        - {name: end_at, type: string, format: date-time, required: true}
+        - {name: capacity, type: integer, format: int64, required: true, minimum: 1}
+        - {name: contact_type, type: string, required: true}
+        - {name: contact, type: string, required: true}
+    responses: [{status: 201, kind: success}, {status: 400, kind: error}]
+  - operation_id: GetAdminActivity
+    method: GET
+    path: /api/v1/admin/activities/{id}
+    permission: activity:admin_read
+    summary: 管理端查看活动详情
+    responses: [{status: 200, kind: success}, {status: 404, kind: error}]
+  - operation_id: UpdateAdminActivity
+    method: PATCH
+    path: /api/v1/admin/activities/{id}
+    permission: activity:admin_update
+    summary: 管理端修改活动草稿
+    body:
+      fields:
+        - {name: title, type: string, required: true}
+        - {name: summary, type: string, required: true}
+        - {name: body, type: string, required: true}
+        - {name: location, type: string, required: true}
+        - {name: signup_start_at, type: string, format: date-time, required: true}
+        - {name: signup_end_at, type: string, format: date-time, required: true}
+        - {name: start_at, type: string, format: date-time, required: true}
+        - {name: end_at, type: string, format: date-time, required: true}
+        - {name: capacity, type: integer, format: int64, required: true, minimum: 1}
+        - {name: contact_type, type: string}
+        - {name: contact, type: string}
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: SubmitAdminActivityReview
+    method: POST
+    path: /api/v1/admin/activities/{id}/submit-review
+    permission: activity:admin_submit_review
+    summary: 提交活动审核
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: ApproveAdminActivity
+    method: POST
+    path: /api/v1/admin/activities/{id}/approve
+    permission: activity:admin_approve
+    summary: 审核通过活动
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: review_comment, type: string}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: RejectAdminActivity
+    method: POST
+    path: /api/v1/admin/activities/{id}/reject
+    permission: activity:admin_reject
+    summary: 驳回活动审核
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: review_comment, type: string, required: true}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: PublishAdminActivity
+    method: POST
+    path: /api/v1/admin/activities/{id}/publish
+    permission: activity:admin_publish
+    summary: 发布活动
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: CancelAdminActivity
+    method: POST
+    path: /api/v1/admin/activities/{id}/cancel
+    permission: activity:admin_cancel
+    summary: 取消活动
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: FinishAdminActivity
+    method: POST
+    path: /api/v1/admin/activities/{id}/finish
+    permission: activity:admin_finish
+    summary: 结束活动
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: ListActivities
+    method: GET
+    path: /api/v1/activities
+    permission: activity:list
+    summary: 用户侧浏览已发布活动
+    query:
+      - {name: keyword, type: string}
+      - {name: start_date, type: string, format: date}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success}]
+  - operation_id: GetActivity
+    method: GET
+    path: /api/v1/activities/{id}
+    permission: activity:read
+    summary: 用户侧查看活动详情
+    responses: [{status: 200, kind: success}, {status: 404, kind: error}]
+  - operation_id: CreateActivityRegistration
+    method: POST
+    path: /api/v1/activities/{id}/registrations
+    permission: activity:register
+    summary: 报名活动
+    headers: [{name: Idempotency-Key, type: string}]
+    responses: [{status: 201, kind: success}, {status: 409, kind: error}]
+  - operation_id: CancelMyActivityRegistration
+    method: DELETE
+    path: /api/v1/activities/{id}/registrations/me
+    permission: activity:registration_cancel
+    summary: 取消我的活动报名
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: ListMyActivityRegistrations
+    method: GET
+    path: /api/v1/activities/registrations/mine
+    permission: activity:registration_mine
+    summary: 查看我的活动报名
+    query:
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success}]

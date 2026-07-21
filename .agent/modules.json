@@ -2,6 +2,15 @@
   "version": 1,
   "modules": [
     {
+      "name": "activity",
+      "entity": "Activity",
+      "entities": [
+        "Activity",
+        "ActivityRegistration"
+      ],
+      "schema": "schemas/activity.yaml"
+    },
+    {
       "name": "carpool",
       "entity": "Trip",
       "entities": [

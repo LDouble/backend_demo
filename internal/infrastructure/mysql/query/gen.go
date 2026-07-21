@@ -17,6 +17,8 @@ import (
 
 var (
 	Q                      = new(Query)
+	Activity               *activity
+	ActivityRegistration   *activityRegistration
 	Config                 *config
 	Listing                *listing
 	ListingImage           *listingImage
@@ -42,6 +44,8 @@ var (
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	Activity = &Q.Activity
+	ActivityRegistration = &Q.ActivityRegistration
 	Config = &Q.Config
 	Listing = &Q.Listing
 	ListingImage = &Q.ListingImage
@@ -68,6 +72,8 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:                     db,
+		Activity:               newActivity(db, opts...),
+		ActivityRegistration:   newActivityRegistration(db, opts...),
 		Config:                 newConfig(db, opts...),
 		Listing:                newListing(db, opts...),
 		ListingImage:           newListingImage(db, opts...),
@@ -95,6 +101,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
+	Activity               activity
+	ActivityRegistration   activityRegistration
 	Config                 config
 	Listing                listing
 	ListingImage           listingImage
@@ -125,6 +133,8 @@ func (q *Query) UnderlyingDB() *gorm.DB { return q.db }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:                     db,
+		Activity:               q.Activity.clone(db),
+		ActivityRegistration:   q.ActivityRegistration.clone(db),
 		Config:                 q.Config.clone(db),
 		Listing:                q.Listing.clone(db),
 		ListingImage:           q.ListingImage.clone(db),
@@ -160,6 +170,8 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:                     db,
+		Activity:               q.Activity.replaceDB(db),
+		ActivityRegistration:   q.ActivityRegistration.replaceDB(db),
 		Config:                 q.Config.replaceDB(db),
 		Listing:                q.Listing.replaceDB(db),
 		ListingImage:           q.ListingImage.replaceDB(db),
@@ -185,6 +197,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
+	Activity               IActivityDo
+	ActivityRegistration   IActivityRegistrationDo
 	Config                 IConfigDo
 	Listing                IListingDo
 	ListingImage           IListingImageDo
@@ -210,6 +224,8 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		Activity:               q.Activity.WithContext(ctx),
+		ActivityRegistration:   q.ActivityRegistration.WithContext(ctx),
 		Config:                 q.Config.WithContext(ctx),
 		Listing:                q.Listing.WithContext(ctx),
 		ListingImage:           q.ListingImage.WithContext(ctx),

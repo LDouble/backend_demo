@@ -288,6 +288,103 @@ type Refresh = RefreshRequest
 // UpdateUser defines model for UpdateUser.
 type UpdateUser = UpdateUserRequest
 
+// ListActivitiesParams defines parameters for ListActivities.
+type ListActivitiesParams struct {
+	Keyword   *string             `form:"keyword,omitempty" json:"keyword,omitempty"`
+	StartDate *openapi_types.Date `form:"start_date,omitempty" json:"start_date,omitempty"`
+	Page      *int32              `form:"page,omitempty" json:"page,omitempty"`
+	PageSize  *int32              `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// ListMyActivityRegistrationsParams defines parameters for ListMyActivityRegistrations.
+type ListMyActivityRegistrationsParams struct {
+	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateActivityRegistrationParams defines parameters for CreateActivityRegistration.
+type CreateActivityRegistrationParams struct {
+	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+}
+
+// CancelMyActivityRegistrationJSONBody defines parameters for CancelMyActivityRegistration.
+type CancelMyActivityRegistrationJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// ListAdminActivitiesParams defines parameters for ListAdminActivities.
+type ListAdminActivitiesParams struct {
+	Keyword      *string             `form:"keyword,omitempty" json:"keyword,omitempty"`
+	Status       *string             `form:"status,omitempty" json:"status,omitempty"`
+	ReviewStatus *string             `form:"review_status,omitempty" json:"review_status,omitempty"`
+	StartDate    *openapi_types.Date `form:"start_date,omitempty" json:"start_date,omitempty"`
+	Page         *int32              `form:"page,omitempty" json:"page,omitempty"`
+	PageSize     *int32              `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateAdminActivityJSONBody defines parameters for CreateAdminActivity.
+type CreateAdminActivityJSONBody struct {
+	Body          string    `json:"body"`
+	Capacity      int64     `json:"capacity"`
+	Contact       string    `json:"contact"`
+	ContactType   string    `json:"contact_type"`
+	EndAt         time.Time `json:"end_at"`
+	Location      string    `json:"location"`
+	SignupEndAt   time.Time `json:"signup_end_at"`
+	SignupStartAt time.Time `json:"signup_start_at"`
+	StartAt       time.Time `json:"start_at"`
+	Summary       string    `json:"summary"`
+	Title         string    `json:"title"`
+}
+
+// UpdateAdminActivityJSONBody defines parameters for UpdateAdminActivity.
+type UpdateAdminActivityJSONBody struct {
+	Body            string    `json:"body"`
+	Capacity        int64     `json:"capacity"`
+	Contact         *string   `json:"contact,omitempty"`
+	ContactType     *string   `json:"contact_type,omitempty"`
+	EndAt           time.Time `json:"end_at"`
+	ExpectedVersion uint64    `json:"expected_version"`
+	Location        string    `json:"location"`
+	SignupEndAt     time.Time `json:"signup_end_at"`
+	SignupStartAt   time.Time `json:"signup_start_at"`
+	StartAt         time.Time `json:"start_at"`
+	Summary         string    `json:"summary"`
+	Title           string    `json:"title"`
+}
+
+// ApproveAdminActivityJSONBody defines parameters for ApproveAdminActivity.
+type ApproveAdminActivityJSONBody struct {
+	ExpectedVersion uint64  `json:"expected_version"`
+	ReviewComment   *string `json:"review_comment,omitempty"`
+}
+
+// CancelAdminActivityJSONBody defines parameters for CancelAdminActivity.
+type CancelAdminActivityJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// FinishAdminActivityJSONBody defines parameters for FinishAdminActivity.
+type FinishAdminActivityJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// PublishAdminActivityJSONBody defines parameters for PublishAdminActivity.
+type PublishAdminActivityJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// RejectAdminActivityJSONBody defines parameters for RejectAdminActivity.
+type RejectAdminActivityJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+	ReviewComment   string `json:"review_comment"`
+}
+
+// SubmitAdminActivityReviewJSONBody defines parameters for SubmitAdminActivityReview.
+type SubmitAdminActivityReviewJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
 // ListAdminNoticesParams defines parameters for ListAdminNotices.
 type ListAdminNoticesParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
@@ -481,6 +578,33 @@ type ListUsersParams struct {
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
 
+// CancelMyActivityRegistrationJSONRequestBody defines body for CancelMyActivityRegistration for application/json ContentType.
+type CancelMyActivityRegistrationJSONRequestBody CancelMyActivityRegistrationJSONBody
+
+// CreateAdminActivityJSONRequestBody defines body for CreateAdminActivity for application/json ContentType.
+type CreateAdminActivityJSONRequestBody CreateAdminActivityJSONBody
+
+// UpdateAdminActivityJSONRequestBody defines body for UpdateAdminActivity for application/json ContentType.
+type UpdateAdminActivityJSONRequestBody UpdateAdminActivityJSONBody
+
+// ApproveAdminActivityJSONRequestBody defines body for ApproveAdminActivity for application/json ContentType.
+type ApproveAdminActivityJSONRequestBody ApproveAdminActivityJSONBody
+
+// CancelAdminActivityJSONRequestBody defines body for CancelAdminActivity for application/json ContentType.
+type CancelAdminActivityJSONRequestBody CancelAdminActivityJSONBody
+
+// FinishAdminActivityJSONRequestBody defines body for FinishAdminActivity for application/json ContentType.
+type FinishAdminActivityJSONRequestBody FinishAdminActivityJSONBody
+
+// PublishAdminActivityJSONRequestBody defines body for PublishAdminActivity for application/json ContentType.
+type PublishAdminActivityJSONRequestBody PublishAdminActivityJSONBody
+
+// RejectAdminActivityJSONRequestBody defines body for RejectAdminActivity for application/json ContentType.
+type RejectAdminActivityJSONRequestBody RejectAdminActivityJSONBody
+
+// SubmitAdminActivityReviewJSONRequestBody defines body for SubmitAdminActivityReview for application/json ContentType.
+type SubmitAdminActivityReviewJSONRequestBody SubmitAdminActivityReviewJSONBody
+
 // CreateNoticeJSONRequestBody defines body for CreateNotice for application/json ContentType.
 type CreateNoticeJSONRequestBody = CreateNoticeRequest
 
@@ -579,6 +703,51 @@ type SetUserStatusJSONRequestBody = UserStatusRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListActivities 用户侧浏览已发布活动
+	// (GET /api/v1/activities)
+	ListActivities(c *gin.Context, params ListActivitiesParams)
+	// ListMyActivityRegistrations 查看我的活动报名
+	// (GET /api/v1/activities/registrations/mine)
+	ListMyActivityRegistrations(c *gin.Context, params ListMyActivityRegistrationsParams)
+	// GetActivity 用户侧查看活动详情
+	// (GET /api/v1/activities/{id})
+	GetActivity(c *gin.Context, id uint64)
+	// CreateActivityRegistration 报名活动
+	// (POST /api/v1/activities/{id}/registrations)
+	CreateActivityRegistration(c *gin.Context, id uint64, params CreateActivityRegistrationParams)
+	// CancelMyActivityRegistration 取消我的活动报名
+	// (DELETE /api/v1/activities/{id}/registrations/me)
+	CancelMyActivityRegistration(c *gin.Context, id uint64)
+	// ListAdminActivities 管理端查询活动列表
+	// (GET /api/v1/admin/activities)
+	ListAdminActivities(c *gin.Context, params ListAdminActivitiesParams)
+	// CreateAdminActivity 管理端创建活动草稿
+	// (POST /api/v1/admin/activities)
+	CreateAdminActivity(c *gin.Context)
+	// GetAdminActivity 管理端查看活动详情
+	// (GET /api/v1/admin/activities/{id})
+	GetAdminActivity(c *gin.Context, id uint64)
+	// UpdateAdminActivity 管理端修改活动草稿
+	// (PATCH /api/v1/admin/activities/{id})
+	UpdateAdminActivity(c *gin.Context, id uint64)
+	// ApproveAdminActivity 审核通过活动
+	// (POST /api/v1/admin/activities/{id}/approve)
+	ApproveAdminActivity(c *gin.Context, id uint64)
+	// CancelAdminActivity 取消活动
+	// (POST /api/v1/admin/activities/{id}/cancel)
+	CancelAdminActivity(c *gin.Context, id uint64)
+	// FinishAdminActivity 结束活动
+	// (POST /api/v1/admin/activities/{id}/finish)
+	FinishAdminActivity(c *gin.Context, id uint64)
+	// PublishAdminActivity 发布活动
+	// (POST /api/v1/admin/activities/{id}/publish)
+	PublishAdminActivity(c *gin.Context, id uint64)
+	// RejectAdminActivity 驳回活动审核
+	// (POST /api/v1/admin/activities/{id}/reject)
+	RejectAdminActivity(c *gin.Context, id uint64)
+	// SubmitAdminActivityReview 提交活动审核
+	// (POST /api/v1/admin/activities/{id}/submit-review)
+	SubmitAdminActivityReview(c *gin.Context, id uint64)
 
 	// (GET /api/v1/admin/notices)
 	ListAdminNotices(c *gin.Context, params ListAdminNoticesParams)
@@ -775,6 +944,471 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// ListActivities operation middleware
+func (siw *ServerInterfaceWrapper) ListActivities(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListActivitiesParams
+
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", c.Request.URL.Query(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter keyword: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "start_date" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "start_date", c.Request.URL.Query(), &params.StartDate, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter start_date: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListActivities(c, params)
+}
+
+// ListMyActivityRegistrations operation middleware
+func (siw *ServerInterfaceWrapper) ListMyActivityRegistrations(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyActivityRegistrationsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListMyActivityRegistrations(c, params)
+}
+
+// GetActivity operation middleware
+func (siw *ServerInterfaceWrapper) GetActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetActivity(c, id)
+}
+
+// CreateActivityRegistration operation middleware
+func (siw *ServerInterfaceWrapper) CreateActivityRegistration(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateActivityRegistrationParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateActivityRegistration(c, id, params)
+}
+
+// CancelMyActivityRegistration operation middleware
+func (siw *ServerInterfaceWrapper) CancelMyActivityRegistration(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CancelMyActivityRegistration(c, id)
+}
+
+// ListAdminActivities operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminActivities(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminActivitiesParams
+
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", c.Request.URL.Query(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter keyword: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", c.Request.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "review_status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "review_status", c.Request.URL.Query(), &params.ReviewStatus, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter review_status: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "start_date" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "start_date", c.Request.URL.Query(), &params.StartDate, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter start_date: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAdminActivities(c, params)
+}
+
+// CreateAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) CreateAdminActivity(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateAdminActivity(c)
+}
+
+// GetAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAdminActivity(c, id)
+}
+
+// UpdateAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAdminActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateAdminActivity(c, id)
+}
+
+// ApproveAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) ApproveAdminActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ApproveAdminActivity(c, id)
+}
+
+// CancelAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) CancelAdminActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CancelAdminActivity(c, id)
+}
+
+// FinishAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) FinishAdminActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.FinishAdminActivity(c, id)
+}
+
+// PublishAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) PublishAdminActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PublishAdminActivity(c, id)
+}
+
+// RejectAdminActivity operation middleware
+func (siw *ServerInterfaceWrapper) RejectAdminActivity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RejectAdminActivity(c, id)
+}
+
+// SubmitAdminActivityReview operation middleware
+func (siw *ServerInterfaceWrapper) SubmitAdminActivityReview(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SubmitAdminActivityReview(c, id)
+}
 
 // ListAdminNotices operation middleware
 func (siw *ServerInterfaceWrapper) ListAdminNotices(c *gin.Context) {
@@ -2456,6 +3090,21 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/cancel", wrapper.CancelCarpoolTrip)
 	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/join", wrapper.JoinCarpoolTrip)
 	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/leave", wrapper.LeaveCarpoolTrip)
+	router.GET(options.BaseURL+"/api/v1/activities", wrapper.ListActivities)
+	router.GET(options.BaseURL+"/api/v1/activities/registrations/mine", wrapper.ListMyActivityRegistrations)
+	router.GET(options.BaseURL+"/api/v1/activities/:id", wrapper.GetActivity)
+	router.POST(options.BaseURL+"/api/v1/activities/:id/registrations", wrapper.CreateActivityRegistration)
+	router.DELETE(options.BaseURL+"/api/v1/activities/:id/registrations/me", wrapper.CancelMyActivityRegistration)
+	router.GET(options.BaseURL+"/api/v1/admin/activities", wrapper.ListAdminActivities)
+	router.POST(options.BaseURL+"/api/v1/admin/activities", wrapper.CreateAdminActivity)
+	router.GET(options.BaseURL+"/api/v1/admin/activities/:id", wrapper.GetAdminActivity)
+	router.PATCH(options.BaseURL+"/api/v1/admin/activities/:id", wrapper.UpdateAdminActivity)
+	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/approve", wrapper.ApproveAdminActivity)
+	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/cancel", wrapper.CancelAdminActivity)
+	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/finish", wrapper.FinishAdminActivity)
+	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/publish", wrapper.PublishAdminActivity)
+	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/reject", wrapper.RejectAdminActivity)
+	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/submit-review", wrapper.SubmitAdminActivityReview)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -2463,59 +3112,69 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"AAD//w==",
+	"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",
+	"/wQAAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

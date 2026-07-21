@@ -1,0 +1,133 @@
+// Package application coordinates activity use cases.
+package application
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
+)
+
+// Store defines the transactional persistence contract for activity use cases.
+type Store interface {
+	Create(context.Context, uint64, domain.ActivityInput) (*domain.Activity, error)
+	Update(context.Context, uint64, uint64, uint64, domain.ActivityInput, time.Time) (*domain.Activity, error)
+	GetAdmin(context.Context, uint64) (*domain.Activity, error)
+	GetPublic(context.Context, uint64) (*domain.Activity, error)
+	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Activity, int64, error)
+	ListPublic(context.Context, domain.PublicSearch, int, int) ([]domain.Activity, int64, error)
+	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Activity, error)
+	Approve(context.Context, uint64, uint64, uint64, string) (*domain.Activity, error)
+	Reject(context.Context, uint64, uint64, uint64, string) (*domain.Activity, error)
+	Publish(context.Context, uint64, uint64, uint64, time.Time) (*domain.Activity, error)
+	Cancel(context.Context, uint64, uint64, uint64, time.Time) (*domain.Activity, error)
+	Finish(context.Context, uint64, uint64, uint64, time.Time) (*domain.Activity, error)
+	Register(context.Context, uint64, uint64, string, time.Time) (*domain.ActivityRegistration, *domain.Activity, error)
+	CancelRegistration(context.Context, uint64, uint64, uint64, time.Time) (*domain.ActivityRegistration, *domain.Activity, error)
+	ListMyRegistrations(context.Context, uint64, int, int) ([]domain.MyRegistration, int64, error)
+	Contact(context.Context, *domain.Activity, uint64) (domain.ContactDetails, error)
+}
+
+// Manager validates activity inputs before delegating to the store.
+type Manager struct {
+	store Store
+	now   func() time.Time
+}
+
+// NewManager creates an activity use-case manager.
+func NewManager(store Store) *Manager { return &Manager{store: store, now: time.Now} }
+
+// Create validates and creates a draft activity owned by the actor.
+func (m *Manager) Create(ctx context.Context, actorID uint64, input domain.ActivityInput) (*domain.Activity, error) {
+	now := m.now().UTC()
+	if err := domain.ValidateActivityInput(input, true, now); err != nil {
+		return nil, err
+	}
+	return m.store.Create(ctx, actorID, input)
+}
+
+// Update validates and updates an editable activity draft.
+func (m *Manager) Update(ctx context.Context, id, actorID, version uint64, input domain.ActivityInput) (*domain.Activity, error) {
+	now := m.now().UTC()
+	if err := domain.ValidateActivityInput(input, false, now); err != nil {
+		return nil, err
+	}
+	return m.store.Update(ctx, id, actorID, version, input, now)
+}
+
+// GetAdmin returns an activity without public visibility filtering.
+func (m *Manager) GetAdmin(ctx context.Context, id uint64) (*domain.Activity, error) {
+	return m.store.GetAdmin(ctx, id)
+}
+
+// GetPublic returns a publicly visible activity.
+func (m *Manager) GetPublic(ctx context.Context, id uint64) (*domain.Activity, error) {
+	return m.store.GetPublic(ctx, id)
+}
+
+// ListAdmin returns admin-visible activities with search filters.
+func (m *Manager) ListAdmin(ctx context.Context, search domain.AdminSearch, page, pageSize int) ([]domain.Activity, int64, error) {
+	search.Keyword = strings.TrimSpace(search.Keyword)
+	return m.store.ListAdmin(ctx, search, page, pageSize)
+}
+
+// ListPublic returns published and approved activities with search filters.
+func (m *Manager) ListPublic(ctx context.Context, search domain.PublicSearch, page, pageSize int) ([]domain.Activity, int64, error) {
+	search.Keyword = strings.TrimSpace(search.Keyword)
+	return m.store.ListPublic(ctx, search, page, pageSize)
+}
+
+// SubmitReview moves a draft activity into review.
+func (m *Manager) SubmitReview(ctx context.Context, id, actorID, version uint64) (*domain.Activity, error) {
+	return m.store.SubmitReview(ctx, id, actorID, version)
+}
+
+// Approve records an approval decision for a pending activity.
+func (m *Manager) Approve(ctx context.Context, id, actorID, version uint64, comment string) (*domain.Activity, error) {
+	return m.store.Approve(ctx, id, actorID, version, comment)
+}
+
+// Reject records a rejection decision for a pending activity.
+func (m *Manager) Reject(ctx context.Context, id, actorID, version uint64, comment string) (*domain.Activity, error) {
+	if strings.TrimSpace(comment) == "" {
+		return nil, fmt.Errorf("审核驳回意见不能为空")
+	}
+	return m.store.Reject(ctx, id, actorID, version, comment)
+}
+
+// Publish publishes an approved draft activity.
+func (m *Manager) Publish(ctx context.Context, id, actorID, version uint64) (*domain.Activity, error) {
+	return m.store.Publish(ctx, id, actorID, version, m.now().UTC())
+}
+
+// Cancel cancels a published activity.
+func (m *Manager) Cancel(ctx context.Context, id, actorID, version uint64) (*domain.Activity, error) {
+	return m.store.Cancel(ctx, id, actorID, version, m.now().UTC())
+}
+
+// Finish marks a published activity as finished.
+func (m *Manager) Finish(ctx context.Context, id, actorID, version uint64) (*domain.Activity, error) {
+	return m.store.Finish(ctx, id, actorID, version, m.now().UTC())
+}
+
+// Register creates or reactivates a user's registration for an activity.
+func (m *Manager) Register(ctx context.Context, activityID, userID uint64, key string) (*domain.ActivityRegistration, *domain.Activity, error) {
+	return m.store.Register(ctx, activityID, userID, key, m.now().UTC())
+}
+
+// CancelRegistration cancels an active registration before the activity starts.
+func (m *Manager) CancelRegistration(ctx context.Context, activityID, userID, version uint64) (*domain.ActivityRegistration, *domain.Activity, error) {
+	return m.store.CancelRegistration(ctx, activityID, userID, version, m.now().UTC())
+}
+
+// ListMyRegistrations returns the current user's registrations.
+func (m *Manager) ListMyRegistrations(ctx context.Context, userID uint64, page, pageSize int) ([]domain.MyRegistration, int64, error) {
+	return m.store.ListMyRegistrations(ctx, userID, page, pageSize)
+}
+
+// Contact returns a visibility-filtered contact payload for a viewer.
+func (m *Manager) Contact(ctx context.Context, activity *domain.Activity, viewerID uint64) (domain.ContactDetails, error) {
+	return m.store.Contact(ctx, activity, viewerID)
+}
