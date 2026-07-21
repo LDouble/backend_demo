@@ -23,6 +23,8 @@ paths:
                 - title
                 - description
                 - price_cents
+                - contact_type
+                - contact
               properties:
                 title:
                   type: string
@@ -32,6 +34,10 @@ paths:
                   type: integer
                   format: int64
                   minimum: 1
+                contact_type:
+                  type: string
+                contact:
+                  type: string
                 image_urls:
                   type: array
                   items: {type: string}

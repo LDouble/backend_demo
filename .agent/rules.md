@@ -10,6 +10,7 @@
 6. 执行 `make generate`，再执行 `make generate-check` 校验模块、OpenAPI、HTTP adapter 和 GORM Query 漂移。
 7. 审核模块 OpenAPI、权限清单及迁移，将迁移编号后再纳入主序列。
 8. 只在 `rule.go`、扩展 Handler 和测试中补充业务逻辑。
+9. 模块准出必须覆盖 Domain/Application、HTTP 和 MySQL 集成测试；涉及并发资源、幂等或异步事件时，必须增加对应的真实 MySQL 并发和 Worker 测试。测试要求与命令见 `docs/module-development.md`，缺少适用测试不得合并。
 
 ## 禁止事项
 
@@ -31,4 +32,5 @@ make test-race
 make vet
 make lint
 make build
+make test-compose
 ```

@@ -15,6 +15,8 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
+	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
+	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
 	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
 	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
 	tradeapp "github.com/weouc-plus/campus-platform/internal/modules/trade/application"
@@ -29,6 +31,8 @@ type Handler struct {
 	configs     *configcenter.Service
 	notices     *noticeapp.Manager
 	marketplace *marketplaceapp.Manager
+	errands     *errandapp.Manager
+	carpools    *carpoolapp.Manager
 	trades      *tradeapp.Manager
 	mysql       func(context.Context) error
 	redis       func(context.Context) error
@@ -43,6 +47,10 @@ func (h *Handler) WithMarketplace(manager *marketplaceapp.Manager) *Handler {
 	h.marketplace = manager
 	return h
 }
+
+// WithErrands attaches the errand fulfillment service.
+func (h *Handler) WithErrands(manager *errandapp.Manager) *Handler   { h.errands = manager; return h }
+func (h *Handler) WithCarpools(manager *carpoolapp.Manager) *Handler { h.carpools = manager; return h }
 
 // WithTrades attaches participant-scoped trade order queries.
 func (h *Handler) WithTrades(manager *tradeapp.Manager) *Handler { h.trades = manager; return h }

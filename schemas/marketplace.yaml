@@ -12,6 +12,8 @@ entities:
       - {name: status, type: string, size: 24, required: true, index: true}
       - {name: rejection_reason, type: string, size: 500}
       - {name: owner_id, type: uint64, required: true, index: true}
+      - {name: contact_type, type: string, size: 16, required: true}
+      - {name: contact_ciphertext, type: string, size: 4096, required: true}
       - {name: reviewed_by, type: uint64}
       - {name: reviewed_at, type: datetime}
       - {name: version, type: uint64, required: true}
@@ -50,6 +52,8 @@ operations:
         - {name: title, type: string, required: true}
         - {name: description, type: string, required: true}
         - {name: price_cents, type: integer, format: int64, required: true, minimum: 1}
+        - {name: contact_type, type: string, required: true}
+        - {name: contact, type: string, required: true}
         - {name: image_urls, type: array, items: string}
     responses: [{status: 201, kind: success}, {status: 400, kind: error}]
   - operation_id: SubmitMarketplaceListing

@@ -84,3 +84,16 @@ git diff --check
 ```
 
 `make generate-check` 不接受生成漂移：它会检查所有模块、全局 OpenAPI、oapi-codegen 和 GORM Query。PR 需说明 Schema、迁移、权限、公开 API 和配置影响，并列出实际执行的验证命令。
+
+## 模块准出测试（强制）
+
+每个新增或修改业务模块在合并前必须具备并实际运行以下测试；仅有领域单元测试不能准出。
+
+| 层级 | 最低覆盖内容 | 验证命令 |
+| --- | --- | --- |
+| Domain / Application | 输入边界、状态机、所有权、乐观锁和幂等规则 | `go test ./internal/modules/<module>/...` |
+| HTTP | 至少一条成功闭环，以及未认证、入口权限或业务角色越权、OpenAPI 参数校验中的相关分支 | `go test ./internal/api/httpapi/...` 或 Compose API 测试 |
+| MySQL 集成 | 编号迁移、关键事务原子性，以及存在竞争时的并发唯一成功或幂等重放 | `make test-compose` |
+| 异步能力（如适用） | 领域事件、订阅去重、重试和最终可见结果 | `make test-compose` |
+
+新模块的集成测试放在 `tests/integration/<module>_test.go`（多个紧密耦合模块可共用文件），并使用 `//go:build integration`。涉及金额、库存/名额、接单、支付或状态变更的模块必须有真实 MySQL 并发测试，不能以 SQLite 替代锁语义。所有模块变更的 PR 必须在说明中列出新增测试及实际运行的命令；缺少任一适用层级的测试视为未完成。

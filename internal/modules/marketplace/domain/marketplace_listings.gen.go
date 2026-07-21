@@ -7,19 +7,21 @@ import "time"
 
 // Listing is the persistent domain entity for the marketplace module.
 type Listing struct {
-	ID              uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	Title           string     `gorm:"column:title;not null" json:"title"`
-	Description     string     `gorm:"column:description;not null" json:"description"`
-	PriceCents      int64      `gorm:"column:price_cents;not null" json:"price_cents"`
-	Currency        string     `gorm:"column:currency;not null" json:"currency"`
-	Status          string     `gorm:"column:status;not null;index" json:"status"`
-	RejectionReason *string    `gorm:"column:rejection_reason" json:"rejection_reason"`
-	OwnerId         uint64     `gorm:"column:owner_id;not null;index" json:"owner_id"`
-	ReviewedBy      *uint64    `gorm:"column:reviewed_by" json:"reviewed_by"`
-	ReviewedAt      *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
-	Version         uint64     `gorm:"column:version;not null" json:"version"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID                uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	Title             string     `gorm:"column:title;not null" json:"title"`
+	Description       string     `gorm:"column:description;not null" json:"description"`
+	PriceCents        int64      `gorm:"column:price_cents;not null" json:"price_cents"`
+	Currency          string     `gorm:"column:currency;not null" json:"currency"`
+	Status            string     `gorm:"column:status;not null;index" json:"status"`
+	RejectionReason   *string    `gorm:"column:rejection_reason" json:"rejection_reason"`
+	OwnerId           uint64     `gorm:"column:owner_id;not null;index" json:"owner_id"`
+	ContactType       string     `gorm:"column:contact_type;not null" json:"contact_type"`
+	ContactCiphertext string     `gorm:"column:contact_ciphertext;not null" json:"contact_ciphertext"`
+	ReviewedBy        *uint64    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt        *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	Version           uint64     `gorm:"column:version;not null" json:"version"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // TableName returns the schema-controlled database table.

@@ -9,6 +9,8 @@ CREATE TABLE marketplace_listings (
     status VARCHAR(24) NOT NULL,
     rejection_reason VARCHAR(500) NULL,
     owner_id BIGINT UNSIGNED NOT NULL,
+    contact_type VARCHAR(16) NOT NULL,
+    contact_ciphertext VARCHAR(4096) NOT NULL,
     reviewed_by BIGINT UNSIGNED NULL,
     reviewed_at DATETIME(3) NULL,
     version BIGINT UNSIGNED NOT NULL,

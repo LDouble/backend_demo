@@ -28,11 +28,15 @@ var (
 	Order                  *order
 	OrderTransition        *orderTransition
 	OutboxEvent            *outboxEvent
+	Participant            *participant
 	PaymentCallback        *paymentCallback
 	PaymentIntent          *paymentIntent
 	PaymentRefund          *paymentRefund
 	PaymentTransaction     *paymentTransaction
 	Role                   *role
+	Task                   *task
+	Transition             *transition
+	Trip                   *trip
 	User                   *user
 )
 
@@ -49,11 +53,15 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Order = &Q.Order
 	OrderTransition = &Q.OrderTransition
 	OutboxEvent = &Q.OutboxEvent
+	Participant = &Q.Participant
 	PaymentCallback = &Q.PaymentCallback
 	PaymentIntent = &Q.PaymentIntent
 	PaymentRefund = &Q.PaymentRefund
 	PaymentTransaction = &Q.PaymentTransaction
 	Role = &Q.Role
+	Task = &Q.Task
+	Transition = &Q.Transition
+	Trip = &Q.Trip
 	User = &Q.User
 }
 
@@ -71,11 +79,15 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Order:                  newOrder(db, opts...),
 		OrderTransition:        newOrderTransition(db, opts...),
 		OutboxEvent:            newOutboxEvent(db, opts...),
+		Participant:            newParticipant(db, opts...),
 		PaymentCallback:        newPaymentCallback(db, opts...),
 		PaymentIntent:          newPaymentIntent(db, opts...),
 		PaymentRefund:          newPaymentRefund(db, opts...),
 		PaymentTransaction:     newPaymentTransaction(db, opts...),
 		Role:                   newRole(db, opts...),
+		Task:                   newTask(db, opts...),
+		Transition:             newTransition(db, opts...),
+		Trip:                   newTrip(db, opts...),
 		User:                   newUser(db, opts...),
 	}
 }
@@ -94,11 +106,15 @@ type Query struct {
 	Order                  order
 	OrderTransition        orderTransition
 	OutboxEvent            outboxEvent
+	Participant            participant
 	PaymentCallback        paymentCallback
 	PaymentIntent          paymentIntent
 	PaymentRefund          paymentRefund
 	PaymentTransaction     paymentTransaction
 	Role                   role
+	Task                   task
+	Transition             transition
+	Trip                   trip
 	User                   user
 }
 
@@ -120,11 +136,15 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Order:                  q.Order.clone(db),
 		OrderTransition:        q.OrderTransition.clone(db),
 		OutboxEvent:            q.OutboxEvent.clone(db),
+		Participant:            q.Participant.clone(db),
 		PaymentCallback:        q.PaymentCallback.clone(db),
 		PaymentIntent:          q.PaymentIntent.clone(db),
 		PaymentRefund:          q.PaymentRefund.clone(db),
 		PaymentTransaction:     q.PaymentTransaction.clone(db),
 		Role:                   q.Role.clone(db),
+		Task:                   q.Task.clone(db),
+		Transition:             q.Transition.clone(db),
+		Trip:                   q.Trip.clone(db),
 		User:                   q.User.clone(db),
 	}
 }
@@ -151,11 +171,15 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Order:                  q.Order.replaceDB(db),
 		OrderTransition:        q.OrderTransition.replaceDB(db),
 		OutboxEvent:            q.OutboxEvent.replaceDB(db),
+		Participant:            q.Participant.replaceDB(db),
 		PaymentCallback:        q.PaymentCallback.replaceDB(db),
 		PaymentIntent:          q.PaymentIntent.replaceDB(db),
 		PaymentRefund:          q.PaymentRefund.replaceDB(db),
 		PaymentTransaction:     q.PaymentTransaction.replaceDB(db),
 		Role:                   q.Role.replaceDB(db),
+		Task:                   q.Task.replaceDB(db),
+		Transition:             q.Transition.replaceDB(db),
+		Trip:                   q.Trip.replaceDB(db),
 		User:                   q.User.replaceDB(db),
 	}
 }
@@ -172,11 +196,15 @@ type queryCtx struct {
 	Order                  IOrderDo
 	OrderTransition        IOrderTransitionDo
 	OutboxEvent            IOutboxEventDo
+	Participant            IParticipantDo
 	PaymentCallback        IPaymentCallbackDo
 	PaymentIntent          IPaymentIntentDo
 	PaymentRefund          IPaymentRefundDo
 	PaymentTransaction     IPaymentTransactionDo
 	Role                   IRoleDo
+	Task                   ITaskDo
+	Transition             ITransitionDo
+	Trip                   ITripDo
 	User                   IUserDo
 }
 
@@ -193,11 +221,15 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Order:                  q.Order.WithContext(ctx),
 		OrderTransition:        q.OrderTransition.WithContext(ctx),
 		OutboxEvent:            q.OutboxEvent.WithContext(ctx),
+		Participant:            q.Participant.WithContext(ctx),
 		PaymentCallback:        q.PaymentCallback.WithContext(ctx),
 		PaymentIntent:          q.PaymentIntent.WithContext(ctx),
 		PaymentRefund:          q.PaymentRefund.WithContext(ctx),
 		PaymentTransaction:     q.PaymentTransaction.WithContext(ctx),
 		Role:                   q.Role.WithContext(ctx),
+		Task:                   q.Task.WithContext(ctx),
+		Transition:             q.Transition.WithContext(ctx),
+		Trip:                   q.Trip.WithContext(ctx),
 		User:                   q.User.WithContext(ctx),
 	}
 }

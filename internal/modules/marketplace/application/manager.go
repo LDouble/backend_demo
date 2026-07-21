@@ -20,7 +20,13 @@ type Store interface {
 	Reserve(context.Context, uint64, uint64, string, time.Time) (*tradedomain.Order, error)
 	Cancel(context.Context, uint64, uint64, uint64, time.Time) (*tradedomain.Order, error)
 	Complete(context.Context, uint64, uint64, uint64, time.Time) (*tradedomain.Order, error)
+	Contact(context.Context, *domain.Listing, uint64) (domain.ContactDetails, error)
 	ExpireReservations(context.Context, time.Time) (int64, error)
+}
+
+// Contact returns a listing contact only when the store confirms the viewer is active.
+func (m *Manager) Contact(ctx context.Context, listing *domain.Listing, viewerID uint64) (domain.ContactDetails, error) {
+	return m.store.Contact(ctx, listing, viewerID)
 }
 
 // Manager enforces input validation before the transactional repository boundary.
@@ -42,7 +48,7 @@ func (m *Manager) Create(ctx context.Context, ownerID uint64, input domain.Listi
 
 // Update changes editable listing content with optimistic locking.
 func (m *Manager) Update(ctx context.Context, id, ownerID, version uint64, input domain.ListingInput) (*domain.Listing, error) {
-	if err := domain.ValidateListingInput(input); err != nil {
+	if err := domain.ValidateListingUpdateInput(input); err != nil {
 		return nil, err
 	}
 	return m.store.UpdateListing(ctx, id, ownerID, version, input)

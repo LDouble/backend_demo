@@ -17,6 +17,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Defines values for CreateNoticeRequestChannels.
@@ -304,6 +305,42 @@ type ListNoticeDeliveriesParams struct {
 	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
 
+// ListCarpoolTripsParams defines parameters for ListCarpoolTrips.
+type ListCarpoolTripsParams struct {
+	Origin        *string             `form:"origin,omitempty" json:"origin,omitempty"`
+	Destination   *string             `form:"destination,omitempty" json:"destination,omitempty"`
+	DepartureDate *openapi_types.Date `form:"departure_date,omitempty" json:"departure_date,omitempty"`
+	SeatsNeeded   *int64              `form:"seats_needed,omitempty" json:"seats_needed,omitempty"`
+	Page          *int32              `form:"page,omitempty" json:"page,omitempty"`
+	PageSize      *int32              `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateCarpoolTripJSONBody defines parameters for CreateCarpoolTrip.
+type CreateCarpoolTripJSONBody struct {
+	Contact     string    `json:"contact"`
+	ContactType string    `json:"contact_type"`
+	DepartureAt time.Time `json:"departure_at"`
+	Destination string    `json:"destination"`
+	Origin      string    `json:"origin"`
+	Title       string    `json:"title"`
+	TotalSeats  int64     `json:"total_seats"`
+}
+
+// CancelCarpoolTripJSONBody defines parameters for CancelCarpoolTrip.
+type CancelCarpoolTripJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// JoinCarpoolTripJSONBody defines parameters for JoinCarpoolTrip.
+type JoinCarpoolTripJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// LeaveCarpoolTripJSONBody defines parameters for LeaveCarpoolTrip.
+type LeaveCarpoolTripJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
 // ListConfigsParams defines parameters for ListConfigs.
 type ListConfigsParams struct {
 	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
@@ -311,8 +348,77 @@ type ListConfigsParams struct {
 	Group    *Group    `form:"group,omitempty" json:"group,omitempty"`
 }
 
+// ListErrandsParams defines parameters for ListErrands.
+type ListErrandsParams struct {
+	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateErrandJSONBody defines parameters for CreateErrand.
+type CreateErrandJSONBody struct {
+	Contact         string    `json:"contact"`
+	ContactType     string    `json:"contact_type"`
+	Deadline        time.Time `json:"deadline"`
+	Description     string    `json:"description"`
+	DropoffLocation string    `json:"dropoff_location"`
+	PickupLocation  string    `json:"pickup_location"`
+	RewardCents     int64     `json:"reward_cents"`
+	Title           string    `json:"title"`
+}
+
+// ListMyErrandsParams defines parameters for ListMyErrands.
+type ListMyErrandsParams struct {
+	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// UpdateErrandJSONBody defines parameters for UpdateErrand.
+type UpdateErrandJSONBody struct {
+	Contact         *string   `json:"contact,omitempty"`
+	ContactType     *string   `json:"contact_type,omitempty"`
+	Deadline        time.Time `json:"deadline"`
+	Description     string    `json:"description"`
+	DropoffLocation string    `json:"dropoff_location"`
+	ExpectedVersion uint64    `json:"expected_version"`
+	PickupLocation  string    `json:"pickup_location"`
+	RewardCents     int64     `json:"reward_cents"`
+	Title           string    `json:"title"`
+}
+
+// AcceptErrandJSONBody defines parameters for AcceptErrand.
+type AcceptErrandJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// AcceptErrandParams defines parameters for AcceptErrand.
+type AcceptErrandParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// CancelErrandJSONBody defines parameters for CancelErrand.
+type CancelErrandJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// CompleteErrandJSONBody defines parameters for CompleteErrand.
+type CompleteErrandJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// DeliverErrandJSONBody defines parameters for DeliverErrand.
+type DeliverErrandJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// PickupErrandJSONBody defines parameters for PickupErrand.
+type PickupErrandJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
 // CreateMarketplaceListingJSONBody defines parameters for CreateMarketplaceListing.
 type CreateMarketplaceListingJSONBody struct {
+	Contact     string    `json:"contact"`
+	ContactType string    `json:"contact_type"`
 	Description string    `json:"description"`
 	ImageUrls   *[]string `json:"image_urls,omitempty"`
 	PriceCents  int64     `json:"price_cents"`
@@ -393,11 +499,44 @@ type LoginJSONRequestBody = LoginRequest
 // RefreshJSONRequestBody defines body for Refresh for application/json ContentType.
 type RefreshJSONRequestBody = RefreshRequest
 
+// CreateCarpoolTripJSONRequestBody defines body for CreateCarpoolTrip for application/json ContentType.
+type CreateCarpoolTripJSONRequestBody CreateCarpoolTripJSONBody
+
+// CancelCarpoolTripJSONRequestBody defines body for CancelCarpoolTrip for application/json ContentType.
+type CancelCarpoolTripJSONRequestBody CancelCarpoolTripJSONBody
+
+// JoinCarpoolTripJSONRequestBody defines body for JoinCarpoolTrip for application/json ContentType.
+type JoinCarpoolTripJSONRequestBody JoinCarpoolTripJSONBody
+
+// LeaveCarpoolTripJSONRequestBody defines body for LeaveCarpoolTrip for application/json ContentType.
+type LeaveCarpoolTripJSONRequestBody LeaveCarpoolTripJSONBody
+
 // CreateConfigJSONRequestBody defines body for CreateConfig for application/json ContentType.
 type CreateConfigJSONRequestBody = CreateConfigRequest
 
 // UpdateConfigJSONRequestBody defines body for UpdateConfig for application/json ContentType.
 type UpdateConfigJSONRequestBody = UpdateConfigRequest
+
+// CreateErrandJSONRequestBody defines body for CreateErrand for application/json ContentType.
+type CreateErrandJSONRequestBody CreateErrandJSONBody
+
+// UpdateErrandJSONRequestBody defines body for UpdateErrand for application/json ContentType.
+type UpdateErrandJSONRequestBody UpdateErrandJSONBody
+
+// AcceptErrandJSONRequestBody defines body for AcceptErrand for application/json ContentType.
+type AcceptErrandJSONRequestBody AcceptErrandJSONBody
+
+// CancelErrandJSONRequestBody defines body for CancelErrand for application/json ContentType.
+type CancelErrandJSONRequestBody CancelErrandJSONBody
+
+// CompleteErrandJSONRequestBody defines body for CompleteErrand for application/json ContentType.
+type CompleteErrandJSONRequestBody CompleteErrandJSONBody
+
+// DeliverErrandJSONRequestBody defines body for DeliverErrand for application/json ContentType.
+type DeliverErrandJSONRequestBody DeliverErrandJSONBody
+
+// PickupErrandJSONRequestBody defines body for PickupErrand for application/json ContentType.
+type PickupErrandJSONRequestBody PickupErrandJSONBody
 
 // CreateMarketplaceListingJSONRequestBody defines body for CreateMarketplaceListing for application/json ContentType.
 type CreateMarketplaceListingJSONRequestBody CreateMarketplaceListingJSONBody
@@ -479,6 +618,24 @@ type ServerInterface interface {
 
 	// (POST /api/v1/auth/refresh)
 	Refresh(c *gin.Context)
+	// ListCarpoolTrips 搜索开放拼车行程
+	// (GET /api/v1/carpool/trips)
+	ListCarpoolTrips(c *gin.Context, params ListCarpoolTripsParams)
+	// CreateCarpoolTrip 发起拼车行程
+	// (POST /api/v1/carpool/trips)
+	CreateCarpoolTrip(c *gin.Context)
+	// GetCarpoolTrip 查看拼车行程
+	// (GET /api/v1/carpool/trips/{id})
+	GetCarpoolTrip(c *gin.Context, id uint64)
+	// CancelCarpoolTrip 取消拼车行程
+	// (POST /api/v1/carpool/trips/{id}/cancel)
+	CancelCarpoolTrip(c *gin.Context, id uint64)
+	// JoinCarpoolTrip 原子加入拼车行程
+	// (POST /api/v1/carpool/trips/{id}/join)
+	JoinCarpoolTrip(c *gin.Context, id uint64)
+	// LeaveCarpoolTrip 退出拼车行程
+	// (POST /api/v1/carpool/trips/{id}/leave)
+	LeaveCarpoolTrip(c *gin.Context, id uint64)
 
 	// (GET /api/v1/configs)
 	ListConfigs(c *gin.Context, params ListConfigsParams)
@@ -494,6 +651,36 @@ type ServerInterface interface {
 
 	// (PUT /api/v1/configs/{id})
 	UpdateConfig(c *gin.Context, id ID)
+	// ListErrands 浏览待接跑腿任务
+	// (GET /api/v1/errands)
+	ListErrands(c *gin.Context, params ListErrandsParams)
+	// CreateErrand 发布跑腿任务
+	// (POST /api/v1/errands)
+	CreateErrand(c *gin.Context)
+	// ListMyErrands 查询我的跑腿任务
+	// (GET /api/v1/errands/mine)
+	ListMyErrands(c *gin.Context, params ListMyErrandsParams)
+	// GetErrand 查询跑腿任务详情
+	// (GET /api/v1/errands/{id})
+	GetErrand(c *gin.Context, id uint64)
+	// UpdateErrand 修改未接单的跑腿任务
+	// (PATCH /api/v1/errands/{id})
+	UpdateErrand(c *gin.Context, id uint64)
+	// AcceptErrand 原子接单并创建交易订单
+	// (POST /api/v1/errands/{id}/accept)
+	AcceptErrand(c *gin.Context, id uint64, params AcceptErrandParams)
+	// CancelErrand 取消跑腿任务
+	// (POST /api/v1/errands/{id}/cancel)
+	CancelErrand(c *gin.Context, id uint64)
+	// CompleteErrand 发布者确认跑腿完成
+	// (POST /api/v1/errands/{id}/complete)
+	CompleteErrand(c *gin.Context, id uint64)
+	// DeliverErrand 跑腿员确认送达
+	// (POST /api/v1/errands/{id}/deliver)
+	DeliverErrand(c *gin.Context, id uint64)
+	// PickupErrand 跑腿员确认取件
+	// (POST /api/v1/errands/{id}/pickup)
+	PickupErrand(c *gin.Context, id uint64)
 	// CreateMarketplaceListing 创建二手商品草稿
 	// (POST /api/v1/marketplace/listings)
 	CreateMarketplaceListing(c *gin.Context)
@@ -894,6 +1081,186 @@ func (siw *ServerInterfaceWrapper) Refresh(c *gin.Context) {
 	siw.Handler.Refresh(c)
 }
 
+// ListCarpoolTrips operation middleware
+func (siw *ServerInterfaceWrapper) ListCarpoolTrips(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCarpoolTripsParams
+
+	// ------------- Optional query parameter "origin" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "origin", c.Request.URL.Query(), &params.Origin, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter origin: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "destination" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "destination", c.Request.URL.Query(), &params.Destination, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter destination: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "departure_date" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "departure_date", c.Request.URL.Query(), &params.DepartureDate, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter departure_date: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "seats_needed" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "seats_needed", c.Request.URL.Query(), &params.SeatsNeeded, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter seats_needed: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListCarpoolTrips(c, params)
+}
+
+// CreateCarpoolTrip operation middleware
+func (siw *ServerInterfaceWrapper) CreateCarpoolTrip(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateCarpoolTrip(c)
+}
+
+// GetCarpoolTrip operation middleware
+func (siw *ServerInterfaceWrapper) GetCarpoolTrip(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCarpoolTrip(c, id)
+}
+
+// CancelCarpoolTrip operation middleware
+func (siw *ServerInterfaceWrapper) CancelCarpoolTrip(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CancelCarpoolTrip(c, id)
+}
+
+// JoinCarpoolTrip operation middleware
+func (siw *ServerInterfaceWrapper) JoinCarpoolTrip(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.JoinCarpoolTrip(c, id)
+}
+
+// LeaveCarpoolTrip operation middleware
+func (siw *ServerInterfaceWrapper) LeaveCarpoolTrip(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.LeaveCarpoolTrip(c, id)
+}
+
 // ListConfigs operation middleware
 func (siw *ServerInterfaceWrapper) ListConfigs(c *gin.Context) {
 
@@ -1023,6 +1390,291 @@ func (siw *ServerInterfaceWrapper) UpdateConfig(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateConfig(c, id)
+}
+
+// ListErrands operation middleware
+func (siw *ServerInterfaceWrapper) ListErrands(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListErrandsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListErrands(c, params)
+}
+
+// CreateErrand operation middleware
+func (siw *ServerInterfaceWrapper) CreateErrand(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateErrand(c)
+}
+
+// ListMyErrands operation middleware
+func (siw *ServerInterfaceWrapper) ListMyErrands(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyErrandsParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListMyErrands(c, params)
+}
+
+// GetErrand operation middleware
+func (siw *ServerInterfaceWrapper) GetErrand(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetErrand(c, id)
+}
+
+// UpdateErrand operation middleware
+func (siw *ServerInterfaceWrapper) UpdateErrand(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateErrand(c, id)
+}
+
+// AcceptErrand operation middleware
+func (siw *ServerInterfaceWrapper) AcceptErrand(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AcceptErrandParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.AcceptErrand(c, id, params)
+}
+
+// CancelErrand operation middleware
+func (siw *ServerInterfaceWrapper) CancelErrand(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CancelErrand(c, id)
+}
+
+// CompleteErrand operation middleware
+func (siw *ServerInterfaceWrapper) CompleteErrand(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CompleteErrand(c, id)
+}
+
+// DeliverErrand operation middleware
+func (siw *ServerInterfaceWrapper) DeliverErrand(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeliverErrand(c, id)
+}
+
+// PickupErrand operation middleware
+func (siw *ServerInterfaceWrapper) PickupErrand(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PickupErrand(c, id)
 }
 
 // CreateMarketplaceListing operation middleware
@@ -1788,6 +2440,22 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/orders/:id", wrapper.GetMyTradeOrder)
 	router.POST(options.BaseURL+"/api/v1/orders/:id/cancel", wrapper.CancelTradeOrder)
 	router.POST(options.BaseURL+"/api/v1/orders/:id/complete", wrapper.CompleteTradeOrder)
+	router.GET(options.BaseURL+"/api/v1/errands", wrapper.ListErrands)
+	router.POST(options.BaseURL+"/api/v1/errands", wrapper.CreateErrand)
+	router.GET(options.BaseURL+"/api/v1/errands/mine", wrapper.ListMyErrands)
+	router.GET(options.BaseURL+"/api/v1/errands/:id", wrapper.GetErrand)
+	router.PATCH(options.BaseURL+"/api/v1/errands/:id", wrapper.UpdateErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/accept", wrapper.AcceptErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/cancel", wrapper.CancelErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/complete", wrapper.CompleteErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/deliver", wrapper.DeliverErrand)
+	router.POST(options.BaseURL+"/api/v1/errands/:id/pickup", wrapper.PickupErrand)
+	router.GET(options.BaseURL+"/api/v1/carpool/trips", wrapper.ListCarpoolTrips)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips", wrapper.CreateCarpoolTrip)
+	router.GET(options.BaseURL+"/api/v1/carpool/trips/:id", wrapper.GetCarpoolTrip)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/cancel", wrapper.CancelCarpoolTrip)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/join", wrapper.JoinCarpoolTrip)
+	router.POST(options.BaseURL+"/api/v1/carpool/trips/:id/leave", wrapper.LeaveCarpoolTrip)
 }
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
@@ -1795,47 +2463,59 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"AAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

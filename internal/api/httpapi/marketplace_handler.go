@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
@@ -14,6 +15,8 @@ type marketplaceListingRequest struct {
 	Description string   `json:"description"`
 	PriceCents  int64    `json:"price_cents"`
 	ImageURLs   []string `json:"image_urls"`
+	ContactType string   `json:"contact_type"`
+	Contact     string   `json:"contact"`
 }
 
 type marketplaceVersionRequest struct {
@@ -33,7 +36,12 @@ func (h *Handler) createMarketplaceListing(c *gin.Context) {
 		failure(c, apperror.Wrap(http.StatusBadRequest, "invalid_listing", err.Error(), err))
 		return
 	}
-	success(c, http.StatusCreated, listing)
+	contact, err := h.marketplace.Contact(c.Request.Context(), listing, c.GetUint64(userIDKey))
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusCreated, marketplaceListingView{ID: listing.ID, Title: listing.Title, Description: listing.Description, PriceCents: listing.PriceCents, Currency: listing.Currency, Status: listing.Status, OwnerID: listing.OwnerId, ContactType: contact.Type, Contact: contact.Value, Version: listing.Version, CreatedAt: listing.CreatedAt, UpdatedAt: listing.UpdatedAt})
 }
 func (h *Handler) submitMarketplaceListing(c *gin.Context)   { h.changeMarketplaceListing(c, true) }
 func (h *Handler) withdrawMarketplaceListing(c *gin.Context) { h.changeMarketplaceListing(c, false) }
@@ -72,5 +80,21 @@ func (h *Handler) createMarketplaceOrder(c *gin.Context) {
 	success(c, http.StatusCreated, tradeOrderViewOf(order))
 }
 func marketplaceListingInput(req marketplaceListingRequest) marketplacedomain.ListingInput {
-	return marketplacedomain.ListingInput{Title: req.Title, Description: req.Description, PriceCents: req.PriceCents, ImageURLs: req.ImageURLs}
+	provided := strings.TrimSpace(req.ContactType) != "" || strings.TrimSpace(req.Contact) != ""
+	return marketplacedomain.ListingInput{Title: req.Title, Description: req.Description, PriceCents: req.PriceCents, ImageURLs: req.ImageURLs, Contact: marketplacedomain.ContactInput{Type: req.ContactType, Value: req.Contact, Provided: provided}}
+}
+
+type marketplaceListingView struct {
+	ID          uint64    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	PriceCents  int64     `json:"price_cents"`
+	Currency    string    `json:"currency"`
+	Status      string    `json:"status"`
+	OwnerID     uint64    `json:"owner_id"`
+	ContactType string    `json:"contact_type"`
+	Contact     string    `json:"contact"`
+	Version     uint64    `json:"version"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

@@ -16,6 +16,10 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/logger"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/redisclient"
+	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
+	carpoolinfra "github.com/weouc-plus/campus-platform/internal/modules/carpool/infrastructure"
+	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
+	errandinfra "github.com/weouc-plus/campus-platform/internal/modules/errand/infrastructure"
 	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
 	marketplaceinfra "github.com/weouc-plus/campus-platform/internal/modules/marketplace/infrastructure"
 	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
@@ -37,6 +41,8 @@ type Runtime struct {
 	Permissions *permission.Service
 	Notices     *noticeapp.Manager
 	Marketplace *marketplaceapp.Manager
+	Errands     *errandapp.Manager
+	Carpools    *carpoolapp.Manager
 	Trades      *tradeapp.Manager
 }
 
@@ -70,18 +76,20 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	configService := configcenter.NewService(mysql.NewConfigRepository(db), cipher)
 	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
 	noticeService := noticeapp.NewManager(noticeinfra.NewNoticeStore(db))
-	marketplaceService := marketplaceapp.NewManager(marketplaceinfra.NewStore(db))
+	marketplaceService := marketplaceapp.NewManager(marketplaceinfra.NewStore(db, cipher))
+	errandService := errandapp.NewManager(errandinfra.NewStore(db, cipher))
+	carpoolService := carpoolapp.NewManager(carpoolinfra.NewStore(db, cipher))
 	tradeService := tradeapp.NewManager(tradeinfra.NewStore(db))
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, fmt.Errorf("get sql db: %w", err)
 	}
-	h := httpapi.New(authService, userService, permissionService, configService, sqlDB.PingContext, func(c context.Context) error { return rdb.Ping(c).Err() }, log).WithNotices(noticeService).WithMarketplace(marketplaceService).WithTrades(tradeService)
+	h := httpapi.New(authService, userService, permissionService, configService, sqlDB.PingContext, func(c context.Context) error { return rdb.Ping(c).Err() }, log).WithNotices(noticeService).WithMarketplace(marketplaceService).WithErrands(errandService).WithCarpools(carpoolService).WithTrades(tradeService)
 	router, err := h.Router()
 	if err != nil {
 		return nil, err
 	}
-	return &Runtime{Config: cfg, DB: db, Redis: rdb, Logger: log, Router: router, Users: userService, Permissions: permissionService, Notices: noticeService, Marketplace: marketplaceService, Trades: tradeService}, nil
+	return &Runtime{Config: cfg, DB: db, Redis: rdb, Logger: log, Router: router, Users: userService, Permissions: permissionService, Notices: noticeService, Marketplace: marketplaceService, Errands: errandService, Carpools: carpoolService, Trades: tradeService}, nil
 }
 
 // Close releases runtime resources.

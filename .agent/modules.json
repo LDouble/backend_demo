@@ -2,6 +2,24 @@
   "version": 1,
   "modules": [
     {
+      "name": "carpool",
+      "entity": "Trip",
+      "entities": [
+        "Trip",
+        "Participant"
+      ],
+      "schema": "schemas/carpool.yaml"
+    },
+    {
+      "name": "errand",
+      "entity": "Task",
+      "entities": [
+        "Task",
+        "Transition"
+      ],
+      "schema": "schemas/errand.yaml"
+    },
+    {
       "name": "marketplace",
       "entity": "Listing",
       "entities": [

@@ -1,0 +1,47 @@
+{
+  "module": "carpool",
+  "permissions": [
+    {
+      "name": "carpool:cancel",
+      "path_pattern": "/api/v1/carpool/trips/{id}/cancel",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "carpool:create",
+      "path_pattern": "/api/v1/carpool/trips",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "carpool:join",
+      "path_pattern": "/api/v1/carpool/trips/{id}/join",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "carpool:leave",
+      "path_pattern": "/api/v1/carpool/trips/{id}/leave",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "carpool:read",
+      "path_pattern": "/api/v1/carpool/trips",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "carpool:read_item",
+      "path_pattern": "/api/v1/carpool/trips/{id}",
+      "methods": [
+        "GET"
+      ]
+    }
+  ]
+}

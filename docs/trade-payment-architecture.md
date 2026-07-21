@@ -26,6 +26,8 @@ Trade 包含 `Order` 和 `OrderTransition`。订单通过 `order_type`、`resour
 
 Marketplace 包含 `Listing`、`ListingImage` 和 `MarketplaceReservation`。Reservation 只记录商品保留、Trade Order 关联和 48 小时到期信息，不再保存金额、卖家或通用订单状态。
 
+Errand 包含 `Task` 和 `Transition`。Task 是跑腿履约聚合，保存取送地点、截止时间、发布者、接单人及取件/送达/完成时间；Transition 保存每一次任务状态变化。其状态机为 `open → accepted → picked_up → delivered → completed`，其中 `open` 或 `accepted` 可由任务双方取消。接单使用任务行锁和乐观锁版本，在同一事务创建 `order_type=errand` 的线下 Trade Order；发布者是买方，跑腿员是卖方，报酬与双方均由锁定后的 Task 推导。
+
 Payment 包含 `PaymentIntent`、`PaymentTransaction`、`PaymentRefund` 和 `PaymentCallback`。本阶段只建立持久化模型及内部 Provider 契约，不开放支付 HTTP API，也不配置渠道。
 
 ## Marketplace 事务
@@ -44,6 +46,6 @@ Payment 包含 `PaymentIntent`、`PaymentTransaction`、`PaymentRefund` 和 `Pay
 
 ## 扩展规则
 
-跑腿、资料和付费求助应创建各自的履约聚合，再由业务服务创建 Trade Order。详细履约状态留在业务模块，Trade 只保存 `fulfillment_status` 摘要。打赏没有履约生命周期时直接关联 PaymentIntent，无需强制创建 Trade Order。
+资料和付费求助应像跑腿一样创建各自的履约聚合，再由业务服务创建 Trade Order。详细履约状态留在业务模块，Trade 只保存 `fulfillment_status` 摘要。打赏没有履约生命周期时直接关联 PaymentIntent，无需强制创建 Trade Order。
 
 线上支付通过 `resource_type=trade_order` 关联订单。支付回调必须验签，并使用 `(provider, provider_event_id)` 唯一键去重；支付事务写入 `payment.succeeded` 等领域事件，由 Trade 订阅后更新订单，通知失败不得回滚支付事实。

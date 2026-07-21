@@ -4,7 +4,9 @@ package domain
 // Trade order constants define stable cross-module semantics.
 const (
 	OrderTypeMarketplace = "marketplace"
+	OrderTypeErrand      = "errand"
 	ResourceListing      = "marketplace_listing"
+	ResourceErrandTask   = "errand_task"
 	PaymentOffline       = "offline"
 
 	StatusConfirmed = "confirmed"
@@ -13,6 +15,7 @@ const (
 	StatusExpired   = "expired"
 
 	FulfillmentNotStarted = "not_started"
+	FulfillmentInProgress = "in_progress"
 	FulfillmentDelivered  = "delivered"
 )
 

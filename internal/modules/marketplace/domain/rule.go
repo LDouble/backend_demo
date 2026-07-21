@@ -35,10 +35,40 @@ type ListingInput struct {
 	Description string
 	PriceCents  int64
 	ImageURLs   []string
+	Contact     ContactInput
+}
+
+// ContactInput is a publisher-supplied contact method. Provided distinguishes an
+// omitted update from an invalid empty contact.
+type ContactInput struct {
+	Type     string
+	Value    string
+	Provided bool
+}
+
+// ContactDetails is a transient, access-controlled contact value for transport mapping.
+type ContactDetails struct {
+	Type  string
+	Value string
 }
 
 // ValidateListingInput validates untrusted listing content before persistence.
 func ValidateListingInput(input ListingInput) error {
+	if err := validateListingContent(input); err != nil {
+		return err
+	}
+	return ValidateContactInput(input.Contact, true)
+}
+
+// ValidateListingUpdateInput validates listing content and an optional contact update.
+func ValidateListingUpdateInput(input ListingInput) error {
+	if err := validateListingContent(input); err != nil {
+		return err
+	}
+	return ValidateContactInput(input.Contact, false)
+}
+
+func validateListingContent(input ListingInput) error {
 	if length := len([]rune(strings.TrimSpace(input.Title))); length == 0 || length > 200 {
 		return fmt.Errorf("商品标题长度必须为 1-200 个字符")
 	}
@@ -56,6 +86,24 @@ func ValidateListingInput(input ListingInput) error {
 		if err != nil || value.Scheme != "https" || value.Host == "" {
 			return fmt.Errorf("商品图片必须为有效 HTTPS URL")
 		}
+	}
+	return nil
+}
+
+// ValidateContactInput validates a contact supplied by the publisher.
+func ValidateContactInput(input ContactInput, required bool) error {
+	if !input.Provided {
+		if required {
+			return fmt.Errorf("联系方式不能为空")
+		}
+		return nil
+	}
+	typeValue := strings.TrimSpace(input.Type)
+	if typeValue != "phone" && typeValue != "wechat" && typeValue != "qq" {
+		return fmt.Errorf("联系方式类型必须为 phone、wechat 或 qq")
+	}
+	if length := len([]rune(strings.TrimSpace(input.Value))); length == 0 || length > 128 {
+		return fmt.Errorf("联系方式长度必须为 1-128 个字符")
 	}
 	return nil
 }

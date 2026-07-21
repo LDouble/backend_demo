@@ -36,6 +36,8 @@ func newListing(db *gorm.DB, opts ...gen.DOOption) listing {
 	_listing.Status = field.NewString(tableName, "status")
 	_listing.RejectionReason = field.NewString(tableName, "rejection_reason")
 	_listing.OwnerId = field.NewUint64(tableName, "owner_id")
+	_listing.ContactType = field.NewString(tableName, "contact_type")
+	_listing.ContactCiphertext = field.NewString(tableName, "contact_ciphertext")
 	_listing.ReviewedBy = field.NewUint64(tableName, "reviewed_by")
 	_listing.ReviewedAt = field.NewTime(tableName, "reviewed_at")
 	_listing.Version = field.NewUint64(tableName, "version")
@@ -50,20 +52,22 @@ func newListing(db *gorm.DB, opts ...gen.DOOption) listing {
 type listing struct {
 	listingDo listingDo
 
-	ALL             field.Asterisk
-	ID              field.Uint64
-	Title           field.String
-	Description     field.String
-	PriceCents      field.Int64
-	Currency        field.String
-	Status          field.String
-	RejectionReason field.String
-	OwnerId         field.Uint64
-	ReviewedBy      field.Uint64
-	ReviewedAt      field.Time
-	Version         field.Uint64
-	CreatedAt       field.Time
-	UpdatedAt       field.Time
+	ALL               field.Asterisk
+	ID                field.Uint64
+	Title             field.String
+	Description       field.String
+	PriceCents        field.Int64
+	Currency          field.String
+	Status            field.String
+	RejectionReason   field.String
+	OwnerId           field.Uint64
+	ContactType       field.String
+	ContactCiphertext field.String
+	ReviewedBy        field.Uint64
+	ReviewedAt        field.Time
+	Version           field.Uint64
+	CreatedAt         field.Time
+	UpdatedAt         field.Time
 
 	fieldMap map[string]field.Expr
 }
@@ -88,6 +92,8 @@ func (l *listing) updateTableName(table string) *listing {
 	l.Status = field.NewString(table, "status")
 	l.RejectionReason = field.NewString(table, "rejection_reason")
 	l.OwnerId = field.NewUint64(table, "owner_id")
+	l.ContactType = field.NewString(table, "contact_type")
+	l.ContactCiphertext = field.NewString(table, "contact_ciphertext")
 	l.ReviewedBy = field.NewUint64(table, "reviewed_by")
 	l.ReviewedAt = field.NewTime(table, "reviewed_at")
 	l.Version = field.NewUint64(table, "version")
@@ -117,7 +123,7 @@ func (l *listing) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (l *listing) fillFieldMap() {
-	l.fieldMap = make(map[string]field.Expr, 13)
+	l.fieldMap = make(map[string]field.Expr, 15)
 	l.fieldMap["id"] = l.ID
 	l.fieldMap["title"] = l.Title
 	l.fieldMap["description"] = l.Description
@@ -126,6 +132,8 @@ func (l *listing) fillFieldMap() {
 	l.fieldMap["status"] = l.Status
 	l.fieldMap["rejection_reason"] = l.RejectionReason
 	l.fieldMap["owner_id"] = l.OwnerId
+	l.fieldMap["contact_type"] = l.ContactType
+	l.fieldMap["contact_ciphertext"] = l.ContactCiphertext
 	l.fieldMap["reviewed_by"] = l.ReviewedBy
 	l.fieldMap["reviewed_at"] = l.ReviewedAt
 	l.fieldMap["version"] = l.Version

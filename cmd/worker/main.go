@@ -12,8 +12,11 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/weouc-plus/campus-platform/internal/core/bootstrap"
+	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/logger"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
+	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
+	carpoolinfra "github.com/weouc-plus/campus-platform/internal/modules/carpool/infrastructure"
 	noticeinfra "github.com/weouc-plus/campus-platform/internal/modules/notice/infrastructure"
 	noticeworker "github.com/weouc-plus/campus-platform/internal/modules/notice/worker"
 	"go.uber.org/zap"
@@ -53,11 +56,17 @@ func run() error {
 	server := asynq.NewServer(redisOpt, asynq.Config{Concurrency: cfg.Worker.Concurrency, Queues: map[string]int{"notifications": 1}, ShutdownTimeout: 10 * time.Second})
 	store := noticeinfra.NewNoticeStore(db)
 	processor := noticeworker.NewProcessor(store, noticeworker.NewLogProvider(log))
+	cipher, err := configcenter.NewCipher(cfg.Secret.ConfigKey)
+	if err != nil {
+		return err
+	}
+	carpools := carpoolapp.NewManager(carpoolinfra.NewStore(db, cipher))
 	mux := asynq.NewServeMux()
 	processor.Register(mux)
 	relay := noticeworker.NewRelay(store, client, cfg.Worker.PollInterval, log)
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 3)
 	go func() { errCh <- relay.Run(ctx) }()
+	go func() { errCh <- runCarpoolCompletion(ctx, carpools, cfg.Worker.PollInterval) }()
 	go func() { errCh <- server.Run(mux) }()
 	log.Info("notice worker started", zap.Int("concurrency", cfg.Worker.Concurrency), zap.Int("redis_db", cfg.Worker.RedisDB))
 	select {
@@ -71,6 +80,21 @@ func run() error {
 			return nil
 		}
 		return err
+	}
+}
+
+func runCarpoolCompletion(ctx context.Context, carpools *carpoolapp.Manager, interval time.Duration) error {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		if _, err := carpools.CompleteDue(ctx); err != nil {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
 	}
 }
 

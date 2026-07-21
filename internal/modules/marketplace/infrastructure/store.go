@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
+	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	"github.com/weouc-plus/campus-platform/internal/core/privacy"
 	"github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 	"gorm.io/gorm"
@@ -20,16 +22,33 @@ import (
 )
 
 // Store implements atomic marketplace aggregate operations.
-type Store struct{ db *gorm.DB }
+type Store struct {
+	db     *gorm.DB
+	cipher *configcenter.Cipher
+}
 
 // NewStore creates a marketplace persistence adapter.
-func NewStore(db *gorm.DB) *Store { return &Store{db: db} }
+func NewStore(db *gorm.DB, ciphers ...*configcenter.Cipher) *Store {
+	store := &Store{db: db}
+	if len(ciphers) > 0 {
+		store.cipher = ciphers[0]
+	}
+	return store
+}
 
 // CreateListing creates a listing and its ordered images atomically.
 func (s *Store) CreateListing(ctx context.Context, ownerID uint64, input domain.ListingInput) (*domain.Listing, error) {
-	listing := &domain.Listing{Title: strings.TrimSpace(input.Title), Description: strings.TrimSpace(input.Description), PriceCents: input.PriceCents, Currency: domain.CurrencyCNY, Status: domain.ListingDraft, OwnerId: ownerID, Version: 1}
+	listing := &domain.Listing{Title: strings.TrimSpace(input.Title), Description: strings.TrimSpace(input.Description), PriceCents: input.PriceCents, Currency: domain.CurrencyCNY, Status: domain.ListingDraft, OwnerId: ownerID, ContactType: strings.TrimSpace(input.Contact.Type), Version: 1}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(listing).Error; err != nil {
+			return err
+		}
+		ciphertext, err := s.encryptContact(input.Contact.Value, listingContactAAD(listing.ID))
+		if err != nil {
+			return err
+		}
+		listing.ContactCiphertext = ciphertext
+		if err := tx.Model(listing).Update("contact_ciphertext", ciphertext).Error; err != nil {
 			return err
 		}
 		return replaceImages(tx, listing.ID, input.ImageURLs)
@@ -42,6 +61,13 @@ func (s *Store) UpdateListing(ctx context.Context, id, ownerID, version uint64, 
 	listing, err := s.mutateListing(ctx, id, ownerID, version, []string{domain.ListingDraft, domain.ListingRejected}, func(tx *gorm.DB, listing *domain.Listing) error {
 		listing.Title, listing.Description, listing.PriceCents = strings.TrimSpace(input.Title), strings.TrimSpace(input.Description), input.PriceCents
 		listing.Status, listing.RejectionReason = domain.ListingDraft, nil
+		if input.Contact.Provided {
+			ciphertext, err := s.encryptContact(input.Contact.Value, listingContactAAD(listing.ID))
+			if err != nil {
+				return err
+			}
+			listing.ContactType, listing.ContactCiphertext = strings.TrimSpace(input.Contact.Type), ciphertext
+		}
 		if err := tx.Save(listing).Error; err != nil {
 			return err
 		}
@@ -49,6 +75,55 @@ func (s *Store) UpdateListing(ctx context.Context, id, ownerID, version uint64, 
 	})
 	return listing, err
 }
+
+// Contact returns either plaintext for an active trade participant or a masked value.
+func (s *Store) Contact(ctx context.Context, listing *domain.Listing, viewerID uint64) (domain.ContactDetails, error) {
+	value, err := s.decryptContact(listing.ContactCiphertext, listingContactAAD(listing.ID))
+	if err != nil {
+		return domain.ContactDetails{}, err
+	}
+	if value == "" {
+		return domain.ContactDetails{Type: listing.ContactType}, nil
+	}
+	if listing.Status != domain.ListingSold && listing.Status != domain.ListingWithdrawn && listing.Status != domain.ListingRemoved {
+		if viewerID == listing.OwnerId {
+			return domain.ContactDetails{Type: listing.ContactType, Value: value}, nil
+		}
+		var count int64
+		if err := s.db.WithContext(ctx).Model(&tradedomain.Order{}).Where(
+			"resource_type = ? AND resource_id = ? AND buyer_id = ? AND trade_status = ?",
+			tradedomain.ResourceListing,
+			listing.ID,
+			viewerID,
+			tradedomain.StatusConfirmed,
+		).Count(&count).Error; err != nil {
+			return domain.ContactDetails{}, err
+		}
+		if count > 0 {
+			return domain.ContactDetails{Type: listing.ContactType, Value: value}, nil
+		}
+	}
+	return domain.ContactDetails{Type: listing.ContactType, Value: privacy.MaskContact(value)}, nil
+}
+
+func (s *Store) encryptContact(value, aad string) (string, error) {
+	if s.cipher == nil {
+		return "", fmt.Errorf("contact cipher is not configured")
+	}
+	return s.cipher.Encrypt(strings.TrimSpace(value), aad)
+}
+
+func (s *Store) decryptContact(ciphertext, aad string) (string, error) {
+	if ciphertext == "" {
+		return "", nil
+	}
+	if s.cipher == nil {
+		return "", fmt.Errorf("contact cipher is not configured")
+	}
+	return s.cipher.Decrypt(ciphertext, aad)
+}
+
+func listingContactAAD(id uint64) string { return fmt.Sprintf("marketplace-listing:%d", id) }
 
 // Submit transitions an owned listing to pending review.
 func (s *Store) Submit(ctx context.Context, id, ownerID, version uint64) (*domain.Listing, error) {
@@ -83,7 +158,7 @@ func (s *Store) Review(ctx context.Context, id, adminID, version uint64, approve
 		if err := tx.Save(listing).Error; err != nil {
 			return err
 		}
-		return writeEvent(tx, "listing", listing.ID, "listing.reviewed", fmt.Sprintf("listing.reviewed:%d:%d", listing.ID, listing.Version), listing)
+		return writeEvent(tx, "listing", listing.ID, "listing.reviewed", fmt.Sprintf("listing.reviewed:%d:%d", listing.ID, listing.Version), listingEventPayload(listing))
 	})
 }
 
@@ -392,6 +467,10 @@ func writeEvent(tx *gorm.DB, aggregate string, id uint64, eventType, key string,
 		return err
 	}
 	return tx.Create(&domainevent.Event{AggregateType: aggregate, AggregateID: id, EventType: eventType, PayloadVersion: 1, Payload: data, IdempotencyKey: key, Status: domainevent.StatusPending, AvailableAt: time.Now().UTC()}).Error
+}
+
+func listingEventPayload(listing *domain.Listing) map[string]any {
+	return map[string]any{"listing_id": listing.ID, "status": listing.Status, "version": listing.Version}
 }
 func pointer(value string) *string {
 	if value == "" {

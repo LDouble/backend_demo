@@ -3,6 +3,8 @@
 package main
 
 import (
+	carpooldomain "github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
+	erranddomain "github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
 	marketplacedomain "github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	noticedomain "github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
 	paymentdomain "github.com/weouc-plus/campus-platform/internal/modules/payment/domain"
@@ -12,6 +14,10 @@ import (
 
 func applyGeneratedModules(generator *gen.Generator) {
 	generator.ApplyBasic(
+		carpooldomain.Trip{},
+		carpooldomain.Participant{},
+		erranddomain.Task{},
+		erranddomain.Transition{},
 		marketplacedomain.Listing{},
 		marketplacedomain.ListingImage{},
 		marketplacedomain.MarketplaceReservation{},
