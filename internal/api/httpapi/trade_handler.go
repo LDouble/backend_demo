@@ -50,19 +50,20 @@ func (h *Handler) finishTradeOrder(c *gin.Context, complete bool) {
 		failure(c, err)
 		return
 	}
-	if order.OrderType == tradedomain.OrderTypeMarketplace {
+	switch order.OrderType {
+	case tradedomain.OrderTypeMarketplace:
 		if complete {
 			order, err = h.marketplace.Complete(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion)
 		} else {
 			order, err = h.marketplace.Cancel(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion)
 		}
-	} else if order.OrderType == tradedomain.OrderTypeErrand {
+	case tradedomain.OrderTypeErrand:
 		if complete {
 			order, err = h.errands.CompleteOrder(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion)
 		} else {
 			order, err = h.errands.CancelOrder(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion)
 		}
-	} else {
+	default:
 		failure(c, apperror.New(409, "unsupported_order_type", "该订单类型尚未接入取消或完成操作"))
 		return
 	}
