@@ -1,0 +1,440 @@
+# Source contract for core APIs and shared components.
+# api/openapi.yaml is generated from this file and module schemas.
+openapi: 3.0.3
+info:
+  title: Campus Platform API
+  version: 1.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /health/live:
+    get:
+      operationId: Live
+      responses: {"200": {$ref: "#/components/responses/Success"}}
+  /health/ready:
+    get:
+      operationId: Ready
+      responses: {"200": {$ref: "#/components/responses/Success"}, "503": {$ref: "#/components/responses/Error"}}
+  /api/v1/auth/login:
+    post:
+      operationId: Login
+      requestBody: {$ref: "#/components/requestBodies/Login"}
+      responses: {"200": {$ref: "#/components/responses/TokenPairResponse"}, "401": {$ref: "#/components/responses/Error"}}
+  /api/v1/auth/refresh:
+    post:
+      operationId: Refresh
+      requestBody: {$ref: "#/components/requestBodies/Refresh"}
+      responses: {"200": {$ref: "#/components/responses/TokenPairResponse"}, "401": {$ref: "#/components/responses/Error"}}
+  /api/v1/auth/logout:
+    post:
+      operationId: Logout
+      security: [{bearerAuth: []}]
+      responses: {"200": {$ref: "#/components/responses/LogoutResponse"}, "401": {$ref: "#/components/responses/Error"}}
+  /api/v1/auth/me:
+    get:
+      operationId: GetMe
+      security: [{bearerAuth: []}]
+      responses: {"200": {$ref: "#/components/responses/CurrentUserResponse"}}
+  /api/v1/permissions:
+    get:
+      operationId: ListPermissionCatalog
+      security: [{bearerAuth: []}]
+      responses: {"200": {$ref: "#/components/responses/PermissionCatalogResponse"}, "403": {$ref: "#/components/responses/Error"}}
+  /api/v1/users:
+    get:
+      operationId: ListUsers
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PageSize"}]
+      responses: {"200": {$ref: "#/components/responses/UserPageResponse"}}
+    post:
+      operationId: CreateUser
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody: {$ref: "#/components/requestBodies/CreateUser"}
+      responses: {"201": {$ref: "#/components/responses/UserResponse"}}
+  /api/v1/users/{id}:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    get:
+      operationId: GetUser
+      security: [{bearerAuth: []}]
+      responses: {"200": {$ref: "#/components/responses/UserResponse"}}
+    patch:
+      operationId: UpdateUser
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody: {$ref: "#/components/requestBodies/UpdateUser"}
+      responses: {"200": {$ref: "#/components/responses/UserResponse"}}
+  /api/v1/users/{id}/status:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    patch:
+      operationId: SetUserStatus
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UserStatusRequest"}}}
+      responses: {"200": {$ref: "#/components/responses/UserResponse"}}
+  /api/v1/users/{id}/roles:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    get:
+      operationId: GetUserRoles
+      security: [{bearerAuth: []}]
+      responses: {"200": {$ref: "#/components/responses/UserRolesResponse"}}
+    put:
+      operationId: SetUserRoles
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UserRolesRequest"}}}
+      responses: {"200": {$ref: "#/components/responses/UserRolesResponse"}}
+  /api/v1/roles:
+    get:
+      operationId: ListRoles
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PageSize"}]
+      responses: {"200": {$ref: "#/components/responses/RolePageResponse"}}
+    post:
+      operationId: CreateRole
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreateRoleRequest"}}}
+      responses: {"201": {$ref: "#/components/responses/RoleResponse"}}
+  /api/v1/roles/{id}:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    patch:
+      operationId: UpdateRole
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UpdateRoleRequest"}}}
+      responses: {"200": {$ref: "#/components/responses/RoleResponse"}}
+    delete:
+      operationId: DeleteRole
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      responses: {"200": {$ref: "#/components/responses/DeleteResultResponse"}}
+  /api/v1/roles/{id}/permissions:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    get:
+      operationId: GetPermissions
+      security: [{bearerAuth: []}]
+      responses: {"200": {$ref: "#/components/responses/RolePermissionsResponse"}}
+    put:
+      operationId: SetPermissions
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/PermissionsRequest"}}}
+      responses: {"200": {$ref: "#/components/responses/RolePermissionsResponse"}}
+  /api/v1/configs:
+    get:
+      operationId: ListConfigs
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PageSize"}, {$ref: "#/components/parameters/Group"}]
+      responses: {"200": {$ref: "#/components/responses/Success"}}
+    post:
+      operationId: CreateConfig
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreateConfigRequest"}}}
+      responses: {"201": {$ref: "#/components/responses/Success"}}
+  /api/v1/configs/{id}:
+    parameters: [{$ref: "#/components/parameters/ID"}]
+    get:
+      operationId: GetConfig
+      security: [{bearerAuth: []}]
+      responses: {"200": {$ref: "#/components/responses/Success"}}
+    put:
+      operationId: UpdateConfig
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UpdateConfigRequest"}}}
+      responses: {"200": {$ref: "#/components/responses/Success"}, "409": {$ref: "#/components/responses/Error"}}
+    delete:
+      operationId: DeleteConfig
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      responses: {"200": {$ref: "#/components/responses/Success"}}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    ID: {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 1, maxLength: 128}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+    PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    Group: {name: group, in: query, schema: {type: string, maxLength: 64}}
+  requestBodies:
+    Login: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/LoginRequest"}}}}
+    Refresh: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RefreshRequest"}}}}
+    CreateUser: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateUserRequest"}}}}
+    UpdateUser: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateUserRequest"}}}}
+  responses:
+    Success:
+      description: Successful response
+      content: {application/json: {schema: {$ref: "#/components/schemas/SuccessEnvelope"}}}
+    TokenPairResponse:
+      description: Authentication tokens
+      content: {application/json: {schema: {$ref: "#/components/schemas/TokenPairEnvelope"}}}
+    LogoutResponse:
+      description: Session logged out
+      content: {application/json: {schema: {$ref: "#/components/schemas/LogoutEnvelope"}}}
+    CurrentUserResponse:
+      description: Current authenticated user and effective access
+      content: {application/json: {schema: {$ref: "#/components/schemas/CurrentUserEnvelope"}}}
+    UserResponse:
+      description: User response
+      content: {application/json: {schema: {$ref: "#/components/schemas/UserEnvelope"}}}
+    UserPageResponse:
+      description: User page
+      content: {application/json: {schema: {$ref: "#/components/schemas/UserPageEnvelope"}}}
+    UserRolesResponse:
+      description: Direct user roles
+      content: {application/json: {schema: {$ref: "#/components/schemas/UserRolesEnvelope"}}}
+    RoleResponse:
+      description: Role response
+      content: {application/json: {schema: {$ref: "#/components/schemas/RoleEnvelope"}}}
+    RolePageResponse:
+      description: Role page
+      content: {application/json: {schema: {$ref: "#/components/schemas/RolePageEnvelope"}}}
+    RolePermissionsResponse:
+      description: Role permissions
+      content: {application/json: {schema: {$ref: "#/components/schemas/RolePermissionsEnvelope"}}}
+    PermissionCatalogResponse:
+      description: Generated permission directory
+      content: {application/json: {schema: {$ref: "#/components/schemas/PermissionCatalogEnvelope"}}}
+    DeleteResultResponse:
+      description: Deletion result
+      content: {application/json: {schema: {$ref: "#/components/schemas/DeleteResultEnvelope"}}}
+    Error:
+      description: Error response
+      content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  schemas:
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token: {type: string}
+        refresh_token: {type: string}
+        token_type: {type: string, enum: [Bearer]}
+        expires_in: {type: integer, format: int64, minimum: 1}
+    User:
+      type: object
+      required: [id, username, status, created_at, updated_at]
+      properties:
+        id: {type: integer, format: uint64, minimum: 1}
+        username: {type: string}
+        status: {type: string, enum: [active, disabled]}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Role:
+      type: object
+      required: [id, name, description, builtin, created_at, updated_at]
+      properties:
+        id: {type: integer, format: uint64, minimum: 1}
+        name: {type: string}
+        description: {type: string}
+        builtin: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    PermissionCatalogEntry:
+      type: object
+      required: [code, module, path_pattern, methods]
+      properties:
+        code: {type: string}
+        module: {type: string}
+        path_pattern: {type: string}
+        methods:
+          type: array
+          items: {type: string, enum: [GET, POST, PUT, PATCH, DELETE]}
+    CurrentUser:
+      type: object
+      required: [user, roles, permissions]
+      properties:
+        user: {$ref: "#/components/schemas/User"}
+        roles: {type: array, items: {type: string}}
+        permissions: {type: array, items: {type: string}}
+    UserPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/User"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64, minimum: 0}
+    RolePage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Role"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64, minimum: 0}
+    UserRoles:
+      type: object
+      required: [roles]
+      properties: {roles: {type: array, items: {type: string}}}
+    RolePermissions:
+      type: object
+      required: [permissions]
+      properties: {permissions: {type: array, items: {$ref: "#/components/schemas/Permission"}}}
+    PermissionCatalog:
+      type: object
+      required: [permissions]
+      properties: {permissions: {type: array, items: {$ref: "#/components/schemas/PermissionCatalogEntry"}}}
+    DeleteResult:
+      type: object
+      required: [deleted]
+      properties: {deleted: {type: boolean}}
+    LogoutResult:
+      type: object
+      required: [logged_out]
+      properties: {logged_out: {type: boolean}}
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties: {username: {type: string, minLength: 3, maxLength: 32}, password: {type: string, minLength: 12}}
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties: {refresh_token: {type: string}}
+    CreateUserRequest:
+      type: object
+      required: [username, password]
+      properties: {username: {type: string, minLength: 3, maxLength: 32}, password: {type: string, minLength: 12}}
+    UpdateUserRequest:
+      type: object
+      properties: {username: {type: string, minLength: 3, maxLength: 32}, password: {type: string, minLength: 12}}
+    UserStatusRequest:
+      type: object
+      required: [status]
+      properties: {status: {type: string, enum: [active, disabled]}}
+    UserRolesRequest:
+      type: object
+      required: [roles]
+      properties: {roles: {type: array, items: {type: string}}}
+    CreateRoleRequest:
+      type: object
+      required: [name]
+      properties: {name: {type: string}, description: {type: string}}
+    UpdateRoleRequest:
+      type: object
+      required: [description]
+      properties: {description: {type: string}}
+    Permission:
+      type: object
+      required: [path_pattern, methods]
+      properties: {path_pattern: {type: string}, methods: {type: array, items: {type: string}}}
+    PermissionsRequest:
+      type: object
+      required: [permissions]
+      properties: {permissions: {type: array, items: {$ref: "#/components/schemas/Permission"}}}
+    CreateConfigRequest:
+      type: object
+      required: [group, key, value]
+      properties: {group: {type: string}, key: {type: string}, value: {type: string}, encrypted: {type: boolean, default: false}}
+    UpdateConfigRequest:
+      type: object
+      required: [expected_version]
+      properties: {expected_version: {type: integer, format: uint64, minimum: 1}, value: {type: string}}
+    NoticeAudience:
+      type: object
+      required: [all, roles, user_ids]
+      properties:
+        all: {type: boolean}
+        roles: {type: array, items: {type: string}}
+        user_ids: {type: array, items: {type: integer, format: uint64, minimum: 1}}
+    CreateNoticeRequest:
+      type: object
+      required: [title, summary, body, category, priority, channels, audience]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 200}
+        summary: {type: string, maxLength: 500}
+        body: {type: string, minLength: 1, maxLength: 20000}
+        category: {type: string, pattern: "^[a-z][a-z0-9-]{0,63}$"}
+        priority: {type: string, enum: [normal, important, urgent]}
+        action_path: {type: string, maxLength: 512}
+        channels: {type: array, minItems: 1, items: {type: string, enum: [in_app, push]}}
+        audience: {$ref: "#/components/schemas/NoticeAudience"}
+    UpdateNoticeRequest:
+      allOf:
+        - {$ref: "#/components/schemas/CreateNoticeRequest"}
+        - type: object
+          required: [expected_version]
+          properties: {expected_version: {type: integer, format: uint64, minimum: 1}}
+    PublishNoticeRequest:
+      type: object
+      required: [expected_version]
+      properties:
+        expected_version: {type: integer, format: uint64, minimum: 1}
+        publish_at: {type: string, format: date-time}
+    VersionRequest:
+      type: object
+      required: [expected_version]
+      properties: {expected_version: {type: integer, format: uint64, minimum: 1}}
+    SuccessEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {}, request_id: {type: string}}
+    TokenPairEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/TokenPair"}, request_id: {type: string}}
+    LogoutEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/LogoutResult"}, request_id: {type: string}}
+    CurrentUserEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/CurrentUser"}, request_id: {type: string}}
+    UserEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/User"}, request_id: {type: string}}
+    UserPageEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/UserPage"}, request_id: {type: string}}
+    UserRolesEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/UserRoles"}, request_id: {type: string}}
+    RoleEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/Role"}, request_id: {type: string}}
+    RolePageEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/RolePage"}, request_id: {type: string}}
+    RolePermissionsEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/RolePermissions"}, request_id: {type: string}}
+    PermissionCatalogEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/PermissionCatalog"}, request_id: {type: string}}
+    DeleteResultEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/DeleteResult"}, request_id: {type: string}}
+    ErrorEnvelope:
+      type: object
+      required: [error, request_id]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties: {code: {type: string}, message: {type: string}}
+        request_id: {type: string}

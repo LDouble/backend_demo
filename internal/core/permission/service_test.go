@@ -3,6 +3,7 @@ package permission_test
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
+	permissionmanifest "github.com/weouc-plus/campus-platform/permissions"
 	"gorm.io/gorm"
 )
 
@@ -115,6 +117,75 @@ func TestRBACLifecycle(t *testing.T) {
 	if err = svc.DeleteRole(ctx, role.ID); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestEffectivePermissionCodes(t *testing.T) {
+	ctx := context.Background()
+	svc := testService(t)
+	if err := svc.Bootstrap(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	catalog := svc.PermissionCatalog()
+	adminCodes, err := svc.EffectivePermissionCodes(ctx, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantAdminCodes := uniqueCatalogCodes(catalog)
+	if len(adminCodes) != len(wantAdminCodes) {
+		t.Fatalf("admin codes=%d want=%d", len(adminCodes), len(wantAdminCodes))
+	}
+	for index := range wantAdminCodes {
+		if adminCodes[index] != wantAdminCodes[index] {
+			t.Fatalf("admin codes=%v want=%v", adminCodes, wantAdminCodes)
+		}
+	}
+
+	role, err := svc.CreateRole(ctx, "config_reader", "reader", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.SetPermissions(ctx, role.ID, []permission.Permission{
+		{PathPattern: "/api/v1/configs", Methods: []string{"GET"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.SetUserRoles(ctx, 2, []string{role.Name}); err != nil {
+		t.Fatal(err)
+	}
+	codes, err := svc.EffectivePermissionCodes(ctx, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(codes, "core:listconfigs") || !containsString(codes, "core:getme") {
+		t.Fatalf("effective codes=%v", codes)
+	}
+	if containsString(codes, "core:createconfig") {
+		t.Fatalf("reader unexpectedly received write permission: %v", codes)
+	}
+}
+
+func uniqueCatalogCodes(entries []permissionmanifest.CatalogEntry) []string {
+	seen := map[string]struct{}{}
+	codes := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if _, exists := seen[entry.Code]; exists {
+			continue
+		}
+		seen[entry.Code] = struct{}{}
+		codes = append(codes, entry.Code)
+	}
+	sort.Strings(codes)
+	return codes
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSuperAdminProtection(t *testing.T) {

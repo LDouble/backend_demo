@@ -30,16 +30,20 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 	if err != nil {
 		return false, fmt.Errorf("resolve repository root: %w", err)
 	}
+	sourcePath, err := safeJoin(root, "api/openapi.base.yaml")
+	if err != nil {
+		return false, err
+	}
 	contractPath, err := safeJoin(root, "api/openapi.yaml")
 	if err != nil {
 		return false, err
 	}
-	// #nosec G304 -- safeJoin confines the generated contract path to the repository root.
-	current, err := repositoryReadFile(root, contractPath)
+	// #nosec G304 -- safeJoin confines the source contract path to the repository root.
+	source, err := repositoryReadFile(root, sourcePath)
 	if err != nil {
-		return false, fmt.Errorf("read public OpenAPI contract: %w", err)
+		return false, fmt.Errorf("read OpenAPI source contract: %w", err)
 	}
-	contract, err := decodeYAMLDocument(current)
+	contract, err := decodeYAMLDocument(source)
 	if err != nil {
 		return false, fmt.Errorf("decode public OpenAPI contract: %w", err)
 	}
@@ -93,11 +97,15 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 	if err != nil {
 		return false, err
 	}
+	current, contractReadErr := repositoryReadFile(root, contractPath)
+	if contractReadErr != nil && !errors.Is(contractReadErr, fs.ErrNotExist) {
+		return false, fmt.Errorf("read generated OpenAPI contract: %w", contractReadErr)
+	}
 	currentPermissions, permissionReadErr := repositoryReadFile(root, permissionPath)
 	if permissionReadErr != nil && !errors.Is(permissionReadErr, fs.ErrNotExist) {
 		return false, fmt.Errorf("read core permission manifest: %w", permissionReadErr)
 	}
-	contractChanged := !bytes.Equal(current, content)
+	contractChanged := contractReadErr != nil || !bytes.Equal(current, content)
 	permissionsChanged := permissionReadErr != nil || !bytes.Equal(currentPermissions, permissionContent)
 	changed := contractChanged || permissionsChanged
 	if options.Check {

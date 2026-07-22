@@ -2,7 +2,7 @@
 
 ## 项目结构与职责
 
-服务入口位于 `cmd/server` 和 `cmd/campusctl`。业务实体、服务及 Repository 接口位于 `internal/core`；Gin Handler、中间件和 OpenAPI 生成代码位于 `internal/api`；MySQL、Redis、迁移和日志适配器位于 `internal/infrastructure`。SQL 迁移存放在 `migrations/`，公开 API 契约为 `api/openapi.yaml`，任务与 PRD 存放在 `.agent/`。
+服务入口位于 `cmd/server` 和 `cmd/campusctl`。业务实体、服务及 Repository 接口位于 `internal/core`；Gin Handler、中间件和 OpenAPI 生成代码位于 `internal/api`；MySQL、Redis、迁移和日志适配器位于 `internal/infrastructure`。SQL 迁移存放在 `migrations/`，core API 与共享组件源契约为 `api/openapi.base.yaml`，生成后的公开 API 契约为 `api/openapi.yaml`，任务与 PRD 存放在 `.agent/`。
 
 ## 构建与验证
 

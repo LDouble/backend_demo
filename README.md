@@ -65,7 +65,7 @@ make test-compose
 
 ## API 与模块代码生成
 
-平台基础接口直接维护在 `api/openapi.yaml`；业务模块在 `schemas/<module>.yaml` 的 `operations` 中声明 HTTP 方法、路径、请求参数、响应和入口权限。生成器据此产生模块 OpenAPI、权限清单和 HTTP 适配器，并将模块操作确定性汇总到公开契约 `api/openapi.yaml`。
+平台基础接口及共享组件维护在 `api/openapi.base.yaml`；业务模块在 `schemas/<module>.yaml` 的 `operations` 中声明 HTTP 方法、路径、请求参数、响应和入口权限。生成器据此产生模块 OpenAPI、权限清单和 HTTP 适配器，并将基础契约与模块操作确定性汇总到公开契约 `api/openapi.yaml`。禁止直接修改聚合后的公开契约。
 
 日常修改 Schema 后统一执行：
 
@@ -74,6 +74,8 @@ make generate
 ```
 
 生成顺序固定为：全部模块产物 → 全局 OpenAPI → oapi-codegen/GORM Query。生成文件包含 DTO、ServerInterface、参数解析、Gin 路由注册和模块适配器，禁止手工修改。请求结构由 OpenAPI 校验中间件统一校验；认证、Casbin 鉴权、请求 ID、日志和异常恢复同样集中在中间件中。
+
+`main` 分支的公开契约变化通过 `.github/workflows/sync-admin-openapi.yml` 同步到私有管理端仓库。后端仓库需要配置 `ADMIN_REPO_TOKEN` Actions Secret；该 fine-grained PAT 只授权 `LDouble/campus-admin-web`，并授予 Contents 与 Pull requests 写权限。工作流会更新固定分支 `chore/sync-backend-openapi` 上的同一个同步 PR，管理端生产构建只消费已合并的契约快照。
 
 ## 数据库代码生成
 

@@ -79,6 +79,13 @@
       ]
     },
     {
+      "name": "core:listpermissioncatalog",
+      "path_pattern": "/api/v1/permissions",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
       "name": "core:listroles",
       "path_pattern": "/api/v1/roles",
       "methods": [

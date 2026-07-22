@@ -407,7 +407,16 @@ func (h *Handler) me(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, 200, gin.H{"user": u, "roles": roles})
+	permissionCodes, err := h.permissions.EffectivePermissionCodes(c.Request.Context(), uid)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, 200, gin.H{"user": u, "roles": roles, "permissions": permissionCodes})
+}
+
+func (h *Handler) listPermissionCatalog(c *gin.Context) {
+	success(c, 200, gin.H{"permissions": h.permissions.PermissionCatalog()})
 }
 func (h *Handler) listUsers(c *gin.Context) {
 	p, s := paging(c)

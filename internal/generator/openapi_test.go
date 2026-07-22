@@ -12,7 +12,7 @@ import (
 func TestGenerateOpenAPIIsDeterministic(t *testing.T) {
 	root := t.TempDir()
 	mustWriteTestFile(t, filepath.Join(root, ".agent/modules.json"), `{"version":1,"modules":[{"name":"market","entity":"Listing","schema":"schemas/market.yaml"}]}`)
-	mustWriteTestFile(t, filepath.Join(root, "api/openapi.yaml"), "openapi: 3.0.3\ninfo: {title: Test, version: 1.0.0}\npaths: {}\ncomponents:\n  responses:\n    Success: {description: ok}\n    Error: {description: error}\n")
+	mustWriteTestFile(t, filepath.Join(root, "api/openapi.base.yaml"), "openapi: 3.0.3\ninfo: {title: Test, version: 1.0.0}\npaths: {}\ncomponents:\n  responses:\n    Success: {description: ok}\n    Error: {description: error}\n")
 	mustWriteTestFile(t, filepath.Join(root, "api/modules/market.yaml"), "openapi: 3.0.3\ninfo: {title: Market, version: 1.0.0}\npaths:\n  /api/v1/items:\n    post:\n      operationId: CreateItem\n      x-generated-module: market\n      responses: {'200': {description: ok}}\n")
 	changed, err := GenerateOpenAPI(context.Background(), GenerateOpenAPIOptions{Root: root})
 	if err != nil || !changed {
@@ -34,7 +34,7 @@ func TestGenerateOpenAPIIsDeterministic(t *testing.T) {
 func TestGenerateOpenAPIDerivesCorePermissionManifest(t *testing.T) {
 	root := t.TempDir()
 	mustWriteTestFile(t, filepath.Join(root, ".agent/modules.json"), `{"version":1,"modules":[]}`)
-	mustWriteTestFile(t, filepath.Join(root, "api/openapi.yaml"), `openapi: 3.0.3
+	mustWriteTestFile(t, filepath.Join(root, "api/openapi.base.yaml"), `openapi: 3.0.3
 info: {title: Test, version: 1.0.0}
 paths:
   /api/v1/configs/{id}:

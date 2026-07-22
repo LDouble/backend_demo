@@ -61,6 +61,7 @@ type Service struct {
 	reloadMu          sync.Mutex
 	memberPolicies    []policyRule
 	permissionCatalog map[string]map[string]struct{}
+	catalogEntries    []permissionmanifest.CatalogEntry
 	sync              policySync
 	log               *zap.Logger
 }
@@ -101,7 +102,18 @@ func NewService(ctx context.Context, db *gorm.DB, roles RoleRepository) (*Servic
 			methods[method] = struct{}{}
 		}
 	}
-	service := &Service{db: db, roles: roles, memberPolicies: memberPolicies, permissionCatalog: catalog, log: zap.NewNop()}
+	catalogEntries, err := permissionmanifest.Catalog()
+	if err != nil {
+		return nil, err
+	}
+	service := &Service{
+		db:                db,
+		roles:             roles,
+		memberPolicies:    memberPolicies,
+		permissionCatalog: catalog,
+		catalogEntries:    catalogEntries,
+		log:               zap.NewNop(),
+	}
 	service.enforcer.Store(e)
 	return service, nil
 }
@@ -141,6 +153,48 @@ func (s *Service) Enforce(ctx context.Context, userID uint64, path, method strin
 		return false, fmt.Errorf("enforce permission: %w", err)
 	}
 	return ok, nil
+}
+
+// PermissionCatalog returns the immutable generated permission directory.
+func (s *Service) PermissionCatalog() []permissionmanifest.CatalogEntry {
+	entries := make([]permissionmanifest.CatalogEntry, 0, len(s.catalogEntries))
+	for _, entry := range s.catalogEntries {
+		entry.Methods = append([]string{}, entry.Methods...)
+		entries = append(entries, entry)
+	}
+	return entries
+}
+
+// EffectivePermissionCodes returns permission codes granted to a user by Casbin.
+func (s *Service) EffectivePermissionCodes(ctx context.Context, userID uint64) ([]string, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	codes := make([]string, 0, len(s.catalogEntries))
+	seen := map[string]struct{}{}
+	for _, entry := range s.catalogEntries {
+		granted := false
+		for _, method := range entry.Methods {
+			allowed, err := s.Enforce(ctx, userID, entry.PathPattern, method)
+			if err != nil {
+				return nil, err
+			}
+			if allowed {
+				granted = true
+				break
+			}
+		}
+		if !granted {
+			continue
+		}
+		if _, exists := seen[entry.Code]; exists {
+			continue
+		}
+		seen[entry.Code] = struct{}{}
+		codes = append(codes, entry.Code)
+	}
+	sort.Strings(codes)
+	return codes, nil
 }
 
 // CreateRole creates role metadata.

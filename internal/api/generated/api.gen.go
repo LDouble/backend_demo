@@ -59,6 +59,48 @@ func (e CreateNoticeRequestPriority) Valid() bool {
 	}
 }
 
+// Defines values for PermissionCatalogEntryMethods.
+const (
+	DELETE PermissionCatalogEntryMethods = "DELETE"
+	GET    PermissionCatalogEntryMethods = "GET"
+	PATCH  PermissionCatalogEntryMethods = "PATCH"
+	POST   PermissionCatalogEntryMethods = "POST"
+	PUT    PermissionCatalogEntryMethods = "PUT"
+)
+
+// Valid indicates whether the value is a known member of the PermissionCatalogEntryMethods enum.
+func (e PermissionCatalogEntryMethods) Valid() bool {
+	switch e {
+	case DELETE:
+		return true
+	case GET:
+		return true
+	case PATCH:
+		return true
+	case POST:
+		return true
+	case PUT:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TokenPairTokenType.
+const (
+	Bearer TokenPairTokenType = "Bearer"
+)
+
+// Valid indicates whether the value is a known member of the TokenPairTokenType enum.
+func (e TokenPairTokenType) Valid() bool {
+	switch e {
+	case Bearer:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateNoticeRequestChannels.
 const (
 	UpdateNoticeRequestChannelsInApp UpdateNoticeRequestChannels = "in_app"
@@ -98,18 +140,36 @@ func (e UpdateNoticeRequestPriority) Valid() bool {
 	}
 }
 
+// Defines values for UserStatus.
+const (
+	UserStatusActive   UserStatus = "active"
+	UserStatusDisabled UserStatus = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the UserStatus enum.
+func (e UserStatus) Valid() bool {
+	switch e {
+	case UserStatusActive:
+		return true
+	case UserStatusDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserStatusRequestStatus.
 const (
-	Active   UserStatusRequestStatus = "active"
-	Disabled UserStatusRequestStatus = "disabled"
+	UserStatusRequestStatusActive   UserStatusRequestStatus = "active"
+	UserStatusRequestStatusDisabled UserStatusRequestStatus = "disabled"
 )
 
 // Valid indicates whether the value is a known member of the UserStatusRequestStatus enum.
 func (e UserStatusRequestStatus) Valid() bool {
 	switch e {
-	case Active:
+	case UserStatusRequestStatusActive:
 		return true
-	case Disabled:
+	case UserStatusRequestStatusDisabled:
 		return true
 	default:
 		return false
@@ -154,6 +214,30 @@ type CreateUserRequest struct {
 	Username string `json:"username"`
 }
 
+// CurrentUser defines model for CurrentUser.
+type CurrentUser struct {
+	Permissions []string `json:"permissions"`
+	Roles       []string `json:"roles"`
+	User        User     `json:"user"`
+}
+
+// CurrentUserEnvelope defines model for CurrentUserEnvelope.
+type CurrentUserEnvelope struct {
+	Data      CurrentUser `json:"data"`
+	RequestId string      `json:"request_id"`
+}
+
+// DeleteResult defines model for DeleteResult.
+type DeleteResult struct {
+	Deleted bool `json:"deleted"`
+}
+
+// DeleteResultEnvelope defines model for DeleteResultEnvelope.
+type DeleteResultEnvelope struct {
+	Data      DeleteResult `json:"data"`
+	RequestId string       `json:"request_id"`
+}
+
 // ErrorEnvelope defines model for ErrorEnvelope.
 type ErrorEnvelope struct {
 	Error struct {
@@ -169,6 +253,17 @@ type LoginRequest struct {
 	Username string `json:"username"`
 }
 
+// LogoutEnvelope defines model for LogoutEnvelope.
+type LogoutEnvelope struct {
+	Data      LogoutResult `json:"data"`
+	RequestId string       `json:"request_id"`
+}
+
+// LogoutResult defines model for LogoutResult.
+type LogoutResult struct {
+	LoggedOut bool `json:"logged_out"`
+}
+
 // NoticeAudience defines model for NoticeAudience.
 type NoticeAudience struct {
 	All     bool     `json:"all"`
@@ -180,6 +275,28 @@ type NoticeAudience struct {
 type Permission struct {
 	Methods     []string `json:"methods"`
 	PathPattern string   `json:"path_pattern"`
+}
+
+// PermissionCatalog defines model for PermissionCatalog.
+type PermissionCatalog struct {
+	Permissions []PermissionCatalogEntry `json:"permissions"`
+}
+
+// PermissionCatalogEntry defines model for PermissionCatalogEntry.
+type PermissionCatalogEntry struct {
+	Code        string                          `json:"code"`
+	Methods     []PermissionCatalogEntryMethods `json:"methods"`
+	Module      string                          `json:"module"`
+	PathPattern string                          `json:"path_pattern"`
+}
+
+// PermissionCatalogEntryMethods defines model for PermissionCatalogEntry.Methods.
+type PermissionCatalogEntryMethods string
+
+// PermissionCatalogEnvelope defines model for PermissionCatalogEnvelope.
+type PermissionCatalogEnvelope struct {
+	Data      PermissionCatalog `json:"data"`
+	RequestId string            `json:"request_id"`
 }
 
 // PermissionsRequest defines model for PermissionsRequest.
@@ -198,10 +315,68 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// Role defines model for Role.
+type Role struct {
+	Builtin     bool      `json:"builtin"`
+	CreatedAt   time.Time `json:"created_at"`
+	Description string    `json:"description"`
+	Id          uint64    `json:"id"`
+	Name        string    `json:"name"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// RoleEnvelope defines model for RoleEnvelope.
+type RoleEnvelope struct {
+	Data      Role   `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// RolePage defines model for RolePage.
+type RolePage struct {
+	Items    []Role `json:"items"`
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Total    int64  `json:"total"`
+}
+
+// RolePageEnvelope defines model for RolePageEnvelope.
+type RolePageEnvelope struct {
+	Data      RolePage `json:"data"`
+	RequestId string   `json:"request_id"`
+}
+
+// RolePermissions defines model for RolePermissions.
+type RolePermissions struct {
+	Permissions []Permission `json:"permissions"`
+}
+
+// RolePermissionsEnvelope defines model for RolePermissionsEnvelope.
+type RolePermissionsEnvelope struct {
+	Data      RolePermissions `json:"data"`
+	RequestId string          `json:"request_id"`
+}
+
 // SuccessEnvelope defines model for SuccessEnvelope.
 type SuccessEnvelope struct {
 	Data      interface{} `json:"data"`
 	RequestId string      `json:"request_id"`
+}
+
+// TokenPair defines model for TokenPair.
+type TokenPair struct {
+	AccessToken  string             `json:"access_token"`
+	ExpiresIn    int64              `json:"expires_in"`
+	RefreshToken string             `json:"refresh_token"`
+	TokenType    TokenPairTokenType `json:"token_type"`
+}
+
+// TokenPairTokenType defines model for TokenPair.TokenType.
+type TokenPairTokenType string
+
+// TokenPairEnvelope defines model for TokenPairEnvelope.
+type TokenPairEnvelope struct {
+	Data      TokenPair `json:"data"`
+	RequestId string    `json:"request_id"`
 }
 
 // UpdateConfigRequest defines model for UpdateConfigRequest.
@@ -240,6 +415,49 @@ type UpdateUserRequest struct {
 	Username *string `json:"username,omitempty"`
 }
 
+// User defines model for User.
+type User struct {
+	CreatedAt time.Time  `json:"created_at"`
+	Id        uint64     `json:"id"`
+	Status    UserStatus `json:"status"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	Username  string     `json:"username"`
+}
+
+// UserStatus defines model for User.Status.
+type UserStatus string
+
+// UserEnvelope defines model for UserEnvelope.
+type UserEnvelope struct {
+	Data      User   `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// UserPage defines model for UserPage.
+type UserPage struct {
+	Items    []User `json:"items"`
+	Page     int    `json:"page"`
+	PageSize int    `json:"page_size"`
+	Total    int64  `json:"total"`
+}
+
+// UserPageEnvelope defines model for UserPageEnvelope.
+type UserPageEnvelope struct {
+	Data      UserPage `json:"data"`
+	RequestId string   `json:"request_id"`
+}
+
+// UserRoles defines model for UserRoles.
+type UserRoles struct {
+	Roles []string `json:"roles"`
+}
+
+// UserRolesEnvelope defines model for UserRolesEnvelope.
+type UserRolesEnvelope struct {
+	Data      UserRoles `json:"data"`
+	RequestId string    `json:"request_id"`
+}
+
 // UserRolesRequest defines model for UserRolesRequest.
 type UserRolesRequest struct {
 	Roles []string `json:"roles"`
@@ -273,11 +491,44 @@ type Page = int
 // PageSize defines model for PageSize.
 type PageSize = int
 
+// CurrentUserResponse defines model for CurrentUserResponse.
+type CurrentUserResponse = CurrentUserEnvelope
+
+// DeleteResultResponse defines model for DeleteResultResponse.
+type DeleteResultResponse = DeleteResultEnvelope
+
 // Error defines model for Error.
 type Error = ErrorEnvelope
 
+// LogoutResponse defines model for LogoutResponse.
+type LogoutResponse = LogoutEnvelope
+
+// PermissionCatalogResponse defines model for PermissionCatalogResponse.
+type PermissionCatalogResponse = PermissionCatalogEnvelope
+
+// RolePageResponse defines model for RolePageResponse.
+type RolePageResponse = RolePageEnvelope
+
+// RolePermissionsResponse defines model for RolePermissionsResponse.
+type RolePermissionsResponse = RolePermissionsEnvelope
+
+// RoleResponse defines model for RoleResponse.
+type RoleResponse = RoleEnvelope
+
 // Success defines model for Success.
 type Success = SuccessEnvelope
+
+// TokenPairResponse defines model for TokenPairResponse.
+type TokenPairResponse = TokenPairEnvelope
+
+// UserPageResponse defines model for UserPageResponse.
+type UserPageResponse = UserPageEnvelope
+
+// UserResponse defines model for UserResponse.
+type UserResponse = UserEnvelope
+
+// UserRolesResponse defines model for UserRolesResponse.
+type UserRolesResponse = UserRolesEnvelope
 
 // CreateUser defines model for CreateUser.
 type CreateUser = CreateUserRequest
@@ -1093,6 +1344,9 @@ type ServerInterface interface {
 	// CompleteTradeOrder 确认交易完成
 	// (POST /api/v1/orders/{id}/complete)
 	CompleteTradeOrder(c *gin.Context, id uint64, params CompleteTradeOrderParams)
+
+	// (GET /api/v1/permissions)
+	ListPermissionCatalog(c *gin.Context)
 
 	// (GET /api/v1/roles)
 	ListRoles(c *gin.Context, params ListRolesParams)
@@ -3767,6 +4021,19 @@ func (siw *ServerInterfaceWrapper) CompleteTradeOrder(c *gin.Context) {
 	siw.Handler.CompleteTradeOrder(c, id, params)
 }
 
+// ListPermissionCatalog operation middleware
+func (siw *ServerInterfaceWrapper) ListPermissionCatalog(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListPermissionCatalog(c)
+}
+
 // ListRoles operation middleware
 func (siw *ServerInterfaceWrapper) ListRoles(c *gin.Context) {
 
@@ -4369,6 +4636,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/v1/auth/refresh", wrapper.Refresh)
 	router.POST(options.BaseURL+"/api/v1/auth/logout", wrapper.Logout)
 	router.GET(options.BaseURL+"/api/v1/auth/me", wrapper.GetMe)
+	router.GET(options.BaseURL+"/api/v1/permissions", wrapper.ListPermissionCatalog)
 	router.GET(options.BaseURL+"/api/v1/users", wrapper.ListUsers)
 	router.POST(options.BaseURL+"/api/v1/users", wrapper.CreateUser)
 	router.GET(options.BaseURL+"/api/v1/users/:id", wrapper.GetUser)
@@ -4447,72 +4715,84 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"DRht2yWNV+qv1JXl+eV/BwAA//8=",
+	"7F1bkxTHlf4rE7l+rFHPgKSQ+20MmJUXScQMrB8ItiOpyulOUV1VzsoaaayYCBxaDAYhkCW0toSNUIDN",
+	"emNB65WFrdHCn6F7ev7FRl7q1pV17arpudSLxHRlZZ485zuXPHky6wOg20PHtpBFXdD9ADiQwCGiiPC/",
+	"ThPbc9g/sAW64BceIptAAxYcItAFff5QA64+QEPIWg3h+2eQ1acD0H39VQ3QTYe1cynBVh9sbWngzZNB",
+	"Zw6kg7AvbAANEPQLDxNkgC4lHop2vG6TIaSgCzxs0ddfBRoYYgsPvSHoLgfjYIuiPiJiIAMNHZsiS9/8",
+	"F7QZDDpA0EAkHDbSbJG1y6IhMrnlY29wCoK/VXM9C/sojXUOexbt3EDr0DMp7ypnaqzfNfzLzL57Lmug",
+	"HODYksamIkdYWsoZb0uwBLn0J7aBEUfFCYIgReddRNhfum1RZFH2T+g4JtYhxbbVede1LfZbSMKPCFoH",
+	"XfBPnRBxHfHU7YRdrorRwqFDaWxp4Izdx1Zto/LesgdcResEuYPahpT9ZQ963jHqZnDYZdbQ/BfXsS1X",
+	"StojBFlUvCZ+r0/kYd+nrA1k2g4SNBnI1Ql2WJeg65OwAD06QBZlYyFjwXMRWYCWsYDW15FO8QZagLqO",
+	"XBdsaeAkMhFFq8j1TFo72dHOs+jm7bBtLRDelNF1ihC7Pony3rIo4A0WfHkCoT22Vz9LRLdZpKwh12W8",
+	"MO1+HxkLtsf5cRaRIeYPTkAKTbtfO2WJEbKIPI0sRDi6nOC1BQMTpFObbDKCV20TMfNbO51+x1nksTYL",
+	"3HH4lARUus0QFPafT1fY1ievEZpyCYnCfc0TJqEuAmR/mUAXTdY9M0bJOfsyss5CXL8VDXrOomoltJ0M",
+	"05S9w+XEjG8jgPY7zqKKtQkA3YiLyfMtnIKonDgVtoncRkjhPWf6DG5shHMjrDEP+GQXYeR1wrbWcd/3",
+	"4yxoJ7aDCJXhGbJ0sulQ5tQjcd86NF0UBHiXbNtE0GJz7vsx/lQIq4HLInJO/L4BTQ8pnsTiiQvB+uAy",
+	"D6zFSxcDCuxL7yKduwExqbdtinWUOimoMx71+KohHoy/tnxMS9IIPQMjS0d5chHDrvittzRwyTY2p4Y4",
+	"trQkA+X0iF8DLDLpM0/Bl1GUIsJk+m8X4OIvL7L/LC3+ePHiB0va68e3fgRU7w+gZSGTTxdTNJTCZJH5",
+	"BYCtHnQYNx3PHUTYGL4+xNab4q2QOEgI5J7LIdgmmG5Gu7TYosoEGsBDxyYUWhRowCN9hnXVAK43HEIy",
+	"zZvXGGcSbSmmJkpyMX/VFAWQ6CQcWMomwunIxCL8i0g/HW/CRaWgLaaWCg0QS608BeCt0imIBuMJChzo",
+	"uu/ZhOtwlGcqrDN74VMU4ffxYzF2H89jd9CNFo6upD4M3BV0RwKBKI6TCJlCqLB3pV7xJAV5dlc5U+AP",
+	"qcVozplwYL2TkIG0zJIHhAvrHjbyscS7j72iojS6OFGhmj2NDha4genRZMu8MWZjR4zaRvgRXyMlPaW/",
+	"IIv/rNsGUgJwiFxXZnWyqeM9hO1VpJWZrKAzd7axdMZBsihTC8hKYArWto2BKTZCgkaxtO2xpW2+fkUa",
+	"q0aaCkqSwZBpqgapbER72Ii/VS7fOt3p1GQZtaGxDcZTTTxcciYnPUR0YBslZ8fixV4QjOXhINZaC0bM",
+	"plRmFoq7wpIJCypyD5kszvNgKd2WsXxJ5vtx5OlT54AGzr6zxv93nv935dyJfwYaOHnqzKlzp5TR5LSk",
+	"hrbhmerBywnRt72iP20moc5mkpIYacQuxfJAacZ/JizOjj/vkondQc4aD73vIJ0io7eBiG8DyloiR4zU",
+	"gzT2tgEpWqSYu6IcXztNhGo+U1n8xEyIeN7jmZZ8OcebKwe0TQUIL3nYpNhS+wKdLzKMEpzQctc9ArRl",
+	"ZZKyWtKAxzcljOrC4tuGMsKI0q4FrInxITZiGptn03kuqEbU3M8RJ+kKtLmQWvsUJl2l6DtHv4LdRREa",
+	"FtxH1AC1KTRjYk6AZ0m53xmTN5+g5u+fRrc6Rf9ZjJtdsGdlsrIh4cZt9L4y4Gn7AdVZGd8wqJ+j08n6",
+	"NEobGTzIyqsSmYysVM+gMQeECXJ72MrWFqWW5TkepieXkdUTP4cx3E8QJIgoArXpWD5K/fRwsc5jE8nk",
+	"0WxgClndiCTFvnlexr2GwKVgUr1QeCKITkRb0DTfWQfdC0VKMeIvb2n1T7n8xC4GU5sheZvIdIWN01m5",
+	"H1K1SdKUCdgqYV+1sM6lkHqxlSDklRgsFsMuvGTGEoizRH1xvhUICSOJJ0lluThw9lRvczlef2t11jjQ",
+	"p/DIxIGJPenKgm0uDgy2iRVryrK5velFJn8/c9DZOSNob5Y16avuRjm0xg1J6uDVrOEUBbITFQn/Ktxi",
+	"gzFIeYfMnADSPYLp5hoDgcxK8FhyxRM79eKvn/qU/Ozn5/y6VJ6vEHFn0POAUkdURmBr3eYiFDvJ4AQc",
+	"Op67cNaElE1rYeXsm0ADwWTB8ivLrywxRtkOsqCDQRccf2XpleMyA8gp60AHdzaWO1wy2OdcH3F2Mmby",
+	"yo43DdAFZ7BLV8JmWqww+oK68vYy2uRxQLTuNiFv9asuhYT2mE8Cyrpn+aRgb4ny4qitPX4MqGRfppg4",
+	"v7uLU4Wkx5aW0sxH0M6vr4rhijM7iqgLF1nnQS0C2Pns8fj6s5fP/zz+2+3Jn6+Pnv11dPuT0d8/HH+7",
+	"PbrxmNEG+26gjqzHixp4f7HvF/st+onnsAF77kR2IoInXRO7AvZJJHUI6mOXCgi5nSG2UCa43tqU8Npc",
+	"jb5YDGlHScDj+4927t0cX/9k54t/F0Id33g0unOrZtFGxdfj0kuR8wfY2EqV7GnkW43NFEk2ee5hNqFo",
+	"4NWlV/PbiyrmijoqZMmlOHn6p/GHV2uXIjSyBBfXUu5FbVchR7EIVmnoHMSqNXB6ZdqTJKGzXBI6P24E",
+	"OkLXGzHmAgoy8imEl45YgIrqGAVooKUjU23YDzNs/ONBm6WqZfdB+Ko6ezOjAW1GC0a3Px9/d31vfaDO",
+	"0RxXDmOIrcLRM2u8tyG0SPSUfpOgDYze61XvoI3eK0fvTx7s3Pn1zn89Hd9/NHn6tcD26Pp/TB7Ube05",
+	"dnsigNeyvX4EuGlR3IGwqX4lu6JS3YG6rAYvucHESIE6VXcrngWbS8mtLatc1te0xUyVnbm4b3lOr2yf",
+	"8jWhsqVeLP9GWDCfXiBfsQQ+YE1yRtOsiZAeiCCCgSm5hSKu5jDLho1Lzaw4fLsyuv7laPt7ueK49Zud",
+	"xy8asSticyHTWeYvHAvYnSO5eoz4iGZXj0KWYg3J04b6ICkpsSM4b2FprSPaQ0dUxwZ/68z2xJkdqnVf",
+	"YPpevngy/uwfjbsxsS2e78Y60HGIvYHSE2grokFrJvc0B6L5a1ndHg4lBTPXEx2gNMmTB+Ov/r575YvJ",
+	"i2uNpAyFlvjgz1cTmUNJTzPz562StInCehOFzWG/QFZQQH8dW1jcm6SG/k/58xb6LfTripW2Px3/4X6D",
+	"0JeIzoe+PIOUjn15HKoFfwv+2ux+YzUvAvw+pvPRTxBnXir4V/nzFvsHbWGQ6OIg68vuf/7v6Ms/yu0m",
+	"vmpoKJUYFEpmK43rXRpiuig4nK47a7xZTHdWxSutBrXeo3qRze07L79/2Lg2CJD3JMiTSmHxM0cFqgre",
+	"lg3bWsns7fTdK1/s3H8UkaXgcKok5eOEHMXv3SG05MGHrO3zt/1ODtC+eenzcHXvhJaK9fiWppBtIhdc",
+	"j4TTVDPYw0wrgRNXOmVC4KD7pBTjoIyXik9rjkZjdP2r3d8/bBBPPUzRkF81mbXzPTfQ7Gkpe2CVExvY",
+	"tXI6c+/6UKtnQ15AdaS69givFJa+/Hb8+TfNa22mK+gYyMQbiOTVggq+nQwbzw97R/skTWB+xjfu7l75",
+	"bW2QieCgMGI6BPmXkKUkiijZ3EfI2dvjF02BYPfarcnTu6OH/zP5tm4QCHnmyL9ocrx1UhU+d6C6Zm2u",
+	"XkrkpWteh6bnomNII2jDvoyy7At73uKsPM6mzqLPNw767cPRl3+sGWESOjGAeXTQMf3PD6kRJb5OlOC5",
+	"etaRjyqJDxGBSkxLflqCJwqXiycKVbOU19imTpM9r0Lt1BdoypKag4vETIYoq+D6LVRpDqqPIpUnjYQf",
+	"lkozT6JBBTj5r+4DQOmQOLZtdijBTvYa4YRoeY43LJTZtQkW+lb6wJaBXIqtoOa0/OsOJNQjqLYzXy6C",
+	"1O1ZCBnISF0/qBNF7cIGjO/c2/n269EPV8afPR/f/GHyf3+aPPho5/HNiD+QOEx1CP7zhEeQD7rBqYCM",
+	"1HcEwgf53NhMpfWhbpS8eDZQSFWvUtXLFJ/Lq6B6XLVKHzBIKV0PTE7cgsQmHR94jserSgbqk789a0p5",
+	"FMejYo4h92xUvmYdmgzxzr2bTdqwZFovKYmCdcvzFUpbf7DH9QcV6pCbMifJImQFiN+1s9ZqP7Ox1QK4",
+	"LaCpp/zy4/uj/74zuvHV6OqjpkDP4ZwDeRPBrENZZ9jjFvSt1U7bG7hyZXTt+6YALMAZQzC/VjsnLSDb",
+	"JKCqmn/YpCPvaC3Ujn9OvUBb8Tn8hsPBvDUm50dpdkx9EL/ZYqn4del7vq5RQKxg4VKdzG0SIKnLJJ/+",
+	"hvFZjjsnOUccj6YVpOxvTKs+AbDPY5OoBiBCoGVkG9lTsk1bUDu9HheXyj6/Ov740eTZJ5OrL15ub49u",
+	"PIj4RcHfVLcoHye8ovi9UFrxlN/FUc0oQsOU1+nW8xkrg9iOvb7ey7ySw8H6Zc/JbkPQe5AYPZ1BrcId",
+	"JiXvzYh/4So2dpJcxSwjrDyUlz6JYoNG1FSRwJR2tchNz615zaxIE/daNmZek7c5+6LLyzpnGt6jeBWX",
+	"kFdUUoky5hrkVaiIeW6y0VrH26zjreUzoIfbeR+q5Km82+reX8YfPxrdutuUK1DcbRX1Ax2o68jJqHpa",
+	"4c9bs3OQE6fL+2i3QKB99I/vxHm+l98/HP/u08mTr0e37taGeYnpVMwX2+dtMd/ukNVzMVUza7PkbnAc",
+	"5PbQ8ZO+KTCXLVqgt0CvKQlx5erOgyeTJw8F4kdPPhpfv1Mf4n1Ep2JenrJKh7w8UdUivkX8rIiXEP/k",
+	"dwLxu1d+NXn+vDas+0hOhbpYO2WcJ+PPW6C3QK8Z6KPbn7/c/q42oEscR3E+hOQyoo4JddQxsUux1c/9",
+	"Ztlb4TtnxCtHeOMoOxuFh7CPeh4xS300VgMOwTqaT94oOvTh3MORi+GPxr+5Obr769Gnv0pcbhDRilRd",
+	"i7ZJKFzkoWpjR6V10Vva8q5nK6yBrdtp3U7h29mEMiRuZ6tVGSS+iynDe5gODAIzbiv8uWzRKkSrELUq",
+	"BD/yLRSiKVUI0J2mDDYxOHYLR2PvEIG7AxuLSfWXn/SfCY6Rrg5+Iv/liz/s3P29tM9+Oj+RyK8VnRx8",
+	"qo+OFblC863NA3Z/Zkp3nsWL5xTnty/Ztomglf6qDinq2/yX9MPf8ymDqf0mi6kPYvtXpLAHi9AUmz+e",
+	"8v4BaKyYZoiVvTo6dvXx7oePx19dmzz5ZvTsr5On27Uyo8fmrGKIgNOibnvCNKYVBZ3n7QRbTvDGe42T",
+	"e3+ZPN0e3/1m99rt2lgjlUnFmLwqKd+eHIGrG6MqWvMFjuqzuVMXGkEjU12Pghy4XRASqNk6MAfbS2hB",
+	"GOdlONRzBBoiwGuLPDNVJ6XKgTL+pcpNPE2Ijf/cTRFYAasVCq2t8JwSVlRMCTs3o7CSRi4isYIVKXMV",
+	"XZtJOGRVKfUbJUVJSgzkhStSWqC3QK/l42h8x1IAPVGMMgvQVZUoYbvsuOls0O4EpNC0qx1cTfQSv7fu",
+	"eCOHKolt5mRZVnmL5k+tVwokGHGsixL3F2YfUWQd7u8z6YzCuk+kiz6rXAHJ8VPwUHp9vC0LEzk+cj2T",
+	"loNKpQPiWcd99jPAQgrrPh5eB8AKmePTKGKNqyX7uE0J+9gDvKjSIGvTE9mXiInxqX7IVBNDBD2em5fz",
+	"OO8qcx37w70x4mp1b6zDBrCUf5NvZPhKHqr6JcUcArlZFMmYaiKas0uZm1Ajw2/tAe+UQs2JYKVo/SC2",
+	"Io3s7fn5gegE9mfcEPKoXh9QhflqlLgUUk9UOdSof1I4a6LzfSwdQWEj4iknmQGCJh10TLyRddfEBppx",
+	"LzI6FkFQcFM52Cp/OmO247Uyq/MtwSmy4cPEIyboggGlTrfTMW0dmgPbpd03lt5YAlsXt/4/AAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

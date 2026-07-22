@@ -23,6 +23,9 @@ func (h *Handler) Logout(c *gin.Context) { h.logout(c) }
 // GetMe handles the generated current-user operation.
 func (h *Handler) GetMe(c *gin.Context) { h.me(c) }
 
+// ListPermissionCatalog handles the generated permission-directory operation.
+func (h *Handler) ListPermissionCatalog(c *gin.Context) { h.listPermissionCatalog(c) }
+
 // ListUsers handles the generated user-list operation.
 func (h *Handler) ListUsers(c *gin.Context, _ generated.ListUsersParams) { h.listUsers(c) }
 

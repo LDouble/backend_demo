@@ -370,6 +370,64 @@ func TestHandlerFailureScenarios(t *testing.T) {
 	}
 }
 
+func TestAdminIdentityAndPermissionCatalog(t *testing.T) {
+	fixture := newHandlerFixture(t)
+
+	meResponse := perform(t, fixture.router, http.MethodGet, "/api/v1/auth/me", fixture.adminToken, nil)
+	if meResponse.Code != http.StatusOK {
+		t.Fatalf("me status=%d body=%s", meResponse.Code, meResponse.Body.String())
+	}
+	var meEnvelope struct {
+		Data struct {
+			User struct {
+				Username string `json:"username"`
+			} `json:"user"`
+			Roles       []string `json:"roles"`
+			Permissions []string `json:"permissions"`
+		} `json:"data"`
+		RequestID string `json:"request_id"`
+	}
+	decodeRecorder(t, meResponse, &meEnvelope)
+	if meEnvelope.Data.User.Username != "admin" || !containsTestString(meEnvelope.Data.Roles, model.SuperAdminRole) {
+		t.Fatalf("current user=%+v", meEnvelope.Data)
+	}
+	if !containsTestString(meEnvelope.Data.Permissions, "core:listpermissioncatalog") || meEnvelope.RequestID == "" {
+		t.Fatalf("current permissions=%v request_id=%q", meEnvelope.Data.Permissions, meEnvelope.RequestID)
+	}
+
+	catalogResponse := perform(t, fixture.router, http.MethodGet, "/api/v1/permissions", fixture.adminToken, nil)
+	if catalogResponse.Code != http.StatusOK {
+		t.Fatalf("catalog status=%d body=%s", catalogResponse.Code, catalogResponse.Body.String())
+	}
+	var catalogEnvelope struct {
+		Data struct {
+			Permissions []struct {
+				Code        string   `json:"code"`
+				Module      string   `json:"module"`
+				PathPattern string   `json:"path_pattern"`
+				Methods     []string `json:"methods"`
+			} `json:"permissions"`
+		} `json:"data"`
+	}
+	decodeRecorder(t, catalogResponse, &catalogEnvelope)
+	if len(catalogEnvelope.Data.Permissions) == 0 {
+		t.Fatal("permission catalog is empty")
+	}
+	for index, entry := range catalogEnvelope.Data.Permissions {
+		if entry.Code == "" || entry.Module == "" || entry.PathPattern == "" || len(entry.Methods) == 0 {
+			t.Fatalf("catalog entry %d=%+v", index, entry)
+		}
+	}
+
+	created, err := fixture.users.Create(context.Background(), "catalog_denied", fixture.userPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordinaryToken := loginToken(t, fixture.router, created.Username, fixture.userPassword)
+	denied := perform(t, fixture.router, http.MethodGet, "/api/v1/permissions", ordinaryToken, nil)
+	assertErrorEnvelope(t, denied, http.StatusForbidden, "forbidden")
+}
+
 func TestActivityHTTPFlow(t *testing.T) {
 	fixture := newHandlerFixture(t)
 	ownerToken, _, ownerID := fixture.createUserWithPermissions(t, "activity_owner", activityAdminPermissions(), activityUserPermissions())
@@ -803,6 +861,15 @@ func decodeRecorder(t *testing.T, response *httptest.ResponseRecorder, dst any) 
 	if err := json.Unmarshal(response.Body.Bytes(), dst); err != nil {
 		t.Fatalf("decode response: %v body=%s", err, response.Body.String())
 	}
+}
+
+func containsTestString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 type activityView struct {
