@@ -138,8 +138,8 @@ func TestGuestBecomesMemberAfterAcademicVerification(t *testing.T) {
 	}), &created)
 	token := loginWithCredentials(t, base, username, integrationPassword)
 
-	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/activities?page=1&page_size=10", "", nil), http.StatusUnauthorized)
-	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/activities?page=1&page_size=10", token, nil), http.StatusOK)
+	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/errands?page=1&page_size=10", "", nil), http.StatusUnauthorized)
+	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/errands?page=1&page_size=10", token, nil), http.StatusOK)
 	guestWrite := request(t, client, http.MethodPost, base+"/api/v1/errands", token, map[string]any{
 		"title": "访客写入", "description": "认证前必须拒绝", "reward_cents": 300,
 		"pickup_location": "东门", "dropoff_location": "图书馆",
@@ -181,7 +181,14 @@ func TestNoticeLifecycleThroughWorker(t *testing.T) {
 			Items []resource `json:"items"`
 		}
 		decodeData(t, response, &page)
-		if len(page.Items) > 0 {
+		found := false
+		for _, item := range page.Items {
+			if item.ID == created.ID {
+				found = true
+				break
+			}
+		}
+		if found {
 			break
 		}
 		if time.Now().After(deadline) {

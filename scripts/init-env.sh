@@ -4,14 +4,22 @@ set -eu
 
 target="${1:-.env}"
 
-if [ -e "$target" ]; then
-	printf '%s\n' "$target 已存在，保留现有凭据。"
-	exit 0
-fi
-
 if ! command -v openssl >/dev/null 2>&1; then
 	printf '%s\n' "缺少 openssl，无法生成安全随机凭据。" >&2
 	exit 1
+fi
+
+if [ -e "$target" ]; then
+	if grep -q '^CAMPUS_ACADEMIC_MATERIAL_KEY=' "$target"; then
+		printf '%s\n' "$target 已存在，保留现有凭据。"
+		exit 0
+	fi
+	umask 077
+	academic_material_key=$(openssl rand -base64 32)
+	printf '%s\n' "CAMPUS_ACADEMIC_MATERIAL_KEY=$academic_material_key" >>"$target"
+	chmod 600 "$target"
+	printf '%s\n' "$target 已存在；已保留原凭据并补充教务材料密钥。"
+	exit 0
 fi
 
 directory=$(dirname "$target")
