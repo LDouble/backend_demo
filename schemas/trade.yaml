@@ -47,6 +47,7 @@ entities:
 crud: [create, get, list, update]
 operations:
   - operation_id: ListMyTradeOrders
+    default_roles: [member]
     method: GET
     path: /api/v1/orders
     permission: trade:read
@@ -56,12 +57,14 @@ operations:
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
     responses: [{status: 200, kind: success}]
   - operation_id: GetMyTradeOrder
+    default_roles: [member]
     method: GET
     path: /api/v1/orders/{id}
     permission: trade:read_item
     summary: 查询交易订单详情
     responses: [{status: 200, kind: success}, {status: 404, kind: error}]
   - operation_id: CancelTradeOrder
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
@@ -71,6 +74,7 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: CompleteTradeOrder
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required

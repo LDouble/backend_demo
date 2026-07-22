@@ -2,10 +2,20 @@
   "module": "marketplace",
   "permissions": [
     {
+      "name": "marketplace:admin_read",
+      "path_pattern": "/api/v1/admin/marketplace/listings",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
       "name": "marketplace:create",
       "path_pattern": "/api/v1/marketplace/listings",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -13,6 +23,46 @@
       "path_pattern": "/api/v1/marketplace/orders",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "marketplace:read",
+      "path_pattern": "/api/v1/marketplace/listings",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "marketplace:read_item",
+      "path_pattern": "/api/v1/marketplace/listings/:id",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "marketplace:read_mine",
+      "path_pattern": "/api/v1/marketplace/listings/mine",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "marketplace:remove",
+      "path_pattern": "/api/v1/admin/marketplace/listings/:id",
+      "methods": [
+        "DELETE"
       ]
     },
     {
@@ -27,6 +77,19 @@
       "path_pattern": "/api/v1/marketplace/listings/:id/submit",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "marketplace:update",
+      "path_pattern": "/api/v1/marketplace/listings/:id",
+      "methods": [
+        "PATCH"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -34,6 +97,9 @@
       "path_pattern": "/api/v1/marketplace/listings/:id/withdraw",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     }
   ]

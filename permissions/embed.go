@@ -15,17 +15,19 @@ var manifests embed.FS
 
 // Rule is one generated Casbin rule.
 type Rule struct {
-	Name        string   `json:"name"`
-	PathPattern string   `json:"path_pattern"`
-	Methods     []string `json:"methods"`
+	Name         string   `json:"name"`
+	PathPattern  string   `json:"path_pattern"`
+	Methods      []string `json:"methods"`
+	DefaultRoles []string `json:"default_roles,omitempty"`
 }
 
 // CatalogEntry is one stable permission exposed to administrative clients.
 type CatalogEntry struct {
-	Code        string   `json:"code"`
-	Module      string   `json:"module"`
-	PathPattern string   `json:"path_pattern"`
-	Methods     []string `json:"methods"`
+	Code         string   `json:"code"`
+	Module       string   `json:"module"`
+	PathPattern  string   `json:"path_pattern"`
+	Methods      []string `json:"methods"`
+	DefaultRoles []string `json:"default_roles,omitempty"`
 }
 
 type manifest struct {
@@ -42,9 +44,10 @@ func Rules() ([]Rule, error) {
 	rules := make([]Rule, 0, len(catalog))
 	for _, entry := range catalog {
 		rules = append(rules, Rule{
-			Name:        entry.Code,
-			PathPattern: entry.PathPattern,
-			Methods:     append([]string{}, entry.Methods...),
+			Name:         entry.Code,
+			PathPattern:  entry.PathPattern,
+			Methods:      append([]string{}, entry.Methods...),
+			DefaultRoles: append([]string{}, entry.DefaultRoles...),
 		})
 	}
 	return rules, nil
@@ -78,10 +81,11 @@ func Catalog() ([]CatalogEntry, error) {
 			}
 			seen[key] = struct{}{}
 			catalog = append(catalog, CatalogEntry{
-				Code:        rule.Name,
-				Module:      value.Module,
-				PathPattern: rule.PathPattern,
-				Methods:     methods,
+				Code:         rule.Name,
+				Module:       value.Module,
+				PathPattern:  rule.PathPattern,
+				Methods:      methods,
+				DefaultRoles: normalizedRoles(rule.DefaultRoles),
 			})
 		}
 	}
@@ -97,7 +101,7 @@ func Catalog() ([]CatalogEntry, error) {
 	return catalog, nil
 }
 
-// MemberRules returns generated, non-admin notice permissions for the member role.
+// MemberRules returns permissions whose generated metadata grants the member role.
 func MemberRules() ([]Rule, error) {
 	all, err := Rules()
 	if err != nil {
@@ -105,11 +109,38 @@ func MemberRules() ([]Rule, error) {
 	}
 	rules := make([]Rule, 0, len(all))
 	for _, rule := range all {
-		if (strings.HasPrefix(rule.Name, "notice:") && strings.HasPrefix(rule.PathPattern, "/api/v1/notices")) || rule.Name == "core:getme" {
+		if containsRole(rule.DefaultRoles, "member") || rule.Name == "core:getme" {
 			rules = append(rules, rule)
 		}
 	}
 	return rules, nil
+}
+
+func normalizedRoles(roles []string) []string {
+	seen := map[string]struct{}{}
+	result := make([]string, 0, len(roles))
+	for _, role := range roles {
+		role = strings.TrimSpace(role)
+		if role == "" {
+			continue
+		}
+		if _, exists := seen[role]; exists {
+			continue
+		}
+		seen[role] = struct{}{}
+		result = append(result, role)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func containsRole(roles []string, expected string) bool {
+	for _, role := range roles {
+		if role == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizedMethods(methods []string) []string {

@@ -171,19 +171,55 @@ func TestOperationsDerivePermissions(t *testing.T) {
 	schema := validSchema()
 	schema.Permissions = nil
 	schema.Operations = []APIOperation{{
-		OperationID: "CreateActivityRegistration",
-		Method:      "post",
-		Idempotency: "required",
-		Path:        "/api/v1/activities/{id}/registrations",
-		Permission:  "activity:register",
-		Headers:     []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}},
-		Body:        &APIObject{Fields: []APIField{{Name: "expected_version", Type: "integer", Format: "uint64", Required: true, Minimum: &minimum}}},
+		OperationID:  "CreateActivityRegistration",
+		Method:       "post",
+		Idempotency:  "required",
+		Path:         "/api/v1/activities/{id}/registrations",
+		Permission:   "activity:register",
+		DefaultRoles: []string{"member", "member"},
+		Headers:      []APIParameter{{Name: "Idempotency-Key", Type: "string", Required: true}},
+		Body:         &APIObject{Fields: []APIField{{Name: "expected_version", Type: "integer", Format: "uint64", Required: true, Minimum: &minimum}}},
 	}}
 	if err := schema.Normalize(); err != nil {
 		t.Fatal(err)
 	}
 	if len(schema.Permissions) != 1 || schema.Permissions[0].Methods[0] != "POST" {
 		t.Fatalf("derived permissions = %#v", schema.Permissions)
+	}
+	if len(schema.Permissions[0].DefaultRoles) != 1 || schema.Permissions[0].DefaultRoles[0] != "member" {
+		t.Fatalf("derived default roles = %#v", schema.Permissions[0].DefaultRoles)
+	}
+}
+
+func TestOperationsKeepDefaultRolesMethodSpecific(t *testing.T) {
+	schema := validSchema()
+	schema.Permissions = nil
+	schema.Operations = []APIOperation{
+		{
+			OperationID: "ListActivities", Method: "GET", Path: "/api/v1/activities",
+			Permission: "activity:manage", DefaultRoles: []string{"member"},
+		},
+		{
+			OperationID: "CreateActivity", Method: "POST", Path: "/api/v1/activities",
+			Permission: "activity:manage", Idempotency: "inherent",
+		},
+	}
+	if err := schema.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if len(schema.Permissions) != 2 {
+		t.Fatalf("derived permissions = %#v", schema.Permissions)
+	}
+	memberRule := schema.Permissions[1]
+	memberHasRole := len(memberRule.DefaultRoles) == 1 && memberRule.DefaultRoles[0] == "member"
+	memberHasMethod := len(memberRule.Methods) == 1 && memberRule.Methods[0] == "GET"
+	if !memberHasRole || !memberHasMethod {
+		t.Fatalf("member rule = %#v", memberRule)
+	}
+	adminRule := schema.Permissions[0]
+	adminHasMethod := len(adminRule.Methods) == 1 && adminRule.Methods[0] == "POST"
+	if len(adminRule.DefaultRoles) != 0 || !adminHasMethod {
+		t.Fatalf("admin rule = %#v", adminRule)
 	}
 }
 

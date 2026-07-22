@@ -191,3 +191,28 @@ func TestLoadRejectsRedisTLSPathEscape(t *testing.T) {
 		t.Fatal("Redis CA path escape was accepted")
 	}
 }
+
+func TestPurposeSpecificLoadersRequireOnlyTheirSecrets(t *testing.T) {
+	t.Setenv("CAMPUS_ENV", "production")
+	t.Setenv("CAMPUS_MYSQL_DSN", "dsn")
+	t.Setenv("CAMPUS_JWT_SECRET", "")
+	t.Setenv("CAMPUS_CONFIG_MASTER_KEY", "")
+	t.Setenv("CAMPUS_ADMIN_USERNAME", "")
+	t.Setenv("CAMPUS_ADMIN_PASSWORD", "")
+	if _, err := LoadMigration(""); err != nil {
+		t.Fatalf("LoadMigration() error = %v", err)
+	}
+	if _, err := LoadAdminBootstrap(""); err == nil {
+		t.Fatal("LoadAdminBootstrap() accepted missing administrator credentials")
+	}
+	t.Setenv("CAMPUS_ADMIN_USERNAME", "admin")
+	t.Setenv("CAMPUS_ADMIN_PASSWORD", "secret")
+	if _, err := LoadAdminBootstrap(""); err != nil {
+		t.Fatalf("LoadAdminBootstrap() error = %v", err)
+	}
+	t.Setenv("CAMPUS_CONFIG_MASTER_KEY", base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	t.Setenv("CAMPUS_REDIS_TLS", "true")
+	if _, err := LoadWorker(""); err != nil {
+		t.Fatalf("LoadWorker() error = %v", err)
+	}
+}

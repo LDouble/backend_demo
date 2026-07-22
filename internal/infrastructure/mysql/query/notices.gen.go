@@ -43,6 +43,7 @@ func newNotice(db *gorm.DB, opts ...gen.DOOption) notice {
 	_notice.Version = field.NewUint64(tableName, "version")
 	_notice.CreatedBy = field.NewUint64(tableName, "created_by")
 	_notice.UpdatedBy = field.NewUint64(tableName, "updated_by")
+	_notice.SourceEventId = field.NewUint64(tableName, "source_event_id")
 	_notice.CreatedAt = field.NewTime(tableName, "created_at")
 	_notice.UpdatedAt = field.NewTime(tableName, "updated_at")
 
@@ -54,24 +55,25 @@ func newNotice(db *gorm.DB, opts ...gen.DOOption) notice {
 type notice struct {
 	noticeDo noticeDo
 
-	ALL         field.Asterisk
-	ID          field.Uint64
-	Title       field.String
-	Summary     field.String
-	Body        field.String
-	Category    field.String
-	Priority    field.String
-	Status      field.String
-	ActionPath  field.String
-	PushEnabled field.Bool
-	PublishAt   field.Time
-	PublishedAt field.Time
-	RevokedAt   field.Time
-	Version     field.Uint64
-	CreatedBy   field.Uint64
-	UpdatedBy   field.Uint64
-	CreatedAt   field.Time
-	UpdatedAt   field.Time
+	ALL           field.Asterisk
+	ID            field.Uint64
+	Title         field.String
+	Summary       field.String
+	Body          field.String
+	Category      field.String
+	Priority      field.String
+	Status        field.String
+	ActionPath    field.String
+	PushEnabled   field.Bool
+	PublishAt     field.Time
+	PublishedAt   field.Time
+	RevokedAt     field.Time
+	Version       field.Uint64
+	CreatedBy     field.Uint64
+	UpdatedBy     field.Uint64
+	SourceEventId field.Uint64
+	CreatedAt     field.Time
+	UpdatedAt     field.Time
 
 	fieldMap map[string]field.Expr
 }
@@ -103,6 +105,7 @@ func (n *notice) updateTableName(table string) *notice {
 	n.Version = field.NewUint64(table, "version")
 	n.CreatedBy = field.NewUint64(table, "created_by")
 	n.UpdatedBy = field.NewUint64(table, "updated_by")
+	n.SourceEventId = field.NewUint64(table, "source_event_id")
 	n.CreatedAt = field.NewTime(table, "created_at")
 	n.UpdatedAt = field.NewTime(table, "updated_at")
 
@@ -129,7 +132,7 @@ func (n *notice) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (n *notice) fillFieldMap() {
-	n.fieldMap = make(map[string]field.Expr, 17)
+	n.fieldMap = make(map[string]field.Expr, 18)
 	n.fieldMap["id"] = n.ID
 	n.fieldMap["title"] = n.Title
 	n.fieldMap["summary"] = n.Summary
@@ -145,6 +148,7 @@ func (n *notice) fillFieldMap() {
 	n.fieldMap["version"] = n.Version
 	n.fieldMap["created_by"] = n.CreatedBy
 	n.fieldMap["updated_by"] = n.UpdatedBy
+	n.fieldMap["source_event_id"] = n.SourceEventId
 	n.fieldMap["created_at"] = n.CreatedAt
 	n.fieldMap["updated_at"] = n.UpdatedAt
 }

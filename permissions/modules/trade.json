@@ -6,6 +6,9 @@
       "path_pattern": "/api/v1/orders/:id/cancel",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -13,6 +16,9 @@
       "path_pattern": "/api/v1/orders/:id/complete",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -20,6 +26,9 @@
       "path_pattern": "/api/v1/orders",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -27,6 +36,9 @@
       "path_pattern": "/api/v1/orders/:id",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
       ]
     }
   ]

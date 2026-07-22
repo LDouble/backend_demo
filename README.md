@@ -108,3 +108,7 @@ go run ./cmd/campusctl module list
 ## 通知中心
 
 Compose 会同时启动 API 和长期运行的 `worker`。管理员通知接口位于 `/api/v1/admin/notices`，个人收件箱位于 `/api/v1/notices`。发布时由 Worker 快照收件人；`push` 首版由日志 Provider 模拟，日志只包含通知 ID、用户 ID 和状态，不记录正文。Worker 使用 Redis DB 1，可通过 `CAMPUS_WORKER_REDIS_DB`、`CAMPUS_WORKER_CONCURRENCY` 和 `CAMPUS_WORKER_POLL_INTERVAL` 覆盖默认值。
+
+## Staging 模板
+
+通用单机 staging 模板位于 [`deploy/staging`](deploy/staging/README.md)。模板仅由 Caddy 暴露 80/443，内部服务使用固定私有网络，Redis 强制 TLS 与客户端证书；镜像、域名和全部凭据必须由受控环境文件或挂载 Secret 注入。

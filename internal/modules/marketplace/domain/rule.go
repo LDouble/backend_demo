@@ -31,11 +31,12 @@ const (
 
 // ListingInput is the user-controlled mutable portion of a listing.
 type ListingInput struct {
-	Title       string
-	Description string
-	PriceCents  int64
-	ImageURLs   []string
-	Contact     ContactInput
+	Title             string
+	Description       string
+	PriceCents        int64
+	ImageURLs         []string
+	ImageURLsProvided bool
+	Contact           ContactInput
 }
 
 // ContactInput is a publisher-supplied contact method. Provided distinguishes an
@@ -50,6 +51,22 @@ type ContactInput struct {
 type ContactDetails struct {
 	Type  string
 	Value string
+}
+
+// ListingDetails combines a listing with its ordered image URLs for transport.
+type ListingDetails struct {
+	Listing
+	ImageURLs []string
+}
+
+// ListingSearch contains normalized member and administrator list filters.
+type ListingSearch struct {
+	Keyword       string
+	Status        string
+	MinPriceCents *int64
+	MaxPriceCents *int64
+	Page          int
+	PageSize      int
 }
 
 // ValidateListingInput validates untrusted listing content before persistence.

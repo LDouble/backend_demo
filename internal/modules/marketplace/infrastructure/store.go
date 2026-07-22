@@ -16,11 +16,134 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
 	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/privacy"
+	platformquery "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
 	"github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// GetVisible returns a listing when the viewer is allowed to inspect its detail.
+func (s *Store) GetVisible(ctx context.Context, id, viewerID uint64) (*domain.ListingDetails, error) {
+	q := platformquery.Use(idempotency.DB(ctx, s.db))
+	listing, err := q.Listing.WithContext(ctx).Where(q.Listing.ID.Eq(id)).First()
+	if err != nil {
+		return nil, notFound(err, "listing_not_found", "商品不存在")
+	}
+	visible := listing.Status == domain.ListingPublished || listing.OwnerId == viewerID
+	if !visible {
+		order := q.Order
+		count, countErr := order.WithContext(ctx).Where(
+			order.ResourceType.Eq(tradedomain.ResourceListing),
+			order.ResourceId.Eq(id),
+			order.BuyerId.Eq(viewerID),
+			order.TradeStatus.Eq(tradedomain.StatusConfirmed),
+		).Count()
+		if countErr != nil {
+			return nil, countErr
+		}
+		visible = count > 0
+	}
+	if !visible {
+		return nil, apperror.New(http.StatusNotFound, "listing_not_found", "商品不存在")
+	}
+	return s.withImages(ctx, *listing)
+}
+
+// ListPublished returns only currently published listings.
+func (s *Store) ListPublished(ctx context.Context, search domain.ListingSearch) ([]domain.ListingDetails, int64, error) {
+	return s.list(ctx, search, 0, true)
+}
+
+// ListOwned returns all states for one owner.
+func (s *Store) ListOwned(ctx context.Context, ownerID uint64, search domain.ListingSearch) ([]domain.ListingDetails, int64, error) {
+	return s.list(ctx, search, ownerID, false)
+}
+
+// ListAdmin returns all listings matching moderation filters.
+func (s *Store) ListAdmin(ctx context.Context, search domain.ListingSearch) ([]domain.ListingDetails, int64, error) {
+	return s.list(ctx, search, 0, false)
+}
+
+func (s *Store) list(
+	ctx context.Context,
+	search domain.ListingSearch,
+	ownerID uint64,
+	publishedOnly bool,
+) ([]domain.ListingDetails, int64, error) {
+	db := idempotency.DB(ctx, s.db)
+	if search.Keyword != "" {
+		pattern := "%" + strings.TrimSpace(search.Keyword) + "%"
+		// GORM Gen cannot group an OR expression while retaining the surrounding
+		// generated predicates, so this repository-scoped expression is parameterized.
+		db = db.Where("(title LIKE ? OR description LIKE ?)", pattern, pattern)
+	}
+	q := platformquery.Use(db)
+	listing := q.Listing
+	dao := listing.WithContext(ctx)
+	if publishedOnly {
+		dao = dao.Where(listing.Status.Eq(domain.ListingPublished))
+	}
+	if ownerID != 0 {
+		dao = dao.Where(listing.OwnerId.Eq(ownerID))
+	}
+	if search.Status != "" {
+		dao = dao.Where(listing.Status.Eq(search.Status))
+	}
+	if search.MinPriceCents != nil {
+		dao = dao.Where(listing.PriceCents.Gte(*search.MinPriceCents))
+	}
+	if search.MaxPriceCents != nil {
+		dao = dao.Where(listing.PriceCents.Lte(*search.MaxPriceCents))
+	}
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := dao.Order(listing.ID.Desc()).Offset((search.Page - 1) * search.PageSize).Limit(search.PageSize).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	values := make([]domain.Listing, 0, len(rows))
+	for _, row := range rows {
+		values = append(values, *row)
+	}
+	details, err := s.withImagesBatch(ctx, values)
+	return details, total, err
+}
+
+func (s *Store) withImages(ctx context.Context, listing domain.Listing) (*domain.ListingDetails, error) {
+	rows, err := s.withImagesBatch(ctx, []domain.Listing{listing})
+	if err != nil {
+		return nil, err
+	}
+	return &rows[0], nil
+}
+
+func (s *Store) withImagesBatch(ctx context.Context, listings []domain.Listing) ([]domain.ListingDetails, error) {
+	result := make([]domain.ListingDetails, 0, len(listings))
+	if len(listings) == 0 {
+		return result, nil
+	}
+	ids := make([]uint64, 0, len(listings))
+	for _, listing := range listings {
+		ids = append(ids, listing.ID)
+	}
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).ListingImage
+	images, err := q.WithContext(ctx).Where(q.ListingId.In(ids...)).Order(q.ListingId, q.Position).Find()
+	if err != nil {
+		return nil, err
+	}
+	byListing := make(map[uint64][]string, len(listings))
+	for _, image := range images {
+		byListing[image.ListingId] = append(byListing[image.ListingId], image.Url)
+	}
+	for _, listing := range listings {
+		urls := append([]string{}, byListing[listing.ID]...)
+		result = append(result, domain.ListingDetails{Listing: listing, ImageURLs: urls})
+	}
+	return result, nil
+}
 
 // Store implements atomic marketplace aggregate operations.
 type Store struct {
@@ -85,8 +208,10 @@ func (s *Store) UpdateListing(ctx context.Context, id, ownerID, version uint64, 
 			return apperror.New(http.StatusConflict, "version_conflict", "商品已被其他请求更新")
 		}
 		listing.Version++
-		if err := replaceImages(tx, listing.ID, input.ImageURLs); err != nil {
-			return err
+		if input.ImageURLsProvided {
+			if err := replaceImages(tx, listing.ID, input.ImageURLs); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -95,6 +220,83 @@ func (s *Store) UpdateListing(ctx context.Context, id, ownerID, version uint64, 
 
 // Contact returns either plaintext for an active trade participant or a masked value.
 func (s *Store) Contact(ctx context.Context, listing *domain.Listing, viewerID uint64) (domain.ContactDetails, error) {
+	isTerminal := listing.Status == domain.ListingSold ||
+		listing.Status == domain.ListingWithdrawn ||
+		listing.Status == domain.ListingRemoved
+	if isTerminal || listing.OwnerId == viewerID {
+		return s.contactWithAccess(listing, viewerID, false)
+	}
+	access, err := s.activeBuyerListings(ctx, viewerID, []uint64{listing.ID})
+	if err != nil {
+		return domain.ContactDetails{}, err
+	}
+	return s.contactWithAccess(listing, viewerID, access[listing.ID])
+}
+
+// Contacts resolves a page of contacts with one active-order query.
+func (s *Store) Contacts(
+	ctx context.Context,
+	listings []domain.ListingDetails,
+	viewerID uint64,
+) (map[uint64]domain.ContactDetails, error) {
+	listingIDs := make([]uint64, 0, len(listings))
+	for _, listing := range listings {
+		isTerminal := listing.Status == domain.ListingSold ||
+			listing.Status == domain.ListingWithdrawn ||
+			listing.Status == domain.ListingRemoved
+		if !isTerminal && listing.OwnerId != viewerID {
+			listingIDs = append(listingIDs, listing.ID)
+		}
+	}
+	access, err := s.activeBuyerListings(ctx, viewerID, listingIDs)
+	if err != nil {
+		return nil, err
+	}
+	contacts := make(map[uint64]domain.ContactDetails, len(listings))
+	for i := range listings {
+		contact, contactErr := s.contactWithAccess(
+			&listings[i].Listing,
+			viewerID,
+			access[listings[i].ID],
+		)
+		if contactErr != nil {
+			return nil, contactErr
+		}
+		contacts[listings[i].ID] = contact
+	}
+	return contacts, nil
+}
+
+func (s *Store) activeBuyerListings(
+	ctx context.Context,
+	viewerID uint64,
+	listingIDs []uint64,
+) (map[uint64]bool, error) {
+	result := make(map[uint64]bool, len(listingIDs))
+	if viewerID == 0 || len(listingIDs) == 0 {
+		return result, nil
+	}
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Order
+	orders, err := q.WithContext(ctx).Where(
+		q.ResourceType.Eq(tradedomain.ResourceListing),
+		q.ResourceId.In(listingIDs...),
+		q.BuyerId.Eq(viewerID),
+		q.TradeStatus.Eq(tradedomain.StatusConfirmed),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	for _, order := range orders {
+		result[order.ResourceId] = true
+	}
+	return result, nil
+}
+
+func (s *Store) contactWithAccess(
+	listing *domain.Listing,
+	viewerID uint64,
+	hasActiveOrder bool,
+) (domain.ContactDetails, error) {
 	value, err := s.decryptContact(listing.ContactCiphertext, listingContactAAD(listing.ID))
 	if err != nil {
 		return domain.ContactDetails{}, err
@@ -106,17 +308,7 @@ func (s *Store) Contact(ctx context.Context, listing *domain.Listing, viewerID u
 		if viewerID == listing.OwnerId {
 			return domain.ContactDetails{Type: listing.ContactType, Value: value}, nil
 		}
-		var count int64
-		if err := idempotency.DB(ctx, s.db).Model(&tradedomain.Order{}).Where(
-			"resource_type = ? AND resource_id = ? AND buyer_id = ? AND trade_status = ?",
-			tradedomain.ResourceListing,
-			listing.ID,
-			viewerID,
-			tradedomain.StatusConfirmed,
-		).Count(&count).Error; err != nil {
-			return domain.ContactDetails{}, err
-		}
-		if count > 0 {
+		if hasActiveOrder {
 			return domain.ContactDetails{Type: listing.ContactType, Value: value}, nil
 		}
 	}
@@ -230,7 +422,7 @@ func (s *Store) Remove(ctx context.Context, id, adminID, version uint64, now tim
 				}
 			}
 		}
-		return writeEvent(tx, "listing", listing.ID, "listing.removed", fmt.Sprintf("listing.removed:%d:%d", listing.ID, listing.Version), map[string]uint64{"listing_id": listing.ID, "admin_id": adminID})
+		return writeEvent(tx, "listing", listing.ID, "listing.removed", fmt.Sprintf("listing.removed:%d:%d", listing.ID, listing.Version), map[string]uint64{"listing_id": listing.ID, "owner_id": listing.OwnerId, "admin_id": adminID})
 	})
 	return &listing, err
 }
@@ -526,7 +718,7 @@ func writeEvent(tx *gorm.DB, aggregate string, id uint64, eventType, key string,
 }
 
 func listingEventPayload(listing *domain.Listing) map[string]any {
-	return map[string]any{"listing_id": listing.ID, "status": listing.Status, "version": listing.Version}
+	return map[string]any{"listing_id": listing.ID, "owner_id": listing.OwnerId, "status": listing.Status, "version": listing.Version}
 }
 func pointer(value string) *string {
 	if value == "" {

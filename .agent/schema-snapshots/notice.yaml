@@ -56,6 +56,10 @@ entity:
         - name: updated_by
           type: uint64
           required: true
+        - name: source_event_id
+          type: uint64
+          required: false
+          unique: true
 entities:
     - name: Notice
       table: notices
@@ -112,6 +116,10 @@ entities:
         - name: updated_by
           type: uint64
           required: true
+        - name: source_event_id
+          type: uint64
+          required: false
+          unique: true
     - name: NoticeAudience
       table: notice_audiences
       fields:
@@ -282,6 +290,8 @@ permissions:
       path: /api/v1/notices/:id/read
       methods:
         - PUT
+      default_roles:
+        - member
     - name: notice:publish
       path: /api/v1/admin/notices/:id/publish
       methods:
@@ -290,14 +300,20 @@ permissions:
       path: /api/v1/notices
       methods:
         - GET
+      default_roles:
+        - member
     - name: notice:read_all
       path: /api/v1/notices/read-all
       methods:
         - PUT
+      default_roles:
+        - member
     - name: notice:read_item
       path: /api/v1/notices/:id
       methods:
         - GET
+      default_roles:
+        - member
     - name: notice:retry
       path: /api/v1/admin/notices/:id/deliveries/retry
       methods:
@@ -310,6 +326,8 @@ permissions:
       path: /api/v1/notices/unread-count
       methods:
         - GET
+      default_roles:
+        - member
 operations:
     - operation_id: ListAdminNotices
       method: GET
@@ -461,6 +479,8 @@ operations:
       method: GET
       path: /api/v1/notices
       permission: notice:read
+      default_roles:
+        - member
       summary: 查询我的通知
       query:
         - name: page
@@ -483,6 +503,8 @@ operations:
       method: PUT
       path: /api/v1/notices/read-all
       permission: notice:read_all
+      default_roles:
+        - member
       idempotency: inherent
       summary: 全部标记已读
       responses:
@@ -492,6 +514,8 @@ operations:
       method: GET
       path: /api/v1/notices/unread-count
       permission: notice:unread
+      default_roles:
+        - member
       summary: 查询未读数量
       responses:
         - status: 200
@@ -500,6 +524,8 @@ operations:
       method: GET
       path: /api/v1/notices/{id}
       permission: notice:read_item
+      default_roles:
+        - member
       summary: 查询我的通知详情
       responses:
         - status: 200
@@ -508,6 +534,8 @@ operations:
       method: PUT
       path: /api/v1/notices/{id}/read
       permission: notice:mark_read
+      default_roles:
+        - member
       idempotency: inherent
       summary: 标记通知已读
       responses:
