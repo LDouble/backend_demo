@@ -1,0 +1,11 @@
+port 0
+tls-port 6379
+tls-cert-file /run/secrets/redis-tls/server.crt
+tls-key-file /run/secrets/redis-tls/server.key
+tls-ca-cert-file /run/secrets/redis-tls/ca.crt
+tls-auth-clients yes
+requirepass REPLACE_WITH_A_LONG_RANDOM_SECRET
+appendonly yes
+appendfsync everysec
+protected-mode yes
+bind 0.0.0.0

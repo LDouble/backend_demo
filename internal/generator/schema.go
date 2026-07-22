@@ -87,23 +87,25 @@ type Field struct {
 
 // Permission describes a stable Casbin permission emitted for a module API.
 type Permission struct {
-	Name    string   `yaml:"name" json:"name"`
-	Path    string   `yaml:"path" json:"path_pattern"`
-	Methods []string `yaml:"methods" json:"methods"`
+	Name         string   `yaml:"name" json:"name"`
+	Path         string   `yaml:"path" json:"path_pattern"`
+	Methods      []string `yaml:"methods" json:"methods"`
+	DefaultRoles []string `yaml:"default_roles,omitempty" json:"default_roles,omitempty"`
 }
 
 // APIOperation declares one HTTP capability and its entry permission.
 type APIOperation struct {
-	OperationID string         `yaml:"operation_id"`
-	Method      string         `yaml:"method"`
-	Path        string         `yaml:"path"`
-	Permission  string         `yaml:"permission"`
-	Idempotency string         `yaml:"idempotency,omitempty"`
-	Summary     string         `yaml:"summary,omitempty"`
-	Headers     []APIParameter `yaml:"headers,omitempty"`
-	Query       []APIParameter `yaml:"query,omitempty"`
-	Body        *APIObject     `yaml:"body,omitempty"`
-	Responses   []APIResponse  `yaml:"responses,omitempty"`
+	OperationID  string         `yaml:"operation_id"`
+	Method       string         `yaml:"method"`
+	Path         string         `yaml:"path"`
+	Permission   string         `yaml:"permission"`
+	DefaultRoles []string       `yaml:"default_roles,omitempty"`
+	Idempotency  string         `yaml:"idempotency,omitempty"`
+	Summary      string         `yaml:"summary,omitempty"`
+	Headers      []APIParameter `yaml:"headers,omitempty"`
+	Query        []APIParameter `yaml:"query,omitempty"`
+	Body         *APIObject     `yaml:"body,omitempty"`
+	Responses    []APIResponse  `yaml:"responses,omitempty"`
 }
 
 // APIParameter declares a generated header or query parameter.
@@ -409,6 +411,7 @@ func (s *Schema) normalizeAPIOperations() error {
 		op.Method = strings.ToUpper(strings.TrimSpace(op.Method))
 		op.Path = strings.TrimSpace(op.Path)
 		op.Permission = strings.TrimSpace(op.Permission)
+		op.DefaultRoles = uniqueStrings(op.DefaultRoles)
 		op.Idempotency = strings.ToLower(strings.TrimSpace(op.Idempotency))
 		if !typePattern.MatchString(op.OperationID) {
 			return fmt.Errorf("invalid operation_id %q", op.OperationID)
@@ -421,6 +424,11 @@ func (s *Schema) normalizeAPIOperations() error {
 		}
 		if !permissionID.MatchString(op.Permission) {
 			return fmt.Errorf("operation %q has invalid permission %q", op.OperationID, op.Permission)
+		}
+		for _, role := range op.DefaultRoles {
+			if !packagePattern.MatchString(role) {
+				return fmt.Errorf("operation %q has invalid default role %q", op.OperationID, role)
+			}
 		}
 		if _, exists := seenIDs[op.OperationID]; exists {
 			return fmt.Errorf("duplicate operation_id %q", op.OperationID)
@@ -655,14 +663,16 @@ func permissionsFromOperations(operations []APIOperation) []Permission {
 		key := operation.Permission + "\x00" + permissionPath
 		permission, ok := byKey[key]
 		if !ok {
-			permission = &Permission{Name: operation.Permission, Path: permissionPath, Methods: []string{}}
+			permission = &Permission{Name: operation.Permission, Path: permissionPath, Methods: []string{}, DefaultRoles: []string{}}
 			byKey[key] = permission
 		}
 		permission.Methods = append(permission.Methods, operation.Method)
+		permission.DefaultRoles = append(permission.DefaultRoles, operation.DefaultRoles...)
 	}
 	result := make([]Permission, 0, len(byKey))
 	for _, permission := range byKey {
 		sort.Strings(permission.Methods)
+		permission.DefaultRoles = uniqueStrings(permission.DefaultRoles)
 		result = append(result, *permission)
 	}
 	sort.Slice(result, func(i, j int) bool {
@@ -671,6 +681,24 @@ func permissionsFromOperations(operations []APIOperation) []Permission {
 		}
 		return result[i].Name < result[j].Name
 	})
+	return result
+}
+
+func uniqueStrings(values []string) []string {
+	seen := map[string]struct{}{}
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Strings(result)
 	return result
 }
 

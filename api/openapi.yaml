@@ -1216,6 +1216,57 @@ paths:
           $ref: "#/components/responses/Success"
         "409":
           $ref: "#/components/responses/Error"
+  /api/v1/admin/marketplace/listings:
+    get:
+      operationId: ListAdminMarketplaceListings
+      tags: [marketplace]
+      summary: "管理端查询二手商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:admin_read
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: {type: string}
+        - name: keyword
+          in: query
+          required: false
+          schema: {type: string}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/marketplace/listings/{id}:
+    delete:
+      operationId: RemoveMarketplaceListing
+      tags: [marketplace]
+      summary: "管理员下架二手商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:remove
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+        - name: expected_version
+          in: query
+          required: true
+          schema: {type: integer, format: uint64}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/admin/marketplace/listings/{id}/review:
     post:
       operationId: ReviewMarketplaceListing
@@ -1259,6 +1310,37 @@ paths:
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings:
+    get:
+      operationId: ListMarketplaceListings
+      tags: [marketplace]
+      summary: "查询已发布二手商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:read
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: keyword
+          in: query
+          required: false
+          schema: {type: string}
+        - name: min_price_cents
+          in: query
+          required: false
+          schema: {type: integer, format: int64}
+        - name: max_price_cents
+          in: query
+          required: false
+          schema: {type: integer, format: int64}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
     post:
       operationId: CreateMarketplaceListing
       tags: [marketplace]
@@ -1306,6 +1388,92 @@ paths:
           $ref: "#/components/responses/Success"
         "400":
           $ref: "#/components/responses/Error"
+  /api/v1/marketplace/listings/mine:
+    get:
+      operationId: ListMyMarketplaceListings
+      tags: [marketplace]
+      summary: "查询我的二手商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:read_mine
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: {type: string}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+        - name: page_size
+          in: query
+          required: false
+          schema: {type: integer, format: int32}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/marketplace/listings/{id}:
+    get:
+      operationId: GetMarketplaceListing
+      tags: [marketplace]
+      summary: "查询二手商品详情"
+      x-generated-module: marketplace
+      x-permission: marketplace:read_item
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+    patch:
+      operationId: UpdateMarketplaceListing
+      tags: [marketplace]
+      summary: "修改草稿或被驳回商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:update
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+                - title
+                - description
+                - price_cents
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+                title:
+                  type: string
+                description:
+                  type: string
+                price_cents:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                contact_type:
+                  type: string
+                contact:
+                  type: string
+                image_urls:
+                  type: array
+                  items: {type: string}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/marketplace/listings/{id}/submit:
     post:
       operationId: SubmitMarketplaceListing

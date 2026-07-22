@@ -7,23 +7,24 @@ import "time"
 
 // Notice is the persistent domain entity for the notice module.
 type Notice struct {
-	ID          uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	Title       string     `gorm:"column:title;not null" json:"title"`
-	Summary     string     `gorm:"column:summary;not null" json:"summary"`
-	Body        string     `gorm:"column:body;not null" json:"body"`
-	Category    string     `gorm:"column:category;not null;index" json:"category"`
-	Priority    string     `gorm:"column:priority;not null" json:"priority"`
-	Status      string     `gorm:"column:status;not null;index" json:"status"`
-	ActionPath  *string    `gorm:"column:action_path" json:"action_path"`
-	PushEnabled bool       `gorm:"column:push_enabled;not null" json:"push_enabled"`
-	PublishAt   *time.Time `gorm:"column:publish_at;index" json:"publish_at"`
-	PublishedAt *time.Time `gorm:"column:published_at" json:"published_at"`
-	RevokedAt   *time.Time `gorm:"column:revoked_at" json:"revoked_at"`
-	Version     uint64     `gorm:"column:version;not null" json:"version"`
-	CreatedBy   uint64     `gorm:"column:created_by;not null" json:"created_by"`
-	UpdatedBy   uint64     `gorm:"column:updated_by;not null" json:"updated_by"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID            uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	Title         string     `gorm:"column:title;not null" json:"title"`
+	Summary       string     `gorm:"column:summary;not null" json:"summary"`
+	Body          string     `gorm:"column:body;not null" json:"body"`
+	Category      string     `gorm:"column:category;not null;index" json:"category"`
+	Priority      string     `gorm:"column:priority;not null" json:"priority"`
+	Status        string     `gorm:"column:status;not null;index" json:"status"`
+	ActionPath    *string    `gorm:"column:action_path" json:"action_path"`
+	PushEnabled   bool       `gorm:"column:push_enabled;not null" json:"push_enabled"`
+	PublishAt     *time.Time `gorm:"column:publish_at;index" json:"publish_at"`
+	PublishedAt   *time.Time `gorm:"column:published_at" json:"published_at"`
+	RevokedAt     *time.Time `gorm:"column:revoked_at" json:"revoked_at"`
+	Version       uint64     `gorm:"column:version;not null" json:"version"`
+	CreatedBy     uint64     `gorm:"column:created_by;not null" json:"created_by"`
+	UpdatedBy     uint64     `gorm:"column:updated_by;not null" json:"updated_by"`
+	SourceEventId *uint64    `gorm:"column:source_event_id;uniqueIndex" json:"source_event_id"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 // TableName returns the schema-controlled database table.

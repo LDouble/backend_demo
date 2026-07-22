@@ -43,6 +43,7 @@ entities:
 crud: [create, get, list, update, delete]
 operations:
   - operation_id: CreateMarketplaceListing
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
@@ -58,7 +59,52 @@ operations:
         - {name: contact, type: string, required: true}
         - {name: image_urls, type: array, items: string}
     responses: [{status: 201, kind: success}, {status: 400, kind: error}]
+  - operation_id: ListMarketplaceListings
+    default_roles: [member]
+    method: GET
+    path: /api/v1/marketplace/listings
+    permission: marketplace:read
+    summary: 查询已发布二手商品
+    query: &marketplace_search
+      - {name: keyword, type: string}
+      - {name: min_price_cents, type: integer, format: int64, minimum: 0}
+      - {name: max_price_cents, type: integer, format: int64, minimum: 0}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+  - operation_id: ListMyMarketplaceListings
+    default_roles: [member]
+    method: GET
+    path: /api/v1/marketplace/listings/mine
+    permission: marketplace:read_mine
+    summary: 查询我的二手商品
+    query:
+      - {name: status, type: string}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+  - operation_id: GetMarketplaceListing
+    default_roles: [member]
+    method: GET
+    path: /api/v1/marketplace/listings/{id}
+    permission: marketplace:read_item
+    summary: 查询二手商品详情
+  - operation_id: UpdateMarketplaceListing
+    default_roles: [member]
+    method: PATCH
+    idempotency: required
+    path: /api/v1/marketplace/listings/{id}
+    permission: marketplace:update
+    summary: 修改草稿或被驳回商品
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: title, type: string, required: true}
+        - {name: description, type: string, required: true}
+        - {name: price_cents, type: integer, format: int64, required: true, minimum: 1}
+        - {name: contact_type, type: string}
+        - {name: contact, type: string}
+        - {name: image_urls, type: array, items: string}
   - operation_id: SubmitMarketplaceListing
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
@@ -68,6 +114,7 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: WithdrawMarketplaceListing
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
@@ -90,6 +137,7 @@ operations:
         - {name: reason, type: string, max_length: 500}
     responses: [{status: 200, kind: success}, {status: 400, kind: error}, {status: 409, kind: error}]
   - operation_id: CreateMarketplaceOrder
+    default_roles: [member]
     method: POST
     idempotency: required
     path: /api/v1/marketplace/orders
@@ -98,3 +146,20 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     body: {fields: [{name: listing_id, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 201, kind: success}, {status: 409, kind: error}]
+  - operation_id: ListAdminMarketplaceListings
+    method: GET
+    path: /api/v1/admin/marketplace/listings
+    permission: marketplace:admin_read
+    summary: 管理端查询二手商品
+    query:
+      - {name: status, type: string}
+      - {name: keyword, type: string}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+  - operation_id: RemoveMarketplaceListing
+    method: DELETE
+    idempotency: required
+    path: /api/v1/admin/marketplace/listings/{id}
+    permission: marketplace:remove
+    summary: 管理员下架二手商品
+    query: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]

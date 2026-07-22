@@ -19,6 +19,7 @@ entities:
       - {name: version, type: uint64, required: true}
       - {name: created_by, type: uint64, required: true}
       - {name: updated_by, type: uint64, required: true}
+      - {name: source_event_id, type: uint64, unique: true}
   - name: NoticeAudience
     table: notice_audiences
     fields:
@@ -135,6 +136,7 @@ operations:
     permission: notice:retry
     summary: 重试失败投递
   - operation_id: ListMyNotices
+    default_roles: [member]
     method: GET
     path: /api/v1/notices
     permission: notice:read
@@ -145,22 +147,26 @@ operations:
       - {name: unread, type: boolean}
       - {name: category, type: string}
   - operation_id: GetUnreadNoticeCount
+    default_roles: [member]
     method: GET
     path: /api/v1/notices/unread-count
     permission: notice:unread
     summary: 查询未读数量
   - operation_id: ReadAllNotices
+    default_roles: [member]
     method: PUT
     idempotency: inherent
     path: /api/v1/notices/read-all
     permission: notice:read_all
     summary: 全部标记已读
   - operation_id: GetMyNotice
+    default_roles: [member]
     method: GET
     path: /api/v1/notices/{id}
     permission: notice:read_item
     summary: 查询我的通知详情
   - operation_id: ReadNotice
+    default_roles: [member]
     method: PUT
     idempotency: inherent
     path: /api/v1/notices/{id}/read

@@ -24,6 +24,52 @@ type Store interface {
 	Complete(context.Context, uint64, uint64, uint64, time.Time) (*tradedomain.Order, error)
 	Contact(context.Context, *domain.Listing, uint64) (domain.ContactDetails, error)
 	ExpireReservations(context.Context, time.Time) (int64, error)
+	GetVisible(context.Context, uint64, uint64) (*domain.ListingDetails, error)
+	ListPublished(context.Context, domain.ListingSearch) ([]domain.ListingDetails, int64, error)
+	ListOwned(context.Context, uint64, domain.ListingSearch) ([]domain.ListingDetails, int64, error)
+	ListAdmin(context.Context, domain.ListingSearch) ([]domain.ListingDetails, int64, error)
+}
+
+// Get returns a listing visible to a published viewer, owner, or active buyer.
+func (m *Manager) Get(ctx context.Context, id, viewerID uint64) (*domain.ListingDetails, error) {
+	return m.store.GetVisible(ctx, id, viewerID)
+}
+
+// ListPublished returns the public member catalog.
+func (m *Manager) ListPublished(ctx context.Context, search domain.ListingSearch) ([]domain.ListingDetails, int64, error) {
+	if err := normalizeSearch(&search); err != nil {
+		return nil, 0, err
+	}
+	return m.store.ListPublished(ctx, search)
+}
+
+// ListOwned returns every listing state owned by one member.
+func (m *Manager) ListOwned(ctx context.Context, ownerID uint64, search domain.ListingSearch) ([]domain.ListingDetails, int64, error) {
+	if err := normalizeSearch(&search); err != nil {
+		return nil, 0, err
+	}
+	return m.store.ListOwned(ctx, ownerID, search)
+}
+
+// ListAdmin returns moderator-facing listing history.
+func (m *Manager) ListAdmin(ctx context.Context, search domain.ListingSearch) ([]domain.ListingDetails, int64, error) {
+	if err := normalizeSearch(&search); err != nil {
+		return nil, 0, err
+	}
+	return m.store.ListAdmin(ctx, search)
+}
+
+func normalizeSearch(search *domain.ListingSearch) error {
+	if search.Page < 1 {
+		search.Page = 1
+	}
+	if search.PageSize < 1 || search.PageSize > 100 {
+		search.PageSize = 20
+	}
+	if search.MinPriceCents != nil && search.MaxPriceCents != nil && *search.MinPriceCents > *search.MaxPriceCents {
+		return apperror.New(http.StatusBadRequest, "invalid_price_range", "最低价格不能高于最高价格")
+	}
+	return nil
 }
 
 // Contact returns a listing contact only when the store confirms the viewer is active.

@@ -8,6 +8,21 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/api/generated"
 )
 
+// ListAdminMarketplaceListings adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListAdminMarketplaceListings(c *gin.Context, params generated.ListAdminMarketplaceListingsParams) {
+	setGeneratedParams(c, "ListAdminMarketplaceListings", params)
+	h.listAdminMarketplaceListings(c)
+}
+
+// RemoveMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) RemoveMarketplaceListing(c *gin.Context, id uint64, params generated.RemoveMarketplaceListingParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "RemoveMarketplaceListing", params)
+	h.idempotent(c, "RemoveMarketplaceListing", func() {
+		h.removeMarketplaceListing(c)
+	})
+}
+
 // ReviewMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) ReviewMarketplaceListing(c *gin.Context, id uint64, params generated.ReviewMarketplaceListingParams) {
 	setGeneratedPathParam(c, "id", id)
@@ -17,11 +32,38 @@ func (h *Handler) ReviewMarketplaceListing(c *gin.Context, id uint64, params gen
 	})
 }
 
+// ListMarketplaceListings adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListMarketplaceListings(c *gin.Context, params generated.ListMarketplaceListingsParams) {
+	setGeneratedParams(c, "ListMarketplaceListings", params)
+	h.listMarketplaceListings(c)
+}
+
 // CreateMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) CreateMarketplaceListing(c *gin.Context, params generated.CreateMarketplaceListingParams) {
 	setGeneratedParams(c, "CreateMarketplaceListing", params)
 	h.idempotent(c, "CreateMarketplaceListing", func() {
 		h.createMarketplaceListing(c)
+	})
+}
+
+// ListMyMarketplaceListings adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListMyMarketplaceListings(c *gin.Context, params generated.ListMyMarketplaceListingsParams) {
+	setGeneratedParams(c, "ListMyMarketplaceListings", params)
+	h.listMyMarketplaceListings(c)
+}
+
+// GetMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) GetMarketplaceListing(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
+	h.getMarketplaceListing(c)
+}
+
+// UpdateMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) UpdateMarketplaceListing(c *gin.Context, id uint64, params generated.UpdateMarketplaceListingParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "UpdateMarketplaceListing", params)
+	h.idempotent(c, "UpdateMarketplaceListing", func() {
+		h.updateMarketplaceListing(c)
 	})
 }
 

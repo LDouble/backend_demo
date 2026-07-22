@@ -52,6 +52,22 @@ type ContactDetails struct {
 	Value string
 }
 
+// ListingDetails combines a listing with its ordered image URLs for transport.
+type ListingDetails struct {
+	Listing
+	ImageURLs []string
+}
+
+// ListingSearch contains normalized member and administrator list filters.
+type ListingSearch struct {
+	Keyword       string
+	Status        string
+	MinPriceCents *int64
+	MaxPriceCents *int64
+	Page          int
+	PageSize      int
+}
+
 // ValidateListingInput validates untrusted listing content before persistence.
 func ValidateListingInput(input ListingInput) error {
 	if err := validateListingContent(input); err != nil {

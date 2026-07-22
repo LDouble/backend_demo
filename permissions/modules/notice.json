@@ -30,6 +30,9 @@
       "path_pattern": "/api/v1/notices/:id/read",
       "methods": [
         "PUT"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -44,6 +47,9 @@
       "path_pattern": "/api/v1/notices",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -51,6 +57,9 @@
       "path_pattern": "/api/v1/notices/read-all",
       "methods": [
         "PUT"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -58,6 +67,9 @@
       "path_pattern": "/api/v1/notices/:id",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -79,6 +91,9 @@
       "path_pattern": "/api/v1/notices/unread-count",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
       ]
     }
   ]

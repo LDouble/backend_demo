@@ -136,6 +136,14 @@
     {
       "path": "migrations/20260721170517_add_idempotency_response_headers.up.sql",
       "sha256": "18bd31768a6a01c4e45c7c4433d658420a809ac4e7135934e4ea9ffae2fee3f4"
+    },
+    {
+      "path": "migrations/20260722065811_notice_source_event.down.sql",
+      "sha256": "f02a19279e0eefa9a6c460620c03c4a635c2dfe87432a671e45b4adf58e03f30"
+    },
+    {
+      "path": "migrations/20260722065811_notice_source_event.up.sql",
+      "sha256": "477e8de4a60a01643966ced05b5459c1b48357a35f162ee46e81838d1931a5e9"
     }
   ]
 }

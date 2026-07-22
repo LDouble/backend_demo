@@ -25,6 +25,27 @@ type Publisher interface {
 	Publish(context.Context, core.Event) error
 }
 
+// CompositePublisher requires every subscriber to succeed before dispatch.
+type CompositePublisher struct{ publishers []Publisher }
+
+// NewCompositePublisher creates an ordered publisher chain.
+func NewCompositePublisher(publishers ...Publisher) *CompositePublisher {
+	return &CompositePublisher{publishers: append([]Publisher{}, publishers...)}
+}
+
+// Publish delivers the event to each subscriber in order.
+func (p *CompositePublisher) Publish(ctx context.Context, event core.Event) error {
+	for _, publisher := range p.publishers {
+		if publisher == nil {
+			continue
+		}
+		if err := publisher.Publish(ctx, event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // LogPublisher provides a durable, structured audit delivery target until a
 // deployment adds external event subscribers.
 type LogPublisher struct{ log *zap.Logger }

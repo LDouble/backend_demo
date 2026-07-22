@@ -73,7 +73,11 @@ func run() error {
 	mux := asynq.NewServeMux()
 	processor.Register(mux)
 	relay := noticeworker.NewRelay(store, client, cfg.Worker.PollInterval, log)
-	domainRelay := domaineventinfra.NewRelay(db, domaineventinfra.NewLogPublisher(log), cfg.Worker.PollInterval, log)
+	domainPublisher := domaineventinfra.NewCompositePublisher(
+		domaineventinfra.NewNoticePublisher(db),
+		domaineventinfra.NewLogPublisher(log),
+	)
+	domainRelay := domaineventinfra.NewRelay(db, domainPublisher, cfg.Worker.PollInterval, log)
 	errCh := make(chan error, 5)
 	var workers sync.WaitGroup
 	runWorker := func(work func() error) {
