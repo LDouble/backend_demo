@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/weouc-plus/campus-platform/internal/api/generated"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	marketplacedomain "github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 )
@@ -89,7 +90,7 @@ func (h *Handler) updateMarketplaceListing(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req marketplaceListingRequest
+	var req generated.UpdateMarketplaceListingJSONBody
 	if !bind(c, &req) {
 		return
 	}
@@ -98,7 +99,7 @@ func (h *Handler) updateMarketplaceListing(c *gin.Context) {
 		id,
 		c.GetUint64(userIDKey),
 		req.ExpectedVersion,
-		marketplaceListingInput(req),
+		marketplaceListingUpdateInput(req),
 	)
 	if err != nil {
 		failure(c, err)
@@ -122,12 +123,17 @@ func (h *Handler) removeMarketplaceListing(c *gin.Context) {
 	if !ok {
 		return
 	}
-	version, err := strconv.ParseUint(c.Query("expected_version"), 10, 64)
-	if err != nil || version == 0 {
-		failure(c, apperror.New(http.StatusBadRequest, "invalid_version", "expected_version 必须大于 0"))
+	params, ok := generatedParams[generated.RemoveMarketplaceListingParams](c, "RemoveMarketplaceListing")
+	if !ok {
+		failure(c, apperror.New(http.StatusBadRequest, "invalid_parameter", "缺少已校验的商品下架参数"))
 		return
 	}
-	if _, err = h.marketplace.Remove(c.Request.Context(), id, c.GetUint64(userIDKey), version); err != nil {
+	if _, err := h.marketplace.Remove(
+		c.Request.Context(),
+		id,
+		c.GetUint64(userIDKey),
+		params.ExpectedVersion,
+	); err != nil {
 		failure(c, err)
 		return
 	}
@@ -229,7 +235,37 @@ func (h *Handler) createMarketplaceOrder(c *gin.Context) {
 }
 func marketplaceListingInput(req marketplaceListingRequest) marketplacedomain.ListingInput {
 	provided := strings.TrimSpace(req.ContactType) != "" || strings.TrimSpace(req.Contact) != ""
-	return marketplacedomain.ListingInput{Title: req.Title, Description: req.Description, PriceCents: req.PriceCents, ImageURLs: req.ImageURLs, Contact: marketplacedomain.ContactInput{Type: req.ContactType, Value: req.Contact, Provided: provided}}
+	return marketplacedomain.ListingInput{
+		Title: req.Title, Description: req.Description, PriceCents: req.PriceCents,
+		ImageURLs: req.ImageURLs, ImageURLsProvided: true,
+		Contact: marketplacedomain.ContactInput{
+			Type: req.ContactType, Value: req.Contact, Provided: provided,
+		},
+	}
+}
+
+func marketplaceListingUpdateInput(req generated.UpdateMarketplaceListingJSONBody) marketplacedomain.ListingInput {
+	imageURLs := []string{}
+	imagesProvided := req.ImageUrls != nil
+	if imagesProvided {
+		imageURLs = append(imageURLs, (*req.ImageUrls)...)
+	}
+	contactType := ""
+	if req.ContactType != nil {
+		contactType = *req.ContactType
+	}
+	contact := ""
+	if req.Contact != nil {
+		contact = *req.Contact
+	}
+	return marketplacedomain.ListingInput{
+		Title: req.Title, Description: req.Description, PriceCents: req.PriceCents,
+		ImageURLs: imageURLs, ImageURLsProvided: imagesProvided,
+		Contact: marketplacedomain.ContactInput{
+			Type: contactType, Value: contact,
+			Provided: req.ContactType != nil || req.Contact != nil,
+		},
+	}
 }
 
 type marketplaceListingView struct {
@@ -252,13 +288,13 @@ type marketplaceListingView struct {
 }
 
 func (h *Handler) marketplaceListingViews(c *gin.Context, rows []marketplacedomain.ListingDetails) ([]marketplaceListingView, error) {
+	contacts, err := h.marketplace.Contacts(c.Request.Context(), rows, c.GetUint64(userIDKey))
+	if err != nil {
+		return nil, err
+	}
 	views := make([]marketplaceListingView, 0, len(rows))
 	for _, row := range rows {
-		view, err := h.marketplaceListingView(c, row)
-		if err != nil {
-			return nil, err
-		}
-		views = append(views, view)
+		views = append(views, marketplaceListingViewOf(row, contacts[row.ID]))
 	}
 	return views, nil
 }
@@ -268,6 +304,13 @@ func (h *Handler) marketplaceListingView(c *gin.Context, details marketplacedoma
 	if err != nil {
 		return marketplaceListingView{}, err
 	}
+	return marketplaceListingViewOf(details, contact), nil
+}
+
+func marketplaceListingViewOf(
+	details marketplacedomain.ListingDetails,
+	contact marketplacedomain.ContactDetails,
+) marketplaceListingView {
 	return marketplaceListingView{
 		ID: details.ID, Title: details.Title, Description: details.Description,
 		PriceCents: details.PriceCents, Currency: details.Currency, Status: details.Status,
@@ -275,7 +318,7 @@ func (h *Handler) marketplaceListingView(c *gin.Context, details marketplacedoma
 		RejectionReason: details.RejectionReason, ReviewedBy: details.ReviewedBy, ReviewedAt: details.ReviewedAt,
 		ContactType: contact.Type, Contact: contact.Value, Version: details.Version,
 		CreatedAt: details.CreatedAt, UpdatedAt: details.UpdatedAt,
-	}, nil
+	}
 }
 
 func optionalInt64Query(c *gin.Context, name string) *int64 {

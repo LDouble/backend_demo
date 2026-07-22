@@ -30,6 +30,9 @@ func TestListingQueriesEnforceVisibilityAndReturnImages(t *testing.T) {
 	if err = db.Create(&domain.ListingImage{ListingId: published.ID, Url: "https://example.com/1.jpg", Position: 0}).Error; err != nil {
 		t.Fatal(err)
 	}
+	if err = db.Create(&domain.ListingImage{ListingId: draft.ID, Url: "https://example.com/draft.jpg", Position: 0}).Error; err != nil {
+		t.Fatal(err)
+	}
 
 	minPrice := int64(900)
 	maxPrice := int64(1100)
@@ -45,23 +48,43 @@ func TestListingQueriesEnforceVisibilityAndReturnImages(t *testing.T) {
 	if _, err = store.GetVisible(context.Background(), draft.ID, 1); err != nil {
 		t.Fatalf("owner draft error = %v", err)
 	}
+	updated, err := store.UpdateListing(context.Background(), draft.ID, 1, draft.Version, domain.ListingInput{
+		Title: "Updated lamp", Description: "Updated description", PriceCents: 2100,
+		ImageURLs: []string{}, ImageURLsProvided: false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count := imageCount(t, db, draft.ID); count != 1 {
+		t.Fatalf("omitted images count = %d", count)
+	}
+	updated, err = store.UpdateListing(context.Background(), draft.ID, 1, updated.Version, domain.ListingInput{
+		Title: "Updated lamp", Description: "Updated description", PriceCents: 2100,
+		ImageURLs: []string{}, ImageURLsProvided: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count := imageCount(t, db, draft.ID); count != 0 {
+		t.Fatalf("explicit empty images count = %d", count)
+	}
 
-	draft.Status = domain.ListingReserved
-	if err = db.Save(draft).Error; err != nil {
+	updated.Status = domain.ListingReserved
+	if err = db.Save(updated).Error; err != nil {
 		t.Fatal(err)
 	}
 	order := tradedomain.Order{
 		OrderNo: "TRDQUERY", OrderType: tradedomain.OrderTypeMarketplace,
-		ResourceType: tradedomain.ResourceListing, ResourceId: draft.ID,
-		BuyerId: 2, SellerId: 1, AmountCents: draft.PriceCents, Currency: domain.CurrencyCNY,
+		ResourceType: tradedomain.ResourceListing, ResourceId: updated.ID,
+		BuyerId: 2, SellerId: 1, AmountCents: updated.PriceCents, Currency: domain.CurrencyCNY,
 		PaymentMode: tradedomain.PaymentOffline, TradeStatus: tradedomain.StatusConfirmed,
-		FulfillmentStatus: tradedomain.FulfillmentNotStarted, TitleSnapshot: draft.Title,
+		FulfillmentStatus: tradedomain.FulfillmentNotStarted, TitleSnapshot: updated.Title,
 		ResourceSnapshot: []byte(`{}`), IdempotencyKey: "query-test", Version: 1,
 	}
 	if err = db.Create(&order).Error; err != nil {
 		t.Fatal(err)
 	}
-	details, err := store.GetVisible(context.Background(), draft.ID, 2)
+	details, err := store.GetVisible(context.Background(), updated.ID, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +92,25 @@ func TestListingQueriesEnforceVisibilityAndReturnImages(t *testing.T) {
 	if err != nil || contact.Value != "13800138000" {
 		t.Fatalf("contact=%#v err=%v", contact, err)
 	}
+	contacts, err := store.Contacts(context.Background(), []domain.ListingDetails{
+		*details,
+		{Listing: *published, ImageURLs: []string{"https://example.com/1.jpg"}},
+	}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if contacts[updated.ID].Value != "13800138000" || contacts[published.ID].Value == "13800138000" {
+		t.Fatalf("batch contacts = %#v", contacts)
+	}
+}
+
+func imageCount(t *testing.T, db *gorm.DB, listingID uint64) int64 {
+	t.Helper()
+	var count int64
+	if err := db.Model(&domain.ListingImage{}).Where("listing_id = ?", listingID).Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	return count
 }
 
 func statusOf(err error) int {

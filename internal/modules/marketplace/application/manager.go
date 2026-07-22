@@ -23,6 +23,7 @@ type Store interface {
 	Cancel(context.Context, uint64, uint64, uint64, time.Time) (*tradedomain.Order, error)
 	Complete(context.Context, uint64, uint64, uint64, time.Time) (*tradedomain.Order, error)
 	Contact(context.Context, *domain.Listing, uint64) (domain.ContactDetails, error)
+	Contacts(context.Context, []domain.ListingDetails, uint64) (map[uint64]domain.ContactDetails, error)
 	ExpireReservations(context.Context, time.Time) (int64, error)
 	GetVisible(context.Context, uint64, uint64) (*domain.ListingDetails, error)
 	ListPublished(context.Context, domain.ListingSearch) ([]domain.ListingDetails, int64, error)
@@ -75,6 +76,15 @@ func normalizeSearch(search *domain.ListingSearch) error {
 // Contact returns a listing contact only when the store confirms the viewer is active.
 func (m *Manager) Contact(ctx context.Context, listing *domain.Listing, viewerID uint64) (domain.ContactDetails, error) {
 	return m.store.Contact(ctx, listing, viewerID)
+}
+
+// Contacts resolves contact visibility for a page with one authorization query.
+func (m *Manager) Contacts(
+	ctx context.Context,
+	listings []domain.ListingDetails,
+	viewerID uint64,
+) (map[uint64]domain.ContactDetails, error) {
+	return m.store.Contacts(ctx, listings, viewerID)
 }
 
 // Manager enforces input validation before the transactional repository boundary.

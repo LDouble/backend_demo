@@ -208,8 +208,10 @@ func (s *Store) UpdateListing(ctx context.Context, id, ownerID, version uint64, 
 			return apperror.New(http.StatusConflict, "version_conflict", "商品已被其他请求更新")
 		}
 		listing.Version++
-		if err := replaceImages(tx, listing.ID, input.ImageURLs); err != nil {
-			return err
+		if input.ImageURLsProvided {
+			if err := replaceImages(tx, listing.ID, input.ImageURLs); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -218,6 +220,83 @@ func (s *Store) UpdateListing(ctx context.Context, id, ownerID, version uint64, 
 
 // Contact returns either plaintext for an active trade participant or a masked value.
 func (s *Store) Contact(ctx context.Context, listing *domain.Listing, viewerID uint64) (domain.ContactDetails, error) {
+	isTerminal := listing.Status == domain.ListingSold ||
+		listing.Status == domain.ListingWithdrawn ||
+		listing.Status == domain.ListingRemoved
+	if isTerminal || listing.OwnerId == viewerID {
+		return s.contactWithAccess(listing, viewerID, false)
+	}
+	access, err := s.activeBuyerListings(ctx, viewerID, []uint64{listing.ID})
+	if err != nil {
+		return domain.ContactDetails{}, err
+	}
+	return s.contactWithAccess(listing, viewerID, access[listing.ID])
+}
+
+// Contacts resolves a page of contacts with one active-order query.
+func (s *Store) Contacts(
+	ctx context.Context,
+	listings []domain.ListingDetails,
+	viewerID uint64,
+) (map[uint64]domain.ContactDetails, error) {
+	listingIDs := make([]uint64, 0, len(listings))
+	for _, listing := range listings {
+		isTerminal := listing.Status == domain.ListingSold ||
+			listing.Status == domain.ListingWithdrawn ||
+			listing.Status == domain.ListingRemoved
+		if !isTerminal && listing.OwnerId != viewerID {
+			listingIDs = append(listingIDs, listing.ID)
+		}
+	}
+	access, err := s.activeBuyerListings(ctx, viewerID, listingIDs)
+	if err != nil {
+		return nil, err
+	}
+	contacts := make(map[uint64]domain.ContactDetails, len(listings))
+	for i := range listings {
+		contact, contactErr := s.contactWithAccess(
+			&listings[i].Listing,
+			viewerID,
+			access[listings[i].ID],
+		)
+		if contactErr != nil {
+			return nil, contactErr
+		}
+		contacts[listings[i].ID] = contact
+	}
+	return contacts, nil
+}
+
+func (s *Store) activeBuyerListings(
+	ctx context.Context,
+	viewerID uint64,
+	listingIDs []uint64,
+) (map[uint64]bool, error) {
+	result := make(map[uint64]bool, len(listingIDs))
+	if viewerID == 0 || len(listingIDs) == 0 {
+		return result, nil
+	}
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Order
+	orders, err := q.WithContext(ctx).Where(
+		q.ResourceType.Eq(tradedomain.ResourceListing),
+		q.ResourceId.In(listingIDs...),
+		q.BuyerId.Eq(viewerID),
+		q.TradeStatus.Eq(tradedomain.StatusConfirmed),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	for _, order := range orders {
+		result[order.ResourceId] = true
+	}
+	return result, nil
+}
+
+func (s *Store) contactWithAccess(
+	listing *domain.Listing,
+	viewerID uint64,
+	hasActiveOrder bool,
+) (domain.ContactDetails, error) {
 	value, err := s.decryptContact(listing.ContactCiphertext, listingContactAAD(listing.ID))
 	if err != nil {
 		return domain.ContactDetails{}, err
@@ -229,17 +308,7 @@ func (s *Store) Contact(ctx context.Context, listing *domain.Listing, viewerID u
 		if viewerID == listing.OwnerId {
 			return domain.ContactDetails{Type: listing.ContactType, Value: value}, nil
 		}
-		var count int64
-		if err := idempotency.DB(ctx, s.db).Model(&tradedomain.Order{}).Where(
-			"resource_type = ? AND resource_id = ? AND buyer_id = ? AND trade_status = ?",
-			tradedomain.ResourceListing,
-			listing.ID,
-			viewerID,
-			tradedomain.StatusConfirmed,
-		).Count(&count).Error; err != nil {
-			return domain.ContactDetails{}, err
-		}
-		if count > 0 {
+		if hasActiveOrder {
 			return domain.ContactDetails{Type: listing.ContactType, Value: value}, nil
 		}
 	}

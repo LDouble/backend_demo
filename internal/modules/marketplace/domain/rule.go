@@ -31,11 +31,12 @@ const (
 
 // ListingInput is the user-controlled mutable portion of a listing.
 type ListingInput struct {
-	Title       string
-	Description string
-	PriceCents  int64
-	ImageURLs   []string
-	Contact     ContactInput
+	Title             string
+	Description       string
+	PriceCents        int64
+	ImageURLs         []string
+	ImageURLsProvided bool
+	Contact           ContactInput
 }
 
 // ContactInput is a publisher-supplied contact method. Provided distinguishes an
