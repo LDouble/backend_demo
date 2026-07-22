@@ -42,6 +42,7 @@ entities:
 crud: [create, get, list, update]
 operations:
   - operation_id: ListErrands
+    default_roles: [guest, member]
     method: GET
     path: /api/v1/errands
     permission: errand:read
@@ -51,6 +52,7 @@ operations:
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
     responses: [{status: 200, kind: success}]
   - operation_id: ListMyErrands
+    default_roles: [member]
     method: GET
     path: /api/v1/errands/mine
     permission: errand:read_mine
@@ -60,9 +62,11 @@ operations:
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
     responses: [{status: 200, kind: success}]
   - operation_id: CreateErrand
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/errands
     permission: errand:create
     summary: 发布跑腿任务
@@ -78,15 +82,18 @@ operations:
         - {name: contact, type: string, required: true}
     responses: [{status: 201, kind: success}, {status: 400, kind: error}]
   - operation_id: GetErrand
+    default_roles: [guest, member]
     method: GET
     path: /api/v1/errands/{id}
     permission: errand:read_item
     summary: 查询跑腿任务详情
     responses: [{status: 200, kind: success}, {status: 404, kind: error}]
   - operation_id: UpdateErrand
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: PATCH
     idempotency: required
+    academic_verification: required
     path: /api/v1/errands/{id}
     permission: errand:update
     summary: 修改未接单的跑腿任务
@@ -103,8 +110,10 @@ operations:
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: AcceptErrand
+    default_roles: [member]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/errands/{id}/accept
     permission: errand:accept
     summary: 原子接单并创建交易订单
@@ -112,36 +121,44 @@ operations:
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 201, kind: success}, {status: 409, kind: error}]
   - operation_id: PickupErrand
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/errands/{id}/pickup
     permission: errand:pickup
     summary: 跑腿员确认取件
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: DeliverErrand
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/errands/{id}/deliver
     permission: errand:deliver
     summary: 跑腿员确认送达
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: CompleteErrand
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/errands/{id}/complete
     permission: errand:complete
     summary: 发布者确认跑腿完成
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: CancelErrand
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/errands/{id}/cancel
     permission: errand:cancel
     summary: 取消跑腿任务

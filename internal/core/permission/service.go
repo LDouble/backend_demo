@@ -60,6 +60,7 @@ type Service struct {
 	enforcer          atomic.Pointer[casbin.SyncedEnforcer]
 	reloadMu          sync.Mutex
 	memberPolicies    []policyRule
+	guestPolicies     []policyRule
 	permissionCatalog map[string]map[string]struct{}
 	catalogEntries    []permissionmanifest.CatalogEntry
 	sync              policySync
@@ -87,6 +88,21 @@ func NewService(ctx context.Context, db *gorm.DB, roles RoleRepository) (*Servic
 		row.Managed = true
 		memberPolicies = append(memberPolicies, row)
 	}
+	guestRules, err := permissionmanifest.RulesForRole(model.GuestRole)
+	if err != nil {
+		return nil, err
+	}
+	guestPolicies := make([]policyRule, 0, len(guestRules))
+	for _, rule := range guestRules {
+		methods := uniqueUpper(rule.Methods)
+		expression := strings.Join(methods, "|")
+		if len(methods) > 1 {
+			expression = "(" + expression + ")"
+		}
+		row := newPolicyRule("p", []string{model.GuestRole, rule.PathPattern, expression})
+		row.Managed = true
+		guestPolicies = append(guestPolicies, row)
+	}
 	allRules, err := permissionmanifest.Rules()
 	if err != nil {
 		return nil, err
@@ -110,6 +126,7 @@ func NewService(ctx context.Context, db *gorm.DB, roles RoleRepository) (*Servic
 		db:                db,
 		roles:             roles,
 		memberPolicies:    memberPolicies,
+		guestPolicies:     guestPolicies,
 		permissionCatalog: catalog,
 		catalogEntries:    catalogEntries,
 		log:               zap.NewNop(),
@@ -298,21 +315,34 @@ func (s *Service) SetUserRoles(ctx context.Context, userID uint64, roles []strin
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	normalized := unique(append(roles, model.MemberRole))
+	for _, role := range roles {
+		if role == model.GuestRole || role == model.MemberRole {
+			return apperror.New(http.StatusBadRequest, "managed_base_role", "guest/member 基础角色只能由教务认证状态管理")
+		}
+	}
+	normalized := unique(roles)
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := lockSuperAdminRole(tx); err != nil {
 			return err
 		}
+		current := []policyRule{}
+		if err := tx.Where("ptype = ? AND v0 = ?", "g", subject(userID)).Find(&current).Error; err != nil {
+			return err
+		}
+		baseRole := model.GuestRole
+		for _, row := range current {
+			if row.V1 == model.MemberRole {
+				baseRole = model.MemberRole
+				break
+			}
+		}
+		normalized = unique(append(normalized, baseRole))
 		var count int64
 		if err := tx.Model(&model.Role{}).Where("name IN ?", normalized).Count(&count).Error; err != nil {
 			return err
 		}
 		if count != int64(len(normalized)) {
 			return apperror.New(http.StatusBadRequest, "unknown_role", "角色不存在")
-		}
-		current := []policyRule{}
-		if err := tx.Where("ptype = ? AND v0 = ?", "g", subject(userID)).Find(&current).Error; err != nil {
-			return err
 		}
 		wasSuperAdmin := false
 		for _, row := range current {
@@ -503,7 +533,7 @@ func (s *Service) DisableUser(ctx context.Context, userID uint64) error {
 
 // Bootstrap idempotently creates and assigns the built-in super administrator role.
 func (s *Service) Bootstrap(ctx context.Context, userID uint64) error {
-	if err := s.EnsureMemberForUser(ctx, userID); err != nil {
+	if err := s.EnsureCurrentBaseRoleForUser(ctx, userID); err != nil {
 		return err
 	}
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
@@ -531,38 +561,73 @@ func (s *Service) Bootstrap(ctx context.Context, userID uint64) error {
 	return s.reloadAfterMutation(ctx)
 }
 
-// EnsureMemberForUser reconciles generated member permissions before assigning the role.
+// EnsureCurrentBaseRoleForUser reconciles policies without demoting a verified member.
+func (s *Service) EnsureCurrentBaseRoleForUser(ctx context.Context, userID uint64) error {
+	roles, err := s.GetUserRoles(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if contains(roles, model.MemberRole) {
+		return s.EnsureMemberForUser(ctx, userID)
+	}
+	return s.EnsureGuestForUser(ctx, userID)
+}
+
+// EnsureGuestForUser reconciles generated guest permissions and selects guest as the base role.
+func (s *Service) EnsureGuestForUser(ctx context.Context, userID uint64) error {
+	return s.ensureBaseRole(ctx, userID, model.GuestRole, "平台访客", s.guestPolicies)
+}
+
+// EnsureMemberForUser reconciles generated member permissions and selects member as the base role.
 func (s *Service) EnsureMemberForUser(ctx context.Context, userID uint64) error {
+	return s.ensureBaseRole(ctx, userID, model.MemberRole, "已认证成员", s.memberPolicies)
+}
+
+func (s *Service) ensureBaseRole(
+	ctx context.Context,
+	userID uint64,
+	roleName string,
+	description string,
+	managedPolicies []policyRule,
+) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
-		var member model.Role
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", model.MemberRole).Take(&member).Error
+		var role model.Role
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", roleName).Take(&role).Error
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
-			member = model.Role{Name: model.MemberRole, Description: "平台成员", Builtin: true}
-			if err = tx.Create(&member).Error; err != nil {
+			role = model.Role{Name: roleName, Description: description, Builtin: true}
+			if err = tx.Create(&role).Error; err != nil {
 				return err
 			}
 		case err != nil:
 			return err
-		case !member.Builtin:
-			if err = tx.Model(&member).Update("builtin", true).Error; err != nil {
+		case !role.Builtin:
+			if err = tx.Model(&role).Update("builtin", true).Error; err != nil {
 				return err
 			}
 		}
-		if err = tx.Where("ptype = ? AND v0 = ? AND managed = ?", "p", model.MemberRole, true).
+		if err = tx.Where("ptype = ? AND v0 = ? AND managed = ?", "p", roleName, true).
 			Delete(&policyRule{}).Error; err != nil {
 			return err
 		}
-		if len(s.memberPolicies) > 0 {
-			policies := append([]policyRule(nil), s.memberPolicies...)
+		if len(managedPolicies) > 0 {
+			policies := append([]policyRule(nil), managedPolicies...)
 			if err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&policies).Error; err != nil {
 				return err
 			}
 		}
-		grouping := newPolicyRule("g", []string{subject(userID), model.MemberRole})
+		if err = tx.Where(
+			"ptype = ? AND v0 = ? AND v1 IN ?",
+			"g",
+			subject(userID),
+			[]string{model.GuestRole, model.MemberRole},
+		).Delete(&policyRule{}).Error; err != nil {
+			return err
+		}
+		grouping := newPolicyRule("g", []string{subject(userID), roleName})
 		if err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&grouping).Error; err != nil {
 			return err
 		}

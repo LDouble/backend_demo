@@ -41,6 +41,9 @@ func (h *Handler) ListMarketplaceListings(c *gin.Context, params generated.ListM
 // CreateMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) CreateMarketplaceListing(c *gin.Context, params generated.CreateMarketplaceListingParams) {
 	setGeneratedParams(c, "CreateMarketplaceListing", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CreateMarketplaceListing", func() {
 		h.createMarketplaceListing(c)
 	})
@@ -62,6 +65,9 @@ func (h *Handler) GetMarketplaceListing(c *gin.Context, id uint64) {
 func (h *Handler) UpdateMarketplaceListing(c *gin.Context, id uint64, params generated.UpdateMarketplaceListingParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "UpdateMarketplaceListing", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "UpdateMarketplaceListing", func() {
 		h.updateMarketplaceListing(c)
 	})
@@ -71,6 +77,9 @@ func (h *Handler) UpdateMarketplaceListing(c *gin.Context, id uint64, params gen
 func (h *Handler) SubmitMarketplaceListing(c *gin.Context, id uint64, params generated.SubmitMarketplaceListingParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "SubmitMarketplaceListing", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "SubmitMarketplaceListing", func() {
 		h.submitMarketplaceListing(c)
 	})
@@ -80,6 +89,9 @@ func (h *Handler) SubmitMarketplaceListing(c *gin.Context, id uint64, params gen
 func (h *Handler) WithdrawMarketplaceListing(c *gin.Context, id uint64, params generated.WithdrawMarketplaceListingParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "WithdrawMarketplaceListing", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "WithdrawMarketplaceListing", func() {
 		h.withdrawMarketplaceListing(c)
 	})
@@ -88,6 +100,9 @@ func (h *Handler) WithdrawMarketplaceListing(c *gin.Context, id uint64, params g
 // CreateMarketplaceOrder adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) CreateMarketplaceOrder(c *gin.Context, params generated.CreateMarketplaceOrderParams) {
 	setGeneratedParams(c, "CreateMarketplaceOrder", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CreateMarketplaceOrder", func() {
 		h.createMarketplaceOrder(c)
 	})

@@ -19,10 +19,20 @@ func (h *Handler) {{.OperationID}}(c *gin.Context{{range pathParams .Path}}, {{.
 	setGeneratedParams(c, "{{.OperationID}}", params)
 {{- end}}
 	{{- if eq .Idempotency "required"}}
+	{{- if eq .AcademicVerification "required"}}
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	{{- end}}
 	h.idempotent(c, "{{.OperationID}}", func() {
 		h.{{lowerFirst .OperationID}}(c)
 	})
 	{{- else}}
+	{{- if eq .AcademicVerification "required"}}
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	{{- end}}
 	h.{{lowerFirst .OperationID}}(c)
 	{{- end}}
 }

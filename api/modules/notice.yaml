@@ -38,6 +38,7 @@ paths:
       summary: "创建通知草稿"
       x-generated-module: notice
       x-permission: notice:manage
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -62,6 +63,7 @@ paths:
       summary: "删除通知草稿"
       x-generated-module: notice
       x-permission: notice:manage_item
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -99,6 +101,7 @@ paths:
       summary: "更新通知草稿"
       x-generated-module: notice
       x-permission: notice:manage_item
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -152,6 +155,7 @@ paths:
       summary: "重试失败投递"
       x-generated-module: notice
       x-permission: notice:retry
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -171,6 +175,7 @@ paths:
       summary: "发布通知"
       x-generated-module: notice
       x-permission: notice:publish
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -196,6 +201,7 @@ paths:
       summary: "撤回通知"
       x-generated-module: notice
       x-permission: notice:revoke
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -258,6 +264,7 @@ paths:
       summary: "全部标记已读"
       x-generated-module: notice
       x-permission: notice:read_all
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       responses:
         "200":
@@ -293,6 +300,7 @@ paths:
       summary: "标记通知已读"
       x-generated-module: notice
       x-permission: notice:mark_read
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}

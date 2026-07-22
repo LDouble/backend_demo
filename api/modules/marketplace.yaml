@@ -49,6 +49,7 @@ paths:
       summary: "管理员下架二手商品"
       x-generated-module: marketplace
       x-permission: marketplace:remove
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -75,6 +76,7 @@ paths:
       summary: "审核二手商品"
       x-generated-module: marketplace
       x-permission: marketplace:review
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -162,6 +164,7 @@ paths:
       summary: "创建二手商品草稿"
       x-generated-module: marketplace
       x-permission: marketplace:create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -254,6 +257,7 @@ paths:
       summary: "修改草稿或被驳回商品"
       x-generated-module: marketplace
       x-permission: marketplace:update
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -304,6 +308,7 @@ paths:
       summary: "提交商品审核"
       x-generated-module: marketplace
       x-permission: marketplace:submit
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -338,6 +343,7 @@ paths:
       summary: "撤回商品"
       x-generated-module: marketplace
       x-permission: marketplace:withdraw
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -372,6 +378,7 @@ paths:
       summary: "原子保留商品并创建订单"
       x-generated-module: marketplace
       x-permission: marketplace:order_create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key

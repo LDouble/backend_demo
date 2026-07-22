@@ -35,6 +35,16 @@ paths:
       operationId: GetMe
       security: [{bearerAuth: []}]
       responses: {"200": {$ref: "#/components/responses/CurrentUserResponse"}}
+  /api/v1/auth/me/password:
+    patch:
+      operationId: ChangeMyPassword
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ChangeMyPasswordRequest"}}}
+      responses: {"200": {$ref: "#/components/responses/Success"}, "401": {$ref: "#/components/responses/Error"}}
   /api/v1/permissions:
     get:
       operationId: ListPermissionCatalog
@@ -164,6 +174,293 @@ paths:
       security: [{bearerAuth: []}]
       parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
       responses: {"200": {$ref: "#/components/responses/Success"}}
+  /api/v1/academic-verification:
+    get:
+      operationId: GetAcademicVerification
+      tags: [academic_verification]
+      summary: "查询本人教务认证状态"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:read
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/academic-verification/credentials:
+    post:
+      operationId: VerifyAcademicCredentials
+      tags: [academic_verification]
+      summary: "同步验证教务凭据"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:credentials
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - student_no
+                - password
+              properties:
+                student_no:
+                  type: string
+                  maxLength: 64
+                password:
+                  type: string
+                  maxLength: 256
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "401":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
+  /api/v1/academic-verification/materials:
+    post:
+      operationId: UploadAcademicVerificationMaterial
+      tags: [academic_verification]
+      summary: "上传单张学生证材料"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:upload
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/Error"
+        "413":
+          $ref: "#/components/responses/Error"
+  /api/v1/academic-verification/student-card:
+    post:
+      operationId: SubmitStudentCardVerification
+      tags: [academic_verification]
+      summary: "提交学生证人工审核"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:submit_card
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - real_name
+                - student_no
+                - material_id
+              properties:
+                real_name:
+                  type: string
+                  maxLength: 100
+                student_no:
+                  type: string
+                  maxLength: 64
+                material_id:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/admin/academic-verification/identities/{id}/revoke:
+    post:
+      operationId: RevokeAcademicIdentity
+      tags: [academic_verification]
+      summary: "撤销已认证身份"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:admin_revoke
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+                - reason
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/academic-verification/materials/{id}:
+    get:
+      operationId: GetAdminAcademicVerificationMaterial
+      tags: [academic_verification]
+      summary: "受控读取认证材料"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:admin_material
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/academic-verification/requests:
+    get:
+      operationId: ListAdminAcademicVerificationRequests
+      tags: [academic_verification]
+      summary: "分页查询认证申请"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:admin_list
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/academic-verification/requests/{id}:
+    get:
+      operationId: GetAdminAcademicVerificationRequest
+      tags: [academic_verification]
+      summary: "查询认证申请详情"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:admin_read
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/academic-verification/requests/{id}/approve:
+    post:
+      operationId: ApproveAcademicVerificationRequest
+      tags: [academic_verification]
+      summary: "批准认证申请"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:admin_approve
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+  /api/v1/admin/academic-verification/requests/{id}/reject:
+    post:
+      operationId: RejectAcademicVerificationRequest
+      tags: [academic_verification]
+      summary: "驳回认证申请"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:admin_reject
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+                - reason
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/activities:
     get:
       operationId: ListActivities
@@ -251,6 +548,7 @@ paths:
       summary: "报名活动"
       x-generated-module: activity
       x-permission: activity:register
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -272,6 +570,7 @@ paths:
       summary: "取消我的活动报名"
       x-generated-module: activity
       x-permission: activity:registration_cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -353,6 +652,7 @@ paths:
       summary: "管理端创建活动草稿"
       x-generated-module: activity
       x-permission: activity:admin_create
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -434,6 +734,7 @@ paths:
       summary: "管理端修改活动草稿"
       x-generated-module: activity
       x-permission: activity:admin_update
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -505,6 +806,7 @@ paths:
       summary: "审核通过活动"
       x-generated-module: activity
       x-permission: activity:admin_approve
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -541,6 +843,7 @@ paths:
       summary: "取消活动"
       x-generated-module: activity
       x-permission: activity:admin_cancel
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -575,6 +878,7 @@ paths:
       summary: "结束活动"
       x-generated-module: activity
       x-permission: activity:admin_finish
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -609,6 +913,7 @@ paths:
       summary: "发布活动"
       x-generated-module: activity
       x-permission: activity:admin_publish
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -643,6 +948,7 @@ paths:
       summary: "驳回活动审核"
       x-generated-module: activity
       x-permission: activity:admin_reject
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -680,6 +986,7 @@ paths:
       summary: "提交活动审核"
       x-generated-module: activity
       x-permission: activity:admin_submit_review
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -763,6 +1070,7 @@ paths:
       summary: "发起拼车行程"
       x-generated-module: carpool
       x-permission: carpool:create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -831,6 +1139,7 @@ paths:
       summary: "取消拼车行程"
       x-generated-module: carpool
       x-permission: carpool:cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -863,6 +1172,7 @@ paths:
       summary: "原子加入拼车行程"
       x-generated-module: carpool
       x-permission: carpool:join
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -897,6 +1207,7 @@ paths:
       summary: "退出拼车行程"
       x-generated-module: carpool
       x-permission: carpool:leave
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -955,6 +1266,7 @@ paths:
       summary: "发布跑腿任务"
       x-generated-module: errand
       x-permission: errand:create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -1051,6 +1363,7 @@ paths:
       summary: "修改未接单的跑腿任务"
       x-generated-module: errand
       x-permission: errand:update
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1110,6 +1423,7 @@ paths:
       summary: "原子接单并创建交易订单"
       x-generated-module: errand
       x-permission: errand:accept
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1144,6 +1458,7 @@ paths:
       summary: "取消跑腿任务"
       x-generated-module: errand
       x-permission: errand:cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1178,6 +1493,7 @@ paths:
       summary: "发布者确认跑腿完成"
       x-generated-module: errand
       x-permission: errand:complete
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1212,6 +1528,7 @@ paths:
       summary: "跑腿员确认送达"
       x-generated-module: errand
       x-permission: errand:deliver
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1246,6 +1563,7 @@ paths:
       summary: "跑腿员确认取件"
       x-generated-module: errand
       x-permission: errand:pickup
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1317,6 +1635,7 @@ paths:
       summary: "管理员下架二手商品"
       x-generated-module: marketplace
       x-permission: marketplace:remove
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1343,6 +1662,7 @@ paths:
       summary: "审核二手商品"
       x-generated-module: marketplace
       x-permission: marketplace:review
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1430,6 +1750,7 @@ paths:
       summary: "创建二手商品草稿"
       x-generated-module: marketplace
       x-permission: marketplace:create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -1522,6 +1843,7 @@ paths:
       summary: "修改草稿或被驳回商品"
       x-generated-module: marketplace
       x-permission: marketplace:update
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1572,6 +1894,7 @@ paths:
       summary: "提交商品审核"
       x-generated-module: marketplace
       x-permission: marketplace:submit
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1606,6 +1929,7 @@ paths:
       summary: "撤回商品"
       x-generated-module: marketplace
       x-permission: marketplace:withdraw
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1640,6 +1964,7 @@ paths:
       summary: "原子保留商品并创建订单"
       x-generated-module: marketplace
       x-permission: marketplace:order_create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -1699,6 +2024,7 @@ paths:
       summary: "创建通知草稿"
       x-generated-module: notice
       x-permission: notice:manage
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -1723,6 +2049,7 @@ paths:
       summary: "删除通知草稿"
       x-generated-module: notice
       x-permission: notice:manage_item
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1760,6 +2087,7 @@ paths:
       summary: "更新通知草稿"
       x-generated-module: notice
       x-permission: notice:manage_item
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1813,6 +2141,7 @@ paths:
       summary: "重试失败投递"
       x-generated-module: notice
       x-permission: notice:retry
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1832,6 +2161,7 @@ paths:
       summary: "发布通知"
       x-generated-module: notice
       x-permission: notice:publish
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1857,6 +2187,7 @@ paths:
       summary: "撤回通知"
       x-generated-module: notice
       x-permission: notice:revoke
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -1919,6 +2250,7 @@ paths:
       summary: "全部标记已读"
       x-generated-module: notice
       x-permission: notice:read_all
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       responses:
         "200":
@@ -1954,6 +2286,7 @@ paths:
       summary: "标记通知已读"
       x-generated-module: notice
       x-permission: notice:mark_read
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -2009,6 +2342,7 @@ paths:
       summary: "取消交易订单"
       x-generated-module: trade
       x-permission: trade:cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -2043,6 +2377,7 @@ paths:
       summary: "确认交易完成"
       x-generated-module: trade
       x-permission: trade:complete
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -2220,6 +2555,12 @@ components:
     UpdateUserRequest:
       type: object
       properties: {username: {type: string, minLength: 3, maxLength: 32}, password: {type: string, minLength: 12}}
+    ChangeMyPasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: {type: string, minLength: 1, maxLength: 256}
+        new_password: {type: string, minLength: 12, maxLength: 256}
     UserStatusRequest:
       type: object
       required: [status]

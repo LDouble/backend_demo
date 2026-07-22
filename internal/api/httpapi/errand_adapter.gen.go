@@ -17,6 +17,9 @@ func (h *Handler) ListErrands(c *gin.Context, params generated.ListErrandsParams
 // CreateErrand adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) CreateErrand(c *gin.Context, params generated.CreateErrandParams) {
 	setGeneratedParams(c, "CreateErrand", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CreateErrand", func() {
 		h.createErrand(c)
 	})
@@ -38,6 +41,9 @@ func (h *Handler) GetErrand(c *gin.Context, id uint64) {
 func (h *Handler) UpdateErrand(c *gin.Context, id uint64, params generated.UpdateErrandParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "UpdateErrand", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "UpdateErrand", func() {
 		h.updateErrand(c)
 	})
@@ -47,6 +53,9 @@ func (h *Handler) UpdateErrand(c *gin.Context, id uint64, params generated.Updat
 func (h *Handler) AcceptErrand(c *gin.Context, id uint64, params generated.AcceptErrandParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "AcceptErrand", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "AcceptErrand", func() {
 		h.acceptErrand(c)
 	})
@@ -56,6 +65,9 @@ func (h *Handler) AcceptErrand(c *gin.Context, id uint64, params generated.Accep
 func (h *Handler) CancelErrand(c *gin.Context, id uint64, params generated.CancelErrandParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "CancelErrand", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CancelErrand", func() {
 		h.cancelErrand(c)
 	})
@@ -65,6 +77,9 @@ func (h *Handler) CancelErrand(c *gin.Context, id uint64, params generated.Cance
 func (h *Handler) CompleteErrand(c *gin.Context, id uint64, params generated.CompleteErrandParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "CompleteErrand", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CompleteErrand", func() {
 		h.completeErrand(c)
 	})
@@ -74,6 +89,9 @@ func (h *Handler) CompleteErrand(c *gin.Context, id uint64, params generated.Com
 func (h *Handler) DeliverErrand(c *gin.Context, id uint64, params generated.DeliverErrandParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "DeliverErrand", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "DeliverErrand", func() {
 		h.deliverErrand(c)
 	})
@@ -83,6 +101,9 @@ func (h *Handler) DeliverErrand(c *gin.Context, id uint64, params generated.Deli
 func (h *Handler) PickupErrand(c *gin.Context, id uint64, params generated.PickupErrandParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "PickupErrand", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "PickupErrand", func() {
 		h.pickupErrand(c)
 	})

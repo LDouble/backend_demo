@@ -43,7 +43,7 @@ type assigningGuard struct {
 }
 
 func (g *assigningGuard) CanDisable(context.Context, uint64) (bool, error) { return true, nil }
-func (g *assigningGuard) EnsureMemberForUser(_ context.Context, id uint64) error {
+func (g *assigningGuard) EnsureGuestForUser(_ context.Context, id uint64) error {
 	g.assigned = id
 	return g.err
 }
@@ -122,7 +122,7 @@ func TestHashPasswordLength(t *testing.T) {
 	}
 }
 
-func TestCreateAssignsMemberRole(t *testing.T) {
+func TestCreateAssignsGuestRole(t *testing.T) {
 	repo := newFakeRepo()
 	guard := &assigningGuard{}
 	svc := NewService(repo, guard)

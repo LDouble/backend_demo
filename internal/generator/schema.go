@@ -95,17 +95,19 @@ type Permission struct {
 
 // APIOperation declares one HTTP capability and its entry permission.
 type APIOperation struct {
-	OperationID  string         `yaml:"operation_id"`
-	Method       string         `yaml:"method"`
-	Path         string         `yaml:"path"`
-	Permission   string         `yaml:"permission"`
-	DefaultRoles []string       `yaml:"default_roles,omitempty"`
-	Idempotency  string         `yaml:"idempotency,omitempty"`
-	Summary      string         `yaml:"summary,omitempty"`
-	Headers      []APIParameter `yaml:"headers,omitempty"`
-	Query        []APIParameter `yaml:"query,omitempty"`
-	Body         *APIObject     `yaml:"body,omitempty"`
-	Responses    []APIResponse  `yaml:"responses,omitempty"`
+	OperationID          string         `yaml:"operation_id"`
+	Method               string         `yaml:"method"`
+	Path                 string         `yaml:"path"`
+	Permission           string         `yaml:"permission"`
+	DefaultRoles         []string       `yaml:"default_roles,omitempty"`
+	Idempotency          string         `yaml:"idempotency,omitempty"`
+	AcademicVerification string         `yaml:"academic_verification,omitempty"`
+	RequestContent       string         `yaml:"request_content,omitempty"`
+	Summary              string         `yaml:"summary,omitempty"`
+	Headers              []APIParameter `yaml:"headers,omitempty"`
+	Query                []APIParameter `yaml:"query,omitempty"`
+	Body                 *APIObject     `yaml:"body,omitempty"`
+	Responses            []APIResponse  `yaml:"responses,omitempty"`
 }
 
 // APIParameter declares a generated header or query parameter.
@@ -413,6 +415,8 @@ func (s *Schema) normalizeAPIOperations() error {
 		op.Permission = strings.TrimSpace(op.Permission)
 		op.DefaultRoles = uniqueStrings(op.DefaultRoles)
 		op.Idempotency = strings.ToLower(strings.TrimSpace(op.Idempotency))
+		op.AcademicVerification = strings.ToLower(strings.TrimSpace(op.AcademicVerification))
+		op.RequestContent = strings.ToLower(strings.TrimSpace(op.RequestContent))
 		if !typePattern.MatchString(op.OperationID) {
 			return fmt.Errorf("invalid operation_id %q", op.OperationID)
 		}
@@ -443,8 +447,25 @@ func (s *Schema) normalizeAPIOperations() error {
 			if err := normalizeIdempotency(op); err != nil {
 				return err
 			}
+			if op.AcademicVerification == "" {
+				op.AcademicVerification = "none"
+			}
+			if op.AcademicVerification != "required" && op.AcademicVerification != "none" {
+				return fmt.Errorf("operation %q has invalid academic_verification %q", op.OperationID, op.AcademicVerification)
+			}
 		} else if op.Idempotency != "" {
 			return fmt.Errorf("read operation %q must not declare idempotency", op.OperationID)
+		} else if op.AcademicVerification != "" {
+			return fmt.Errorf("read operation %q must not declare academic_verification", op.OperationID)
+		}
+		if op.RequestContent == "" {
+			op.RequestContent = "application/json"
+		}
+		if op.RequestContent != "application/json" && op.RequestContent != "multipart/form-data" {
+			return fmt.Errorf("operation %q has invalid request_content %q", op.OperationID, op.RequestContent)
+		}
+		if op.RequestContent == "multipart/form-data" && op.Body == nil {
+			return fmt.Errorf("operation %q multipart request requires a body", op.OperationID)
 		}
 		seenHeaders := map[string]struct{}{}
 		for j := range op.Headers {
@@ -637,7 +658,7 @@ func validAPIPath(path string, validSegment func(string) bool) bool {
 func validAPIFormat(kind, format string) bool {
 	switch kind {
 	case "string":
-		return format == "" || format == "date" || format == "date-time"
+		return format == "" || format == "date" || format == "date-time" || format == "binary"
 	case "integer":
 		return format == "" || format == "int32" || format == "int64" || format == "uint64"
 	case "boolean", "array":

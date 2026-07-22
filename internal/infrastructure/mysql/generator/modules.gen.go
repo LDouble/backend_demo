@@ -3,6 +3,7 @@
 package main
 
 import (
+	academic_verificationdomain "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/domain"
 	activitydomain "github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
 	carpooldomain "github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
 	erranddomain "github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
@@ -15,6 +16,9 @@ import (
 
 func applyGeneratedModules(generator *gen.Generator) {
 	generator.ApplyBasic(
+		academic_verificationdomain.AcademicIdentity{},
+		academic_verificationdomain.AcademicVerificationMaterial{},
+		academic_verificationdomain.AcademicVerificationRequest{},
 		activitydomain.Activity{},
 		activitydomain.ActivityRegistration{},
 		carpooldomain.Trip{},

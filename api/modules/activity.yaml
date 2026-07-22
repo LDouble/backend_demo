@@ -92,6 +92,7 @@ paths:
       summary: "报名活动"
       x-generated-module: activity
       x-permission: activity:register
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -113,6 +114,7 @@ paths:
       summary: "取消我的活动报名"
       x-generated-module: activity
       x-permission: activity:registration_cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -194,6 +196,7 @@ paths:
       summary: "管理端创建活动草稿"
       x-generated-module: activity
       x-permission: activity:admin_create
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -275,6 +278,7 @@ paths:
       summary: "管理端修改活动草稿"
       x-generated-module: activity
       x-permission: activity:admin_update
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -346,6 +350,7 @@ paths:
       summary: "审核通过活动"
       x-generated-module: activity
       x-permission: activity:admin_approve
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -382,6 +387,7 @@ paths:
       summary: "取消活动"
       x-generated-module: activity
       x-permission: activity:admin_cancel
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -416,6 +422,7 @@ paths:
       summary: "结束活动"
       x-generated-module: activity
       x-permission: activity:admin_finish
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -450,6 +457,7 @@ paths:
       summary: "发布活动"
       x-generated-module: activity
       x-permission: activity:admin_publish
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -484,6 +492,7 @@ paths:
       summary: "驳回活动审核"
       x-generated-module: activity
       x-permission: activity:admin_reject
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -521,6 +530,7 @@ paths:
       summary: "提交活动审核"
       x-generated-module: activity
       x-permission: activity:admin_submit_review
+      x-academic-verification: none
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}

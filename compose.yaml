@@ -10,6 +10,9 @@ x-app-environment: &app-environment
   CAMPUS_REDIS_PASSWORD: "${CAMPUS_REDIS_PASSWORD:?请先运行 make env}"
   CAMPUS_JWT_SECRET: "${CAMPUS_JWT_SECRET:?请先运行 make env}"
   CAMPUS_CONFIG_MASTER_KEY: "${CAMPUS_CONFIG_MASTER_KEY:?请先运行 make env}"
+  CAMPUS_ACADEMIC_MATERIAL_KEY: "${CAMPUS_ACADEMIC_MATERIAL_KEY:?请先运行 make env}"
+  CAMPUS_ACADEMIC_MATERIAL_ROOT: /var/lib/campus/academic-materials
+  CAMPUS_ACADEMIC_PROVIDER_FILE: /run/secrets/academic-provider.json
   CAMPUS_ADMIN_USERNAME: "${CAMPUS_ADMIN_USERNAME:?请先运行 make env}"
   CAMPUS_ADMIN_PASSWORD: "${CAMPUS_ADMIN_PASSWORD:?请先运行 make env}"
   CAMPUS_WORKER_REDIS_DB: "${CAMPUS_WORKER_REDIS_DB:-1}"
@@ -73,6 +76,9 @@ services:
     environment: *app-environment
     ports:
       - "127.0.0.1:${CAMPUS_HTTP_PORT:-8080}:8080"
+    volumes:
+      - academic-materials:/var/lib/campus/academic-materials
+      - ./deploy/dev/academic-provider.json:/run/secrets/academic-provider.json:ro
     depends_on:
       bootstrap:
         condition: service_completed_successfully
@@ -86,9 +92,12 @@ services:
     build: *app-build
     entrypoint: ["/app/worker"]
     environment: *app-environment
+    volumes:
+      - academic-materials:/var/lib/campus/academic-materials
     depends_on:
       bootstrap:
         condition: service_completed_successfully
 
 volumes:
   mysql-data:
+  academic-materials:

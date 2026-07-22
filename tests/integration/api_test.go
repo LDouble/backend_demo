@@ -36,6 +36,7 @@ var (
 	adminLoginToken            string
 	adminLoginErr              error
 	integrationRequestSequence atomic.Uint64
+	integrationStudentSequence atomic.Uint64
 )
 
 func TestAuthenticationLifecycle(t *testing.T) {
@@ -125,6 +126,39 @@ func TestGeneratedQueryManagementLifecycle(t *testing.T) {
 	assertStatus(t, request(t, client, http.MethodDelete, fmt.Sprintf("%s/api/v1/roles/%d", base, createdRole.ID), token, nil), http.StatusOK)
 }
 
+func TestGuestBecomesMemberAfterAcademicVerification(t *testing.T) {
+	base, adminToken := integrationAdmin(t)
+	client := http.Client{Timeout: 10 * time.Second}
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	username := "academic_" + suffix
+	created := resource{}
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{
+		"username": username,
+		"password": integrationPassword,
+	}), &created)
+	token := loginWithCredentials(t, base, username, integrationPassword)
+
+	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/activities?page=1&page_size=10", "", nil), http.StatusUnauthorized)
+	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/activities?page=1&page_size=10", token, nil), http.StatusOK)
+	guestWrite := request(t, client, http.MethodPost, base+"/api/v1/errands", token, map[string]any{
+		"title": "访客写入", "description": "认证前必须拒绝", "reward_cents": 300,
+		"pickup_location": "东门", "dropoff_location": "图书馆",
+		"deadline":     time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		"contact_type": "wechat", "contact": "guest-test",
+	})
+	assertStatus(t, guestWrite, http.StatusForbidden)
+
+	verifyAcademicCredentials(t, client, base, token)
+	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/academic-verification", token, nil), http.StatusOK)
+	memberWrite := request(t, client, http.MethodPost, base+"/api/v1/errands", token, map[string]any{
+		"title": "成员写入", "description": "认证后允许", "reward_cents": 300,
+		"pickup_location": "东门", "dropoff_location": "图书馆",
+		"deadline":     time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		"contact_type": "wechat", "contact": "member-test",
+	})
+	assertStatus(t, memberWrite, http.StatusCreated)
+}
+
 func TestNoticeLifecycleThroughWorker(t *testing.T) {
 	base, adminToken := integrationAdmin(t)
 	client := http.Client{}
@@ -133,6 +167,7 @@ func TestNoticeLifecycleThroughWorker(t *testing.T) {
 	password := "integration-password"
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{"username": username, "password": password}), &resource{})
 	userToken := loginWithCredentials(t, base, username, password)
+	verifyAcademicCredentials(t, client, base, userToken)
 	created := resource{}
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/admin/notices", adminToken, map[string]any{
 		"title": "Worker 通知", "summary": "异步闭环", "body": "Markdown 正文", "category": "campus", "priority": "important", "action_path": "/pages/notices/detail", "channels": []string{"in_app", "push"}, "audience": map[string]any{"all": true, "roles": []string{}, "user_ids": []uint64{}},
@@ -277,4 +312,15 @@ func assertStatus(t *testing.T, res *http.Response, want int) {
 		raw, _ := io.ReadAll(res.Body)
 		t.Fatalf("status=%d want=%d body=%s", res.StatusCode, want, raw)
 	}
+}
+
+func verifyAcademicCredentials(t *testing.T, client http.Client, base, token string) string {
+	t.Helper()
+	sequence := integrationStudentSequence.Add(1)
+	studentNo := fmt.Sprintf("2026%04d", sequence)
+	assertStatus(t, request(t, client, http.MethodPost, base+"/api/v1/academic-verification/credentials", token, map[string]string{
+		"student_no": studentNo,
+		"password":   "password",
+	}), http.StatusOK)
+	return studentNo
 }

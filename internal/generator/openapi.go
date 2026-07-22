@@ -149,7 +149,8 @@ func corePermissionManifest(paths *yaml.Node) ([]byte, error) {
 				continue
 			}
 			operationID := scalarMappingValue(operation, "operationId")
-			if operationID == "" || (strings.HasPrefix(path, "/api/v1/auth/") && operationID != "GetMe") {
+			allowedAuthOperation := operationID == "GetMe" || operationID == "ChangeMyPassword"
+			if operationID == "" || (strings.HasPrefix(path, "/api/v1/auth/") && !allowedAuthOperation) {
 				continue
 			}
 			pattern := path
@@ -162,7 +163,14 @@ func corePermissionManifest(paths *yaml.Node) ([]byte, error) {
 				end += start
 				pattern = pattern[:start] + ":" + pattern[start+1:end] + pattern[end+1:]
 			}
-			permissions = append(permissions, Permission{Name: "core:" + strings.ToLower(operationID), Path: pattern, Methods: []string{strings.ToUpper(method)}})
+			permission := Permission{
+				Name: "core:" + strings.ToLower(operationID), Path: pattern,
+				Methods: []string{strings.ToUpper(method)},
+			}
+			if operationID == "ChangeMyPassword" {
+				permission.DefaultRoles = []string{"guest", "member"}
+			}
+			permissions = append(permissions, permission)
 		}
 	}
 	sort.Slice(permissions, func(i, j int) bool { return permissions[i].Name < permissions[j].Name })

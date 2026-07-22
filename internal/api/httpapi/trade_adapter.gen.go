@@ -24,6 +24,9 @@ func (h *Handler) GetMyTradeOrder(c *gin.Context, id uint64) {
 func (h *Handler) CancelTradeOrder(c *gin.Context, id uint64, params generated.CancelTradeOrderParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "CancelTradeOrder", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CancelTradeOrder", func() {
 		h.cancelTradeOrder(c)
 	})
@@ -33,6 +36,9 @@ func (h *Handler) CancelTradeOrder(c *gin.Context, id uint64, params generated.C
 func (h *Handler) CompleteTradeOrder(c *gin.Context, id uint64, params generated.CompleteTradeOrderParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "CompleteTradeOrder", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CompleteTradeOrder", func() {
 		h.completeTradeOrder(c)
 	})

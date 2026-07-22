@@ -101,20 +101,23 @@ func Catalog() ([]CatalogEntry, error) {
 	return catalog, nil
 }
 
-// MemberRules returns permissions whose generated metadata grants the member role.
-func MemberRules() ([]Rule, error) {
+// RulesForRole returns permissions whose generated metadata grants a base role.
+func RulesForRole(role string) ([]Rule, error) {
 	all, err := Rules()
 	if err != nil {
 		return nil, err
 	}
 	rules := make([]Rule, 0, len(all))
 	for _, rule := range all {
-		if containsRole(rule.DefaultRoles, "member") || rule.Name == "core:getme" {
+		if containsRole(rule.DefaultRoles, role) || rule.Name == "core:getme" {
 			rules = append(rules, rule)
 		}
 	}
 	return rules, nil
 }
+
+// MemberRules returns permissions granted to verified members.
+func MemberRules() ([]Rule, error) { return RulesForRole("member") }
 
 func normalizedRoles(roles []string) []string {
 	seen := map[string]struct{}{}

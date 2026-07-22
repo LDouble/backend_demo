@@ -23,6 +23,7 @@ mysql_root_password=$(openssl rand -hex 24)
 redis_password=$(openssl rand -hex 24)
 jwt_secret=$(openssl rand -hex 32)
 config_master_key=$(openssl rand -base64 32)
+academic_material_key=$(openssl rand -base64 32)
 admin_password=$(openssl rand -hex 16)
 
 umask 077
@@ -35,6 +36,7 @@ umask 077
 	printf '%s\n' "CAMPUS_REDIS_PASSWORD=$redis_password"
 	printf '%s\n' "CAMPUS_JWT_SECRET=$jwt_secret"
 	printf '%s\n' "CAMPUS_CONFIG_MASTER_KEY=$config_master_key"
+	printf '%s\n' "CAMPUS_ACADEMIC_MATERIAL_KEY=$academic_material_key"
 	printf '%s\n' "CAMPUS_ADMIN_USERNAME=admin"
 	printf '%s\n' "CAMPUS_ADMIN_PASSWORD=$admin_password"
 	printf '%s\n' "CAMPUS_HTTP_PORT=8080"

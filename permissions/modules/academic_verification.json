@@ -1,0 +1,91 @@
+{
+  "module": "academic_verification",
+  "permissions": [
+    {
+      "name": "academic_verification:admin_approve",
+      "path_pattern": "/api/v1/admin/academic-verification/requests/:id/approve",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "academic_verification:admin_list",
+      "path_pattern": "/api/v1/admin/academic-verification/requests",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "academic_verification:admin_material",
+      "path_pattern": "/api/v1/admin/academic-verification/materials/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "academic_verification:admin_read",
+      "path_pattern": "/api/v1/admin/academic-verification/requests/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "academic_verification:admin_reject",
+      "path_pattern": "/api/v1/admin/academic-verification/requests/:id/reject",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "academic_verification:admin_revoke",
+      "path_pattern": "/api/v1/admin/academic-verification/identities/:id/revoke",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "academic_verification:credentials",
+      "path_pattern": "/api/v1/academic-verification/credentials",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "academic_verification:read",
+      "path_pattern": "/api/v1/academic-verification",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "academic_verification:submit_card",
+      "path_pattern": "/api/v1/academic-verification/student-card",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "academic_verification:upload",
+      "path_pattern": "/api/v1/academic-verification/materials",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    }
+  ]
+}

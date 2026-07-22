@@ -2,6 +2,16 @@
   "version": 1,
   "modules": [
     {
+      "name": "academic_verification",
+      "entity": "AcademicIdentity",
+      "entities": [
+        "AcademicIdentity",
+        "AcademicVerificationMaterial",
+        "AcademicVerificationRequest"
+      ],
+      "schema": "schemas/academic_verification.yaml"
+    },
+    {
       "name": "activity",
       "entity": "Activity",
       "entities": [

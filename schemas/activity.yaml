@@ -61,6 +61,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities
     permission: activity:admin_create
     summary: 管理端创建活动草稿
@@ -88,6 +89,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: PATCH
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities/{id}
     permission: activity:admin_update
     summary: 管理端修改活动草稿
@@ -110,6 +112,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities/{id}/submit-review
     permission: activity:admin_submit_review
     summary: 提交活动审核
@@ -119,6 +122,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities/{id}/approve
     permission: activity:admin_approve
     summary: 审核通过活动
@@ -131,6 +135,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities/{id}/reject
     permission: activity:admin_reject
     summary: 驳回活动审核
@@ -143,6 +148,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities/{id}/publish
     permission: activity:admin_publish
     summary: 发布活动
@@ -152,6 +158,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities/{id}/cancel
     permission: activity:admin_cancel
     summary: 取消活动
@@ -161,12 +168,14 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/activities/{id}/finish
     permission: activity:admin_finish
     summary: 结束活动
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: ListActivities
+    default_roles: [guest, member]
     method: GET
     path: /api/v1/activities
     permission: activity:list
@@ -178,29 +187,35 @@ operations:
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
     responses: [{status: 200, kind: success}]
   - operation_id: GetActivity
+    default_roles: [guest, member]
     method: GET
     path: /api/v1/activities/{id}
     permission: activity:read
     summary: 用户侧查看活动详情
     responses: [{status: 200, kind: success}, {status: 404, kind: error}]
   - operation_id: CreateActivityRegistration
+    default_roles: [member]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/activities/{id}/registrations
     permission: activity:register
     summary: 报名活动
     headers: [{name: Idempotency-Key, type: string, required: true}]
     responses: [{status: 201, kind: success}, {status: 409, kind: error}]
   - operation_id: CancelMyActivityRegistration
+    default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: DELETE
     idempotency: required
+    academic_verification: required
     path: /api/v1/activities/{id}/registrations/me
     permission: activity:registration_cancel
     summary: 取消我的活动报名
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: ListMyActivityRegistrations
+    default_roles: [member]
     method: GET
     path: /api/v1/activities/registrations/mine
     permission: activity:registration_mine

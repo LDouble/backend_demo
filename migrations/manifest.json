@@ -144,6 +144,14 @@
     {
       "path": "migrations/20260722065811_notice_source_event.up.sql",
       "sha256": "477e8de4a60a01643966ced05b5459c1b48357a35f162ee46e81838d1931a5e9"
+    },
+    {
+      "path": "migrations/20260722091200_academic_verification.down.sql",
+      "sha256": "670572cc777fdaa4f8ac6ca1156d44e1153719740aa498efcb5cd2d3740265ab"
+    },
+    {
+      "path": "migrations/20260722091200_academic_verification.up.sql",
+      "sha256": "997b706671ef9d07986c6ced41bc2b56ced238153a7758b30fe54532ad7699e3"
     }
   ]
 }

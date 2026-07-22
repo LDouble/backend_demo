@@ -17,6 +17,9 @@ func (h *Handler) ListCarpoolTrips(c *gin.Context, params generated.ListCarpoolT
 // CreateCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) CreateCarpoolTrip(c *gin.Context, params generated.CreateCarpoolTripParams) {
 	setGeneratedParams(c, "CreateCarpoolTrip", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CreateCarpoolTrip", func() {
 		h.createCarpoolTrip(c)
 	})
@@ -32,6 +35,9 @@ func (h *Handler) GetCarpoolTrip(c *gin.Context, id uint64) {
 func (h *Handler) CancelCarpoolTrip(c *gin.Context, id uint64, params generated.CancelCarpoolTripParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "CancelCarpoolTrip", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CancelCarpoolTrip", func() {
 		h.cancelCarpoolTrip(c)
 	})
@@ -41,6 +47,9 @@ func (h *Handler) CancelCarpoolTrip(c *gin.Context, id uint64, params generated.
 func (h *Handler) JoinCarpoolTrip(c *gin.Context, id uint64, params generated.JoinCarpoolTripParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "JoinCarpoolTrip", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "JoinCarpoolTrip", func() {
 		h.joinCarpoolTrip(c)
 	})
@@ -50,6 +59,9 @@ func (h *Handler) JoinCarpoolTrip(c *gin.Context, id uint64, params generated.Jo
 func (h *Handler) LeaveCarpoolTrip(c *gin.Context, id uint64, params generated.LeaveCarpoolTripParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "LeaveCarpoolTrip", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "LeaveCarpoolTrip", func() {
 		h.leaveCarpoolTrip(c)
 	})

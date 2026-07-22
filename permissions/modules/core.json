@@ -2,6 +2,17 @@
   "module": "core",
   "permissions": [
     {
+      "name": "core:changemypassword",
+      "path_pattern": "/api/v1/auth/me/password",
+      "methods": [
+        "PATCH"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
       "name": "core:createconfig",
       "path_pattern": "/api/v1/configs",
       "methods": [
