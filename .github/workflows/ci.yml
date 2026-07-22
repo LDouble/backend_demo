@@ -3,10 +3,6 @@ name: CI
 on:
   pull_request:
     branches: [master]
-  # Bootstrap the workflow for this initial PR. Future PRs run through the
-  # pull_request trigger once this file exists on master.
-  push:
-    branches: [feat_base]
 
 permissions:
   contents: read
@@ -71,3 +67,20 @@ jobs:
 
       - name: Check generator coverage
         run: make test-generator
+
+  compose:
+    name: MySQL and Redis acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run compose acceptance tests
+        run: make test-compose
