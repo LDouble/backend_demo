@@ -85,7 +85,7 @@ func readTLSFile(root, name string, privateKey bool) ([]byte, error) {
 		return nil, fmt.Errorf("TLS file is not a regular file")
 	}
 	if privateKey && info.Mode().Perm()&0o077 != 0 {
-		return nil, fmt.Errorf("Redis client key must not be group- or world-accessible")
+		return nil, fmt.Errorf("redis client key must not be group- or world-accessible")
 	}
 	return files.ReadFile(filepath.FromSlash(name))
 }

@@ -2,6 +2,7 @@ package redisclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -68,7 +69,7 @@ func TestSessionIndexPrunesExpiredEntriesAndEnforcesLimit(t *testing.T) {
 	if err := store.Create(ctx, "replacement", userID, "hash", 2*time.Hour); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.ZScore(ctx, userSessionsKey(userID), "short").Result(); err != redis.Nil {
+	if _, err := client.ZScore(ctx, userSessionsKey(userID), "short").Result(); !errors.Is(err, redis.Nil) {
 		t.Fatalf("expired session remains in index: %v", err)
 	}
 	if count, err := client.ZCard(ctx, userSessionsKey(userID)).Result(); err != nil || count != 2 {
