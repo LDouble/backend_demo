@@ -55,3 +55,47 @@ make env && make compose-up
 创建或更新 PR 后，必须由 PR CI 执行完整的 `make generate-check`、`make migration-check`、`make test-race`、`make test-core-coverage`、`make test-generator`、`make vet`、`make lint`、`make build`、`make check-architecture`、`git diff --check` 和 `make test-compose`。必须持续检查当前 head commit 对应的全部 CI jobs，确认每个 job 均以 `success` 结束。若任一 job 失败、超时或被取消，必须查看日志定位原因，完成修复并推送后重新检查；不得以“本地未运行完整测试”为由忽略 CI 结果，在全部 jobs 成功前禁止合并 PR。
 
 请求链路顺序为 Request ID → Body/Header 限制 → 认证 → 权限 → OpenAPI 校验 → Typed Params → 幂等控制 → 业务事务 → Domain Event/Outbox。production 必须启用 Redis TLS；运维证书文件读取必须保持明确路径边界和审计说明。
+
+## 管理端—服务端联合开发规范
+
+管理端与服务端以 OpenAPI 契约协作，服务端契约是 API 的唯一事实来源，禁止管理端手工维护重复的请求/响应类型。
+
+### 联合开发流程
+
+1. 在同一个需求或 issue 中明确服务端 PR 和管理端 PR，使用相同的功能分支标识，并在两个 PR 中互相链接。
+2. 服务端先修改 `schemas/<module>.yaml` 的 operation 或 `api/openapi.base.yaml`，完成业务 Handler、权限、迁移和测试，再执行 `make generate`；不得直接编辑生成的 OpenAPI、DTO、adapter 或权限文件。
+3. 服务端 PR 必须在说明中提供最终 `api/openapi.yaml` 的提交版本、接口变更摘要、迁移/配置影响和可用的本地联调地址。
+4. 管理端从服务端契约同步并生成客户端：
+
+   ```bash
+   pnpm api:sync --source ../backend_demo/api/openapi.yaml
+   pnpm api:generate
+   ```
+
+   生成的 `src/api/generated` 只能通过契约重新生成，不得手工修补；页面通过生成客户端调用 API，并显式处理错误、版本冲突和权限失败。
+5. 服务端契约发生 breaking change 时，必须先提供兼容窗口或版本化 endpoint，并在管理端 PR 中同步迁移；删除字段、改变枚举含义、改变 envelope 或错误码均视为 breaking change。
+6. 两个 PR 均通过各自 CI 后再合并；若服务端 PR 未合并，管理端 PR 必须标明依赖的服务端 PR 和契约提交，禁止合并后指向不存在的接口。
+
+### 本地联合联调
+
+```bash
+# 服务端
+make env
+docker compose up -d --build
+curl http://127.0.0.1:8080/health/ready
+
+# 管理端（Docker 开发容器）
+# 管理端容器须监听 5666，并将 /api 请求转发到宿主机服务端 8080
+curl -I http://127.0.0.1:5666/
+```
+
+涉及配置中心、公告、权限或认证的改动，必须至少完成一次真实登录后的管理端 API 联调；配置 JSON 需验证创建、可视化编辑、版本更新、删除和公开运行时读取，公告需验证创建、发布/撤回和投递记录。
+
+### 联合 PR 准出清单
+
+- [ ] 服务端 PR 和管理端 PR 已互相链接，且记录契约提交版本。
+- [ ] 服务端执行 `make generate-check`、`make migration-check`、目标包测试和 `git diff --check`。
+- [ ] 管理端执行 `pnpm api:sync`、`pnpm api:generate`、目标应用 `typecheck` 和 `git diff --check`。
+- [ ] 生成文件无漂移，迁移已说明执行顺序，权限和配置影响已记录。
+- [ ] 本地 Docker API、Worker、MySQL、Redis 和管理端均可启动，核心页面完成真实 API 联调。
+- [ ] PR 描述包含接口变更、测试命令、联调结果和必要的截图/响应示例。

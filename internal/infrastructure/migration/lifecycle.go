@@ -53,6 +53,16 @@ type manifestEntry struct {
 
 // Snapshot stores the current normalized module schema as the promote baseline.
 func Snapshot(ctx context.Context, root, module string) error {
+	if module == "core" {
+		manifestPath, pathErr := repositoryPath(root, "migrations/manifest.json")
+		if pathErr != nil {
+			return pathErr
+		}
+		if !lifecycleFileExists(root, manifestPath) {
+			return refreshManifest(root)
+		}
+		return checkManifest(root)
+	}
 	schema, err := loadModuleSchema(ctx, root, module)
 	if err != nil {
 		return err

@@ -35,13 +35,15 @@ type Role struct {
 
 // Config is a runtime configuration entry.
 type Config struct {
-	ID        uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Group     string    `gorm:"column:config_group;size:64;not null;uniqueIndex:uk_configs_group_key" json:"group"`
-	Key       string    `gorm:"column:config_key;size:128;not null;uniqueIndex:uk_configs_group_key" json:"key"`
-	Value     string    `gorm:"type:longtext;not null" json:"-"`
-	Encrypted bool      `gorm:"not null;default:false" json:"encrypted"`
-	Version   uint64    `gorm:"not null;default:1" json:"version"`
-	UpdatedBy uint64    `gorm:"not null" json:"updated_by"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
+	Group      string    `gorm:"column:config_group;size:64;not null;uniqueIndex:uk_configs_group_key" json:"group"`
+	Key        string    `gorm:"column:config_key;size:128;not null;uniqueIndex:uk_configs_group_key" json:"key"`
+	Value      string    `gorm:"type:longtext;not null" json:"-"`
+	Encrypted  bool      `gorm:"not null;default:false" json:"encrypted"`
+	Format     string    `gorm:"column:value_format;size:16;not null;default:string" json:"format"`
+	Visibility string    `gorm:"size:16;not null;default:admin" json:"visibility"`
+	Version    uint64    `gorm:"not null;default:1" json:"version"`
+	UpdatedBy  uint64    `gorm:"not null" json:"updated_by"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }

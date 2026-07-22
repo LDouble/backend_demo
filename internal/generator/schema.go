@@ -143,6 +143,7 @@ type APIField struct {
 type APIResponse struct {
 	Status int    `yaml:"status"`
 	Kind   string `yaml:"kind"`
+	Ref    string `yaml:"ref,omitempty"`
 }
 
 // Load reads, strictly decodes, normalizes and validates one schema.

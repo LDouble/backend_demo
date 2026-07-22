@@ -33,6 +33,8 @@ func newConfig(db *gorm.DB, opts ...gen.DOOption) config {
 	_config.Key = field.NewString(tableName, "config_key")
 	_config.Value = field.NewString(tableName, "value")
 	_config.Encrypted = field.NewBool(tableName, "encrypted")
+	_config.Format = field.NewString(tableName, "value_format")
+	_config.Visibility = field.NewString(tableName, "visibility")
 	_config.Version = field.NewUint64(tableName, "version")
 	_config.UpdatedBy = field.NewUint64(tableName, "updated_by")
 	_config.CreatedAt = field.NewTime(tableName, "created_at")
@@ -46,16 +48,18 @@ func newConfig(db *gorm.DB, opts ...gen.DOOption) config {
 type config struct {
 	configDo configDo
 
-	ALL       field.Asterisk
-	ID        field.Uint64
-	Group     field.String
-	Key       field.String
-	Value     field.String
-	Encrypted field.Bool
-	Version   field.Uint64
-	UpdatedBy field.Uint64
-	CreatedAt field.Time
-	UpdatedAt field.Time
+	ALL        field.Asterisk
+	ID         field.Uint64
+	Group      field.String
+	Key        field.String
+	Value      field.String
+	Encrypted  field.Bool
+	Format     field.String
+	Visibility field.String
+	Version    field.Uint64
+	UpdatedBy  field.Uint64
+	CreatedAt  field.Time
+	UpdatedAt  field.Time
 
 	fieldMap map[string]field.Expr
 }
@@ -77,6 +81,8 @@ func (c *config) updateTableName(table string) *config {
 	c.Key = field.NewString(table, "config_key")
 	c.Value = field.NewString(table, "value")
 	c.Encrypted = field.NewBool(table, "encrypted")
+	c.Format = field.NewString(table, "value_format")
+	c.Visibility = field.NewString(table, "visibility")
 	c.Version = field.NewUint64(table, "version")
 	c.UpdatedBy = field.NewUint64(table, "updated_by")
 	c.CreatedAt = field.NewTime(table, "created_at")
@@ -105,12 +111,14 @@ func (c *config) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (c *config) fillFieldMap() {
-	c.fieldMap = make(map[string]field.Expr, 9)
+	c.fieldMap = make(map[string]field.Expr, 11)
 	c.fieldMap["id"] = c.ID
 	c.fieldMap["config_group"] = c.Group
 	c.fieldMap["config_key"] = c.Key
 	c.fieldMap["value"] = c.Value
 	c.fieldMap["encrypted"] = c.Encrypted
+	c.fieldMap["value_format"] = c.Format
+	c.fieldMap["visibility"] = c.Visibility
 	c.fieldMap["version"] = c.Version
 	c.fieldMap["updated_by"] = c.UpdatedBy
 	c.fieldMap["created_at"] = c.CreatedAt

@@ -533,6 +533,9 @@ func (s *Service) DisableUser(ctx context.Context, userID uint64) error {
 
 // Bootstrap idempotently creates and assigns the built-in super administrator role.
 func (s *Service) Bootstrap(ctx context.Context, userID uint64) error {
+	if err := s.ensureBuiltinRole(ctx, model.GuestRole, "平台访客", s.guestPolicies); err != nil {
+		return err
+	}
 	if err := s.EnsureCurrentBaseRoleForUser(ctx, userID); err != nil {
 		return err
 	}
@@ -552,6 +555,40 @@ func (s *Service) Bootstrap(ctx context.Context, userID uint64) error {
 		grouping := newPolicyRule("g", []string{subject(userID), model.SuperAdminRole})
 		if err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&[]policyRule{policy, grouping}).Error; err != nil {
 			return err
+		}
+		return recordPolicyChange(tx)
+	})
+	if err != nil {
+		return err
+	}
+	return s.reloadAfterMutation(ctx)
+}
+
+// ensureBuiltinRole creates a managed role and its generated policies without
+// assigning it to a user. Base-role assignment remains state-driven.
+func (s *Service) ensureBuiltinRole(ctx context.Context, name, description string, policies []policyRule) error {
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
+		var role model.Role
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", name).Take(&role).Error
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			if err = tx.Create(&model.Role{Name: name, Description: description, Builtin: true}).Error; err != nil {
+				return err
+			}
+		case err != nil:
+			return err
+		case !role.Builtin:
+			if err = tx.Model(&role).Update("builtin", true).Error; err != nil {
+				return err
+			}
+		}
+		if err = tx.Where("ptype = ? AND v0 = ? AND managed = ?", "p", name, true).Delete(&policyRule{}).Error; err != nil {
+			return err
+		}
+		if len(policies) > 0 {
+			if err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&policies).Error; err != nil {
+				return err
+			}
 		}
 		return recordPolicyChange(tx)
 	})

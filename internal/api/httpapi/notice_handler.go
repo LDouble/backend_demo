@@ -48,7 +48,7 @@ func (h *Handler) updateNotice(c *gin.Context) {
 
 func (h *Handler) listAdminNotices(c *gin.Context) {
 	page, size := paging(c)
-	rows, total, err := h.notices.ListAdmin(c.Request.Context(), page, size)
+	rows, total, err := h.notices.ListAdmin(c.Request.Context(), page, size, noticeapp.AdminFilter{Keyword: strings.TrimSpace(c.Query("keyword")), Status: strings.TrimSpace(c.Query("status")), Category: strings.TrimSpace(c.Query("category"))})
 	if err != nil {
 		failure(c, err)
 		return
@@ -126,7 +126,7 @@ func (h *Handler) listNoticeDeliveries(c *gin.Context) {
 		return
 	}
 	page, size := paging(c)
-	rows, total, err := h.notices.ListDeliveries(c.Request.Context(), id, page, size)
+	rows, total, err := h.notices.ListDeliveries(c.Request.Context(), id, page, size, strings.TrimSpace(c.Query("status")))
 	if err != nil {
 		failure(c, err)
 		return

@@ -3,5 +3,6 @@
 /bootstrap.yaml
 /.env
 /.codegraph/
+/mise.toml
 *.log
 .DS_Store

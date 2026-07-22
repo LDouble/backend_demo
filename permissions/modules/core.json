@@ -69,6 +69,13 @@
       ]
     },
     {
+      "name": "core:getruntimeconfig",
+      "path_pattern": "/api/v1/runtime-configs/:group/:key",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
       "name": "core:getuser",
       "path_pattern": "/api/v1/users/:id",
       "methods": [

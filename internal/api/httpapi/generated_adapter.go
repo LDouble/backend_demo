@@ -103,8 +103,12 @@ func (h *Handler) UpdateConfig(c *gin.Context, _ generated.ID, _ generated.Updat
 }
 
 // DeleteConfig handles the generated configuration-delete operation.
-func (h *Handler) DeleteConfig(c *gin.Context, _ generated.ID, _ generated.DeleteConfigParams) {
+func (h *Handler) DeleteConfig(c *gin.Context, _ generated.ID, params generated.DeleteConfigParams) {
+	setGeneratedParams(c, "DeleteConfig", params)
 	h.idempotent(c, "DeleteConfig", func() { h.deleteConfig(c) })
 }
+
+// GetRuntimeConfig handles the anonymous public runtime configuration query.
+func (h *Handler) GetRuntimeConfig(c *gin.Context, _ string, _ string) { h.getRuntimeConfig(c) }
 
 var _ generated.ServerInterface = (*Handler)(nil)

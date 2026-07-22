@@ -145,8 +145,8 @@ paths:
     get:
       operationId: ListConfigs
       security: [{bearerAuth: []}]
-      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PageSize"}, {$ref: "#/components/parameters/Group"}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
+      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PageSize"}, {$ref: "#/components/parameters/Group"}, {$ref: "#/components/parameters/Keyword"}, {$ref: "#/components/parameters/ConfigFormatQuery"}, {$ref: "#/components/parameters/ConfigVisibilityQuery"}]
+      responses: {"200": {$ref: "#/components/responses/ConfigPageResponse"}}
     post:
       operationId: CreateConfig
       security: [{bearerAuth: []}]
@@ -154,13 +154,13 @@ paths:
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/CreateConfigRequest"}}}
-      responses: {"201": {$ref: "#/components/responses/Success"}}
+      responses: {"201": {$ref: "#/components/responses/ConfigResponse"}}
   /api/v1/configs/{id}:
     parameters: [{$ref: "#/components/parameters/ID"}]
     get:
       operationId: GetConfig
       security: [{bearerAuth: []}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
+      responses: {"200": {$ref: "#/components/responses/ConfigResponse"}}
     put:
       operationId: UpdateConfig
       security: [{bearerAuth: []}]
@@ -168,12 +168,19 @@ paths:
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: "#/components/schemas/UpdateConfigRequest"}}}
-      responses: {"200": {$ref: "#/components/responses/Success"}, "409": {$ref: "#/components/responses/Error"}}
+      responses: {"200": {$ref: "#/components/responses/ConfigResponse"}, "409": {$ref: "#/components/responses/Error"}}
     delete:
       operationId: DeleteConfig
       security: [{bearerAuth: []}]
-      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
-      responses: {"200": {$ref: "#/components/responses/Success"}}
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}, {$ref: "#/components/parameters/ExpectedVersion"}]
+      responses: {"200": {$ref: "#/components/responses/DeleteResultResponse"}, "409": {$ref: "#/components/responses/Error"}}
+  /api/v1/runtime-configs/{group}/{key}:
+    get:
+      operationId: GetRuntimeConfig
+      parameters:
+        - {name: group, in: path, required: true, schema: {type: string, minLength: 1, maxLength: 64}}
+        - {name: key, in: path, required: true, schema: {type: string, minLength: 1, maxLength: 128}}
+      responses: {"200": {$ref: "#/components/responses/RuntimeConfigResponse"}, "304": {description: Not modified}, "404": {$ref: "#/components/responses/Error"}}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -183,6 +190,10 @@ components:
     Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
     PageSize: {name: page_size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
     Group: {name: group, in: query, schema: {type: string, maxLength: 64}}
+    Keyword: {name: keyword, in: query, schema: {type: string, maxLength: 128}}
+    ConfigFormatQuery: {name: format, in: query, schema: {type: string, enum: [string, json]}}
+    ConfigVisibilityQuery: {name: visibility, in: query, schema: {type: string, enum: [admin, public]}}
+    ExpectedVersion: {name: expected_version, in: query, required: true, schema: {type: integer, format: uint64, minimum: 1}}
   requestBodies:
     Login: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/LoginRequest"}}}}
     Refresh: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RefreshRequest"}}}}
@@ -225,6 +236,39 @@ components:
     DeleteResultResponse:
       description: Deletion result
       content: {application/json: {schema: {$ref: "#/components/schemas/DeleteResultEnvelope"}}}
+    ConfigResponse:
+      description: Configuration value
+      content: {application/json: {schema: {$ref: "#/components/schemas/ConfigEnvelope"}}}
+    ConfigPageResponse:
+      description: Configuration page
+      content: {application/json: {schema: {$ref: "#/components/schemas/ConfigPageEnvelope"}}}
+    RuntimeConfigResponse:
+      description: Public runtime JSON configuration
+      content: {application/json: {schema: {$ref: "#/components/schemas/RuntimeConfigEnvelope"}}}
+    NoticeResponse:
+      description: Notice
+      content: {application/json: {schema: {$ref: "#/components/schemas/NoticeEnvelope"}}}
+    NoticePageResponse:
+      description: Notice page
+      content: {application/json: {schema: {$ref: "#/components/schemas/NoticePageEnvelope"}}}
+    AdminNoticeResponse:
+      description: Notice detail with audience
+      content: {application/json: {schema: {$ref: "#/components/schemas/AdminNoticeEnvelope"}}}
+    NoticeDeliveryPageResponse:
+      description: Notice delivery page
+      content: {application/json: {schema: {$ref: "#/components/schemas/NoticeDeliveryPageEnvelope"}}}
+    RetryNoticeResponse:
+      description: Retry result
+      content: {application/json: {schema: {$ref: "#/components/schemas/RetryNoticeEnvelope"}}}
+    UnreadCountResponse:
+      description: Unread notice count
+      content: {application/json: {schema: {$ref: "#/components/schemas/UnreadCountEnvelope"}}}
+    UpdatedCountResponse:
+      description: Updated notice count
+      content: {application/json: {schema: {$ref: "#/components/schemas/UpdatedCountEnvelope"}}}
+    ReadResultResponse:
+      description: Read result
+      content: {application/json: {schema: {$ref: "#/components/schemas/ReadResultEnvelope"}}}
     Error:
       description: Error response
       content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
@@ -357,11 +401,20 @@ components:
     CreateConfigRequest:
       type: object
       required: [group, key, value]
-      properties: {group: {type: string}, key: {type: string}, value: {type: string}, encrypted: {type: boolean, default: false}}
+      properties:
+        group: {type: string, maxLength: 64}
+        key: {type: string, maxLength: 128}
+        value: {type: string}
+        format: {type: string, enum: [string, json], default: string}
+        visibility: {type: string, enum: [admin, public], default: admin}
+        encrypted: {type: boolean, default: false}
     UpdateConfigRequest:
       type: object
       required: [expected_version]
-      properties: {expected_version: {type: integer, format: uint64, minimum: 1}, value: {type: string}}
+      properties:
+        expected_version: {type: integer, format: uint64, minimum: 1}
+        value: {type: string}
+        visibility: {type: string, enum: [admin, public]}
     NoticeAudience:
       type: object
       required: [all, roles, user_ids]
@@ -401,6 +454,100 @@ components:
       type: object
       required: [data, request_id]
       properties: {data: {}, request_id: {type: string}}
+    Config:
+      type: object
+      required: [id, group, key, value, encrypted, format, visibility, has_value, version, updated_by, created_at, updated_at]
+      properties:
+        id: {type: integer, format: uint64}
+        group: {type: string}
+        key: {type: string}
+        value: {type: string, nullable: true}
+        encrypted: {type: boolean}
+        format: {type: string, enum: [string, json]}
+        visibility: {type: string, enum: [admin, public]}
+        has_value: {type: boolean}
+        version: {type: integer, format: uint64}
+        updated_by: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ConfigPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Config"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    RuntimeConfig:
+      type: object
+      required: [group, key, value, version, updated_at]
+      properties:
+        group: {type: string}
+        key: {type: string}
+        value: {}
+        version: {type: integer, format: uint64}
+        updated_at: {type: string, format: date-time}
+    Notice:
+      type: object
+      required: [id, title, summary, body, category, priority, status, action_path, channels, version, created_by, updated_by, created_at, updated_at]
+      properties:
+        id: {type: integer, format: uint64}
+        title: {type: string}
+        summary: {type: string}
+        body: {type: string}
+        category: {type: string}
+        priority: {type: string, enum: [normal, important, urgent]}
+        status: {type: string, enum: [draft, scheduled, publishing, published, revoked]}
+        action_path: {type: string}
+        channels: {type: array, items: {type: string, enum: [in_app, push]}}
+        publish_at: {type: string, format: date-time, nullable: true}
+        published_at: {type: string, format: date-time, nullable: true}
+        revoked_at: {type: string, format: date-time, nullable: true}
+        version: {type: integer, format: uint64}
+        created_by: {type: integer, format: uint64}
+        updated_by: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    NoticePage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Notice"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    AdminNotice:
+      type: object
+      required: [notice, audience]
+      properties:
+        notice: {$ref: "#/components/schemas/Notice"}
+        audience: {$ref: "#/components/schemas/NoticeAudience"}
+    NoticeDelivery:
+      type: object
+      required: [id, notice_id, user_id, channel, status, attempts, created_at, updated_at]
+      properties:
+        id: {type: integer, format: uint64}
+        notice_id: {type: integer, format: uint64}
+        user_id: {type: integer, format: uint64}
+        channel: {type: string}
+        status: {type: string}
+        attempts: {type: integer, format: int64}
+        provider_message_id: {type: string}
+        last_error: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    NoticeDeliveryPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/NoticeDelivery"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    RetryNotice: {type: object, required: [retried], properties: {retried: {type: integer, format: int64}}}
+    UnreadCount: {type: object, required: [count], properties: {count: {type: integer, format: int64}}}
+    UpdatedCount: {type: object, required: [updated], properties: {updated: {type: integer, format: int64}}}
+    ReadResult: {type: object, required: [read], properties: {read: {type: boolean}}}
     TokenPairEnvelope:
       type: object
       required: [data, request_id]
@@ -445,6 +592,50 @@ components:
       type: object
       required: [data, request_id]
       properties: {data: {$ref: "#/components/schemas/DeleteResult"}, request_id: {type: string}}
+    ConfigEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/Config"}, request_id: {type: string}}
+    ConfigPageEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/ConfigPage"}, request_id: {type: string}}
+    RuntimeConfigEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/RuntimeConfig"}, request_id: {type: string}}
+    NoticeEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/Notice"}, request_id: {type: string}}
+    NoticePageEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/NoticePage"}, request_id: {type: string}}
+    AdminNoticeEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/AdminNotice"}, request_id: {type: string}}
+    NoticeDeliveryPageEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/NoticeDeliveryPage"}, request_id: {type: string}}
+    RetryNoticeEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/RetryNotice"}, request_id: {type: string}}
+    UnreadCountEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/UnreadCount"}, request_id: {type: string}}
+    UpdatedCountEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/UpdatedCount"}, request_id: {type: string}}
+    ReadResultEnvelope:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/ReadResult"}, request_id: {type: string}}
     ErrorEnvelope:
       type: object
       required: [error, request_id]

@@ -108,7 +108,7 @@ paths:{{if and (not .OperationRoutes) (not .Routes)}} {}{{end}}
       responses:
 {{- range .Responses}}
         "{{.Status}}":
-          $ref: "#/components/responses/{{if eq .Kind "success"}}Success{{else}}Error{{end}}"
+          $ref: "#/components/responses/{{if .Ref}}{{.Ref}}{{else if eq .Kind "success"}}Success{{else}}Error{{end}}"
 {{- end}}
 {{- end}}
 {{- end}}

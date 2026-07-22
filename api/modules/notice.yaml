@@ -29,9 +29,27 @@ paths:
             format: int32
             minimum: 1
             maximum: 100
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 16
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 64
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticePageResponse"
     post:
       operationId: CreateNotice
       tags: [notice]
@@ -55,7 +73,7 @@ paths:
               $ref: "#/components/schemas/CreateNoticeRequest"
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticeResponse"
   /api/v1/admin/notices/{id}:
     delete:
       operationId: DeleteNotice
@@ -82,7 +100,7 @@ paths:
             minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/DeleteResultResponse"
     get:
       operationId: GetAdminNotice
       tags: [notice]
@@ -94,7 +112,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/AdminNoticeResponse"
     patch:
       operationId: UpdateNotice
       tags: [notice]
@@ -119,7 +137,7 @@ paths:
               $ref: "#/components/schemas/UpdateNoticeRequest"
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticeResponse"
   /api/v1/admin/notices/{id}/deliveries:
     get:
       operationId: ListNoticeDeliveries
@@ -145,9 +163,15 @@ paths:
             format: int32
             minimum: 1
             maximum: 100
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 16
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticeDeliveryPageResponse"
   /api/v1/admin/notices/{id}/deliveries/retry:
     post:
       operationId: RetryNoticeDeliveries
@@ -167,7 +191,7 @@ paths:
             maxLength: 128
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/RetryNoticeResponse"
   /api/v1/admin/notices/{id}/publish:
     post:
       operationId: PublishNotice
@@ -193,7 +217,7 @@ paths:
               $ref: "#/components/schemas/PublishNoticeRequest"
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticeResponse"
   /api/v1/admin/notices/{id}/revoke:
     post:
       operationId: RevokeNotice
@@ -219,7 +243,7 @@ paths:
               $ref: "#/components/schemas/VersionRequest"
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticeResponse"
   /api/v1/notices:
     get:
       operationId: ListMyNotices
@@ -256,7 +280,7 @@ paths:
             type: string
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticePageResponse"
   /api/v1/notices/read-all:
     put:
       operationId: ReadAllNotices
@@ -268,7 +292,7 @@ paths:
       security: [{bearerAuth: []}]
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/UpdatedCountResponse"
   /api/v1/notices/unread-count:
     get:
       operationId: GetUnreadNoticeCount
@@ -279,7 +303,7 @@ paths:
       security: [{bearerAuth: []}]
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/UnreadCountResponse"
   /api/v1/notices/{id}:
     get:
       operationId: GetMyNotice
@@ -292,7 +316,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/NoticeResponse"
   /api/v1/notices/{id}/read:
     put:
       operationId: ReadNotice
@@ -306,4 +330,4 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ReadResultResponse"

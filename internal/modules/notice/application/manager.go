@@ -35,6 +35,13 @@ type Store interface {
 	RetryDeliveries(context.Context, uint64, time.Time) (int64, error)
 }
 
+// AdminFilter narrows the administrator notice list.
+type AdminFilter struct{ Keyword, Status, Category string }
+type filteredStore interface {
+	ListAdminFiltered(context.Context, int, int, AdminFilter) ([]domain.Notice, int64, error)
+	ListDeliveriesFiltered(context.Context, uint64, int, int, string) ([]domain.NoticeDelivery, int64, error)
+}
+
 // InboxFilter controls a recipient's inbox page.
 type InboxFilter struct {
 	Unread   bool
@@ -100,8 +107,16 @@ func (m *Manager) GetAdmin(ctx context.Context, id uint64) (*domain.Notice, []do
 }
 
 // ListAdmin returns all states to authorized administrators.
-func (m *Manager) ListAdmin(ctx context.Context, page, size int) ([]domain.Notice, int64, error) {
-	return m.store.ListAdmin(ctx, normalizePage(page), normalizeSize(size))
+func (m *Manager) ListAdmin(ctx context.Context, page, size int, filters ...AdminFilter) ([]domain.Notice, int64, error) {
+	page, size = normalizePage(page), normalizeSize(size)
+	filter := AdminFilter{}
+	if len(filters) > 0 {
+		filter = filters[0]
+	}
+	if filtered, ok := m.store.(filteredStore); ok {
+		return filtered.ListAdminFiltered(ctx, page, size, filter)
+	}
+	return m.store.ListAdmin(ctx, page, size)
 }
 
 // Delete deletes drafts only.
@@ -179,9 +194,16 @@ func (m *Manager) MarkAllRead(ctx context.Context, userID uint64) (int64, error)
 }
 
 // ListDeliveries returns external delivery attempts for a notice.
-func (m *Manager) ListDeliveries(ctx context.Context, noticeID uint64, page, size int) ([]domain.NoticeDelivery, int64, error) {
+func (m *Manager) ListDeliveries(ctx context.Context, noticeID uint64, page, size int, status ...string) ([]domain.NoticeDelivery, int64, error) {
 	if _, _, err := m.GetAdmin(ctx, noticeID); err != nil {
 		return nil, 0, err
+	}
+	filter := ""
+	if len(status) > 0 {
+		filter = status[0]
+	}
+	if filtered, ok := m.store.(filteredStore); ok {
+		return filtered.ListDeliveriesFiltered(ctx, noticeID, normalizePage(page), normalizeSize(size), filter)
 	}
 	return m.store.ListDeliveries(ctx, noticeID, normalizePage(page), normalizeSize(size))
 }

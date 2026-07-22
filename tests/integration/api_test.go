@@ -121,7 +121,7 @@ func TestGeneratedQueryManagementLifecycle(t *testing.T) {
 	if updatedConfig.Version != createdConfig.Version+1 {
 		t.Fatalf("config version=%d want=%d", updatedConfig.Version, createdConfig.Version+1)
 	}
-	assertStatus(t, request(t, client, http.MethodDelete, fmt.Sprintf("%s/api/v1/configs/%d", base, createdConfig.ID), token, nil), http.StatusOK)
+	assertStatus(t, request(t, client, http.MethodDelete, fmt.Sprintf("%s/api/v1/configs/%d?expected_version=%d", base, createdConfig.ID, updatedConfig.Version), token, nil), http.StatusOK)
 	assertStatus(t, request(t, client, http.MethodPut, rolesURL, token, map[string]any{"roles": []string{}}), http.StatusOK)
 	assertStatus(t, request(t, client, http.MethodDelete, fmt.Sprintf("%s/api/v1/roles/%d", base, createdRole.ID), token, nil), http.StatusOK)
 }

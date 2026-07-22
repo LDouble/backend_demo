@@ -664,7 +664,7 @@ func (h *Handler) setPermissions(c *gin.Context) {
 }
 func (h *Handler) listConfigs(c *gin.Context) {
 	p, s := paging(c)
-	rows, total, err := h.configs.List(c.Request.Context(), strings.TrimSpace(c.Query("group")), p, s)
+	rows, total, err := h.configs.List(c.Request.Context(), strings.TrimSpace(c.Query("group")), strings.TrimSpace(c.Query("keyword")), strings.TrimSpace(c.Query("format")), strings.TrimSpace(c.Query("visibility")), p, s)
 	if err != nil {
 		failure(c, err)
 		return
@@ -680,7 +680,14 @@ func (h *Handler) createConfig(c *gin.Context) {
 	if req.Encrypted != nil {
 		encrypted = *req.Encrypted
 	}
-	v, err := h.configs.Create(c.Request.Context(), req.Group, req.Key, req.Value, encrypted, c.GetUint64(userIDKey))
+	format, visibility := "string", "admin"
+	if req.Format != nil {
+		format = string(*req.Format)
+	}
+	if req.Visibility != nil {
+		visibility = string(*req.Visibility)
+	}
+	v, err := h.configs.Create(c.Request.Context(), req.Group, req.Key, req.Value, format, visibility, encrypted, c.GetUint64(userIDKey))
 	if err != nil {
 		failure(c, err)
 		return
@@ -708,7 +715,12 @@ func (h *Handler) updateConfig(c *gin.Context) {
 	if !bind(c, &req) {
 		return
 	}
-	v, err := h.configs.Update(c.Request.Context(), id, req.ExpectedVersion, req.Value, c.GetUint64(userIDKey))
+	var visibility *string
+	if req.Visibility != nil {
+		value := string(*req.Visibility)
+		visibility = &value
+	}
+	v, err := h.configs.Update(c.Request.Context(), id, req.ExpectedVersion, req.Value, visibility, c.GetUint64(userIDKey))
 	if err != nil {
 		failure(c, err)
 		return
@@ -720,9 +732,32 @@ func (h *Handler) deleteConfig(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.configs.Delete(c.Request.Context(), id); err != nil {
+	params, ok := generatedParams[generated.DeleteConfigParams](c, "DeleteConfig")
+	if !ok {
+		failure(c, apperror.New(400, "invalid_parameter", "缺少已校验的配置删除参数"))
+		return
+	}
+	if err := h.configs.Delete(c.Request.Context(), id, uint64(params.ExpectedVersion)); err != nil {
 		failure(c, err)
 		return
 	}
 	success(c, 200, gin.H{"deleted": true})
+}
+
+func (h *Handler) getRuntimeConfig(c *gin.Context) {
+	group, key := c.Param("group"), c.Param("key")
+	v, id, err := h.configs.Runtime(c.Request.Context(), group, key)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	etag := fmt.Sprintf("\"config-%d-v%d\"", id, v.Version)
+	if c.GetHeader("If-None-Match") == etag {
+		c.Header("ETag", etag)
+		c.Status(http.StatusNotModified)
+		return
+	}
+	c.Header("ETag", etag)
+	c.Header("Cache-Control", "public, max-age=0, must-revalidate")
+	success(c, 200, v)
 }
