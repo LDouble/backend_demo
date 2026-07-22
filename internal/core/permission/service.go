@@ -320,8 +320,9 @@ func (s *Service) SetUserRoles(ctx context.Context, userID uint64, roles []strin
 		}
 		if wasSuperAdmin && !contains(normalized, model.SuperAdminRole) {
 			var remaining int64
-			if err := tx.Model(&policyRule{}).
-				Where("ptype = ? AND v1 = ? AND v0 <> ?", "g", model.SuperAdminRole, subject(userID)).
+			if err := tx.Table("casbin_rule AS c").
+				Joins("JOIN users AS u ON c.v0 = CONCAT('user:', u.id)").
+				Where("c.ptype = ? AND c.v1 = ? AND u.status = ? AND u.id <> ?", "g", model.SuperAdminRole, model.UserActive, userID).
 				Count(&remaining).Error; err != nil {
 				return err
 			}

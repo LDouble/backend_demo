@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -17,6 +18,8 @@ func TestValidateTripInput(t *testing.T) {
 		{name: "past departure", input: func() TripInput { v := valid; v.DepartureAt = now; return v }(), wantErr: true},
 		{name: "unsupported contact", input: func() TripInput { v := valid; v.ContactType = "email"; return v }(), wantErr: true},
 		{name: "no seats", input: func() TripInput { v := valid; v.TotalSeats = 0; return v }(), wantErr: true},
+		{name: "long origin", input: func() TripInput { v := valid; v.Origin = strings.Repeat("地", 501); return v }(), wantErr: true},
+		{name: "long destination", input: func() TripInput { v := valid; v.Destination = strings.Repeat("地", 501); return v }(), wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := ValidateTripInput(tc.input, now); (err != nil) != tc.wantErr {

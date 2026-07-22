@@ -21,6 +21,11 @@ type marketplaceListingRequest struct {
 type marketplaceVersionRequest struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
+type marketplaceReviewRequest struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+	Approved        bool   `json:"approved"`
+	Reason          string `json:"reason"`
+}
 type marketplaceOrderRequest struct {
 	ListingID uint64 `json:"listing_id"`
 }
@@ -59,6 +64,29 @@ func (h *Handler) changeMarketplaceListing(c *gin.Context, submit bool) {
 	} else {
 		_, err = h.marketplace.Withdraw(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion)
 	}
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusOK, gin.H{"updated": true})
+}
+func (h *Handler) reviewMarketplaceListing(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req marketplaceReviewRequest
+	if !bind(c, &req) {
+		return
+	}
+	_, err := h.marketplace.Review(
+		c.Request.Context(),
+		id,
+		c.GetUint64(userIDKey),
+		req.ExpectedVersion,
+		req.Approved,
+		req.Reason,
+	)
 	if err != nil {
 		failure(c, err)
 		return

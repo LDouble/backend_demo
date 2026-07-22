@@ -264,6 +264,9 @@ func TestDisableUserPreservesActiveSuperAdmin(t *testing.T) {
 	if err = service.DisableUser(context.Background(), users[0].ID); err != nil {
 		t.Fatal(err)
 	}
+	if err = service.SetUserRoles(context.Background(), users[1].ID, nil); err == nil {
+		t.Fatal("last active super administrator role was removed")
+	}
 	if err = service.DisableUser(context.Background(), users[1].ID); err == nil {
 		t.Fatal("last active super administrator was disabled")
 	}

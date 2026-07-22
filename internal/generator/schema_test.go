@@ -187,6 +187,29 @@ func TestOperationsDerivePermissions(t *testing.T) {
 	}
 }
 
+func TestOperationBodyStringMaxLength(t *testing.T) {
+	maxLength := int64(500)
+	schema := validSchema()
+	schema.Operations = []APIOperation{{
+		OperationID: "CreateActivity",
+		Method:      "POST",
+		Idempotency: "required",
+		Path:        "/api/v1/activities",
+		Permission:  "activity:create",
+		Body: &APIObject{Fields: []APIField{{
+			Name: "location", Type: "string", MaxLength: &maxLength,
+		}}},
+	}}
+	if err := schema.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	invalid := int64(0)
+	schema.Operations[0].Body.Fields[0].MaxLength = &invalid
+	if err := schema.Normalize(); err == nil || !strings.Contains(err.Error(), "max_length") {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+}
+
 func TestOperationsRejectDuplicateRoute(t *testing.T) {
 	schema := validSchema()
 	schema.Operations = []APIOperation{

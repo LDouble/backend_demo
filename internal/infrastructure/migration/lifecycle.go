@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -332,6 +333,8 @@ func planSchemas(previous, current generator.Schema) ChangePlan {
 			down = append([]string{"DROP TABLE " + entity.Table + ";"}, down...)
 			continue
 		}
+		entityUp := []string{}
+		fieldDown := []string{}
 		oldFields := fieldsByName(oldEntity.Fields)
 		newFields := fieldsByName(entity.Fields)
 		for _, field := range entity.Fields {
@@ -339,19 +342,19 @@ func planSchemas(previous, current generator.Schema) ChangePlan {
 			if !found && field.RenameFrom != "" {
 				old, found = oldFields[field.RenameFrom]
 				if found {
-					up = append(up, fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", entity.Table, field.RenameFrom, field.Name))
-					down = append([]string{fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", entity.Table, field.Name, field.RenameFrom)}, down...)
+					entityUp = append(entityUp, fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", entity.Table, field.RenameFrom, field.Name))
+					fieldDown = append([]string{fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", entity.Table, field.Name, field.RenameFrom)}, fieldDown...)
 				}
 			}
 			if !found {
-				up = append(up, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s%s;", entity.Table, field.Name, field.SQLType, nullability(field.Required)))
-				down = append([]string{fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s;", entity.Table, field.Name)}, down...)
+				entityUp = append(entityUp, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s%s;", entity.Table, field.Name, field.SQLType, nullability(field.Required)))
+				fieldDown = append([]string{fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s;", entity.Table, field.Name)}, fieldDown...)
 				continue
 			}
 			if field.Type != old.Type || (field.Type == "string" && field.Size < old.Size) || (!old.Required && field.Required) {
 				plan.Destructive = append(plan.Destructive, fmt.Sprintf("change column %s.%s", entity.Table, field.Name))
 			} else if field.SQLType != old.SQLType || field.Required != old.Required {
-				up = append(up, fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s%s;", entity.Table, field.Name, field.SQLType, nullability(field.Required)))
+				entityUp = append(entityUp, fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s%s;", entity.Table, field.Name, field.SQLType, nullability(field.Required)))
 			}
 		}
 		for name := range oldFields {
@@ -360,23 +363,77 @@ func planSchemas(previous, current generator.Schema) ChangePlan {
 			}
 			plan.Destructive = append(plan.Destructive, "drop column "+entity.Table+"."+name)
 		}
+
+		oldForeignKeys := foreignKeysByField(oldEntity.ForeignKeys)
+		newForeignKeys := foreignKeysByField(entity.ForeignKeys)
+		foreignKeyDropsUp := []string{}
+		foreignKeyAddsUp := []string{}
+		foreignKeyDropsDown := []string{}
+		foreignKeyAddsDown := []string{}
+		for _, foreignKey := range entity.ForeignKeys {
+			oldForeignKey, found := oldForeignKeys[foreignKey.Field]
+			if !found {
+				foreignKeyAddsUp = append(foreignKeyAddsUp, addForeignKeySQL(entity.Table, foreignKey))
+				foreignKeyDropsDown = append(foreignKeyDropsDown, dropForeignKeySQL(entity.Table, foreignKey))
+				continue
+			}
+			if foreignKeysEqual(oldForeignKey, foreignKey) {
+				continue
+			}
+			plan.Destructive = append(plan.Destructive, "change foreign key "+entity.Table+"."+foreignKey.Field)
+			foreignKeyDropsUp = append(foreignKeyDropsUp, dropForeignKeySQL(entity.Table, oldForeignKey))
+			foreignKeyAddsUp = append(foreignKeyAddsUp, addForeignKeySQL(entity.Table, foreignKey))
+			foreignKeyDropsDown = append(foreignKeyDropsDown, dropForeignKeySQL(entity.Table, foreignKey))
+			foreignKeyAddsDown = append(foreignKeyAddsDown, addForeignKeySQL(entity.Table, oldForeignKey))
+		}
+		for field, oldForeignKey := range oldForeignKeys {
+			if _, found := newForeignKeys[field]; found {
+				continue
+			}
+			plan.Destructive = append(plan.Destructive, "drop foreign key "+entity.Table+"."+field)
+			foreignKeyDropsUp = append(foreignKeyDropsUp, dropForeignKeySQL(entity.Table, oldForeignKey))
+			foreignKeyAddsDown = append(foreignKeyAddsDown, addForeignKeySQL(entity.Table, oldForeignKey))
+		}
+
+		indexUp := []string{}
+		indexDown := []string{}
 		oldIndexes := indexesByName(oldEntity.Indexes)
 		newIndexes := indexesByName(entity.Indexes)
 		for _, index := range entity.Indexes {
-			if _, exists := oldIndexes[index.Name]; !exists {
-				unique := ""
-				if index.Unique {
-					unique = "UNIQUE "
-				}
-				up = append(up, fmt.Sprintf("ALTER TABLE %s ADD %sINDEX %s (%s);", entity.Table, unique, index.Name, strings.Join(index.Fields, ", ")))
-				down = append([]string{fmt.Sprintf("ALTER TABLE %s DROP INDEX %s;", entity.Table, index.Name)}, down...)
+			oldIndex, found := oldIndexes[index.Name]
+			if !found {
+				indexUp = append(indexUp, addIndexSQL(entity.Table, index))
+				indexDown = append(indexDown, dropIndexSQL(entity.Table, index.Name))
+				continue
+			}
+			if !indexesEqual(oldIndex, index) {
+				plan.Destructive = append(plan.Destructive, "change index "+entity.Table+"."+index.Name)
+				indexUp = append(indexUp, dropIndexSQL(entity.Table, index.Name), addIndexSQL(entity.Table, index))
+				indexDown = append(indexDown, dropIndexSQL(entity.Table, index.Name), addIndexSQL(entity.Table, oldIndex))
 			}
 		}
-		for name := range oldIndexes {
+		for name, oldIndex := range oldIndexes {
 			if _, exists := newIndexes[name]; !exists {
 				plan.Destructive = append(plan.Destructive, "drop index "+entity.Table+"."+name)
+				indexUp = append(indexUp, dropIndexSQL(entity.Table, name))
+				indexDown = append(indexDown, addIndexSQL(entity.Table, oldIndex))
 			}
 		}
+
+		entityUp = append(entityUp, foreignKeyDropsUp...)
+		entityUp = append(entityUp, indexUp...)
+		entityUp = append(entityUp, foreignKeyAddsUp...)
+		entityDown := make(
+			[]string,
+			0,
+			len(foreignKeyDropsDown)+len(indexDown)+len(foreignKeyAddsDown)+len(fieldDown),
+		)
+		entityDown = append(entityDown, foreignKeyDropsDown...)
+		entityDown = append(entityDown, indexDown...)
+		entityDown = append(entityDown, foreignKeyAddsDown...)
+		entityDown = append(entityDown, fieldDown...)
+		up = append(up, entityUp...)
+		down = append(entityDown, down...)
 	}
 	sort.Strings(plan.Destructive)
 	plan.UpSQL = strings.Join(up, "\n")
@@ -400,7 +457,14 @@ func createTableSQL(entity generator.Entity) string {
 		columns = append(columns, prefix+index.Name+" ("+strings.Join(index.Fields, ", ")+")")
 	}
 	for _, foreignKey := range entity.ForeignKeys {
-		columns = append(columns, fmt.Sprintf("FOREIGN KEY (%s) REFERENCES %s(%s) ON DELETE %s", foreignKey.Field, foreignKey.RefTable, foreignKey.RefField, foreignKey.OnDelete))
+		columns = append(columns, fmt.Sprintf(
+			"CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s) ON DELETE %s",
+			foreignKeyConstraintName(entity.Table, foreignKey.Field),
+			foreignKey.Field,
+			foreignKey.RefTable,
+			foreignKey.RefField,
+			foreignKey.OnDelete,
+		))
 	}
 	return "CREATE TABLE " + entity.Table + " (\n  " + strings.Join(columns, ",\n  ") + "\n);"
 }
@@ -596,6 +660,74 @@ func indexesByName(indexes []generator.Index) map[string]generator.Index {
 		result[index.Name] = index
 	}
 	return result
+}
+
+func foreignKeysByField(foreignKeys []generator.ForeignKey) map[string]generator.ForeignKey {
+	result := make(map[string]generator.ForeignKey, len(foreignKeys))
+	for _, foreignKey := range foreignKeys {
+		result[foreignKey.Field] = foreignKey
+	}
+	return result
+}
+
+func indexesEqual(left, right generator.Index) bool {
+	return left.Unique == right.Unique && slices.Equal(left.Fields, right.Fields)
+}
+
+func foreignKeysEqual(left, right generator.ForeignKey) bool {
+	return left.Field == right.Field &&
+		left.RefTable == right.RefTable &&
+		left.RefField == right.RefField &&
+		left.OnDelete == right.OnDelete
+}
+
+func addIndexSQL(table string, index generator.Index) string {
+	unique := ""
+	if index.Unique {
+		unique = "UNIQUE "
+	}
+	return fmt.Sprintf(
+		"ALTER TABLE %s ADD %sINDEX %s (%s);",
+		table,
+		unique,
+		index.Name,
+		strings.Join(index.Fields, ", "),
+	)
+}
+
+func dropIndexSQL(table, name string) string {
+	return fmt.Sprintf("ALTER TABLE %s DROP INDEX %s;", table, name)
+}
+
+func addForeignKeySQL(table string, foreignKey generator.ForeignKey) string {
+	return fmt.Sprintf(
+		"ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s) ON DELETE %s;",
+		table,
+		foreignKeyConstraintName(table, foreignKey.Field),
+		foreignKey.Field,
+		foreignKey.RefTable,
+		foreignKey.RefField,
+		foreignKey.OnDelete,
+	)
+}
+
+func dropForeignKeySQL(table string, foreignKey generator.ForeignKey) string {
+	return fmt.Sprintf(
+		"ALTER TABLE %s DROP FOREIGN KEY %s;",
+		table,
+		foreignKeyConstraintName(table, foreignKey.Field),
+	)
+}
+
+func foreignKeyConstraintName(table, field string) string {
+	const maxIdentifierLength = 64
+	name := "fk_" + table + "_" + field
+	if len(name) <= maxIdentifierLength {
+		return name
+	}
+	digest := sha256.Sum256([]byte(name))
+	suffix := fmt.Sprintf("_%x", digest[:4])
+	return name[:maxIdentifierLength-len(suffix)] + suffix
 }
 
 func renamedFrom(fields []generator.Field, name string) bool {

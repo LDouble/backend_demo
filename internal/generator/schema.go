@@ -125,13 +125,14 @@ type APIObject struct {
 
 // APIField declares one JSON request field.
 type APIField struct {
-	Name     string `yaml:"name"`
-	Type     string `yaml:"type"`
-	Required bool   `yaml:"required,omitempty"`
-	Format   string `yaml:"format,omitempty"`
-	Items    string `yaml:"items,omitempty"`
-	Minimum  *int64 `yaml:"minimum,omitempty"`
-	Maximum  *int64 `yaml:"maximum,omitempty"`
+	Name      string `yaml:"name"`
+	Type      string `yaml:"type"`
+	Required  bool   `yaml:"required,omitempty"`
+	Format    string `yaml:"format,omitempty"`
+	Items     string `yaml:"items,omitempty"`
+	Minimum   *int64 `yaml:"minimum,omitempty"`
+	Maximum   *int64 `yaml:"maximum,omitempty"`
+	MaxLength *int64 `yaml:"max_length,omitempty"`
 }
 
 // APIResponse declares one operation response status and shared envelope kind.
@@ -594,6 +595,9 @@ func normalizeAPIField(field *APIField) error {
 	}
 	if field.Minimum != nil && field.Maximum != nil && *field.Minimum > *field.Maximum {
 		return fmt.Errorf("field %q has minimum greater than maximum", field.Name)
+	}
+	if field.MaxLength != nil && (*field.MaxLength < 1 || field.Type != "string") {
+		return fmt.Errorf("field %q has invalid max_length", field.Name)
 	}
 	return nil
 }

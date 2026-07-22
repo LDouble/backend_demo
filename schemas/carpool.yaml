@@ -50,7 +50,7 @@ operations:
     path: /api/v1/carpool/trips
     permission: carpool:create
     summary: 发起拼车行程
-    body: {fields: [{name: title, type: string, required: true}, {name: origin, type: string, required: true}, {name: destination, type: string, required: true}, {name: departure_at, type: string, format: date-time, required: true}, {name: total_seats, type: integer, format: int64, required: true, minimum: 1}, {name: contact_type, type: string, required: true}, {name: contact, type: string, required: true}]}
+    body: {fields: [{name: title, type: string, required: true, max_length: 200}, {name: origin, type: string, required: true, max_length: 500}, {name: destination, type: string, required: true, max_length: 500}, {name: departure_at, type: string, format: date-time, required: true}, {name: total_seats, type: integer, format: int64, required: true, minimum: 1}, {name: contact_type, type: string, required: true, max_length: 16}, {name: contact, type: string, required: true, max_length: 200}]}
     responses: [{status: 201, kind: success}]
   - operation_id: GetCarpoolTrip
     method: GET

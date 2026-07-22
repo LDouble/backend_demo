@@ -5,6 +5,48 @@ info:
   title: marketplace module
   version: 1.0.0
 paths:
+  /api/v1/admin/marketplace/listings/{id}/review:
+    post:
+      operationId: ReviewMarketplaceListing
+      tags: [marketplace]
+      summary: "审核二手商品"
+      x-generated-module: marketplace
+      x-permission: marketplace:review
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+                - approved
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+                approved:
+                  type: boolean
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings:
     post:
       operationId: CreateMarketplaceListing

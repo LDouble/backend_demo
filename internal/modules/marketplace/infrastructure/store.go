@@ -166,11 +166,12 @@ func (s *Store) Review(ctx context.Context, id, adminID, version uint64, approve
 		if approved {
 			listing.Status, listing.RejectionReason = domain.ListingPublished, nil
 		} else {
+			trimmedReason := strings.TrimSpace(reason)
+			if trimmedReason == "" {
+				return apperror.New(http.StatusBadRequest, "rejection_reason_required", "驳回原因不能为空")
+			}
 			listing.Status = domain.ListingRejected
-			listing.RejectionReason = pointer(strings.TrimSpace(reason))
-		}
-		if !approved && listing.RejectionReason == nil {
-			return apperror.New(http.StatusBadRequest, "rejection_reason_required", "驳回原因不能为空")
+			listing.RejectionReason = pointer(trimmedReason)
 		}
 		if err := tx.Save(listing).Error; err != nil {
 			return err

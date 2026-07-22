@@ -76,6 +76,19 @@ operations:
     summary: 撤回商品
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: ReviewMarketplaceListing
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    path: /api/v1/admin/marketplace/listings/{id}/review
+    permission: marketplace:review
+    summary: 审核二手商品
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: approved, type: boolean, required: true}
+        - {name: reason, type: string, max_length: 500}
+    responses: [{status: 200, kind: success}, {status: 400, kind: error}, {status: 409, kind: error}]
   - operation_id: CreateMarketplaceOrder
     method: POST
     idempotency: required

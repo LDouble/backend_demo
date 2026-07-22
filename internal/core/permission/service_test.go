@@ -45,6 +45,13 @@ func testService(t *testing.T) *permission.Service {
 	if err = db.AutoMigrate(&model.User{}, &model.Role{}, &casbinRule{}, &permissionPolicyOutbox{}); err != nil {
 		t.Fatal(err)
 	}
+	users := []model.User{
+		{Username: "admin-one", PasswordHash: "hash", Status: model.UserActive},
+		{Username: "admin-two", PasswordHash: "hash", Status: model.UserActive},
+	}
+	if err = db.Create(&users).Error; err != nil {
+		t.Fatal(err)
+	}
 	sqlDB, err := db.DB()
 	if err != nil {
 		t.Fatal(err)

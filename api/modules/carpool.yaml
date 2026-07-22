@@ -73,10 +73,13 @@ paths:
               properties:
                 title:
                   type: string
+                  maxLength: 200
                 origin:
                   type: string
+                  maxLength: 500
                 destination:
                   type: string
+                  maxLength: 500
                 departure_at:
                   type: string
                   format: date-time
@@ -86,8 +89,10 @@ paths:
                   minimum: 1
                 contact_type:
                   type: string
+                  maxLength: 16
                 contact:
                   type: string
+                  maxLength: 200
       responses:
         "201":
           $ref: "#/components/responses/Success"

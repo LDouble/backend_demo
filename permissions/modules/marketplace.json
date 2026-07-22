@@ -16,6 +16,13 @@
       ]
     },
     {
+      "name": "marketplace:review",
+      "path_pattern": "/api/v1/admin/marketplace/listings/:id/review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
       "name": "marketplace:submit",
       "path_pattern": "/api/v1/marketplace/listings/:id/submit",
       "methods": [

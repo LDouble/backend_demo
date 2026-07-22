@@ -81,6 +81,9 @@ paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
 {{- if .Maximum}}
                   maximum: {{.Maximum}}
 {{- end}}
+{{- if .MaxLength}}
+                  maxLength: {{.MaxLength}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}

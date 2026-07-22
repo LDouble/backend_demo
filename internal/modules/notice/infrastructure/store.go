@@ -23,6 +23,10 @@ import (
 // ErrLeaseLost indicates that another worker or a state transition owns the row.
 var ErrLeaseLost = errors.New("notice work lease lost")
 
+// ErrDeliveryLeaseHeld keeps an overlapping task retryable until the owner
+// completes the delivery or releases its lease.
+var ErrDeliveryLeaseHeld = errors.New("notice delivery lease is held")
+
 // Outbox states and event names shared with the relay.
 const (
 	OutboxPending    = "pending"
@@ -260,7 +264,21 @@ func (s *NoticeStore) ClaimDelivery(ctx context.Context, id uint64, now time.Tim
 	result := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).
 		Where("id = ? AND (status = ? OR (status = ? AND locked_at < ?))", id, "pending", "delivering", lockedAt.Add(-lease)).
 		Updates(map[string]any{"status": "delivering", "locked_at": lockedAt})
-	return lockedAt, result.RowsAffected == 1, result.Error
+	if result.Error != nil || result.RowsAffected == 1 {
+		return lockedAt, result.RowsAffected == 1, result.Error
+	}
+	var delivery domain.NoticeDelivery
+	err := idempotency.DB(ctx, s.db).Select("status").First(&delivery, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return lockedAt, false, nil
+	}
+	if err != nil {
+		return lockedAt, false, err
+	}
+	if delivery.Status == "delivering" {
+		return lockedAt, false, ErrDeliveryLeaseHeld
+	}
+	return lockedAt, false, nil
 }
 
 // LeaseOutbox atomically claims due work using a timeout lease.

@@ -16,6 +16,15 @@ type authUsers struct{ u *model.User }
 
 type nilAuthUsers struct{}
 
+type failingAuthUsers struct{ err error }
+
+func (f failingAuthUsers) GetByID(context.Context, uint64) (*model.User, error) {
+	return nil, f.err
+}
+func (f failingAuthUsers) GetByUsername(context.Context, string) (*model.User, error) {
+	return nil, f.err
+}
+
 func (nilAuthUsers) GetByID(context.Context, uint64) (*model.User, error) { return nil, nil }
 func (nilAuthUsers) GetByUsername(context.Context, string) (*model.User, error) {
 	return nil, nil
@@ -128,6 +137,21 @@ func TestLoginRejectsInvalidUser(t *testing.T) {
 	svc := NewService(authUsers{u: &model.User{ID: 1, Username: "admin", PasswordHash: "bad", Status: model.UserActive}}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
 	if _, err := svc.Login(context.Background(), "admin", "wrong"); err == nil {
 		t.Fatal("expected invalid credentials")
+	}
+}
+
+func TestLoginPropagatesRepositoryFailure(t *testing.T) {
+	repositoryErr := errors.New("database unavailable")
+	service := NewService(
+		failingAuthUsers{err: repositoryErr},
+		&memorySession{},
+		"issuer",
+		[]byte("0123456789abcdef0123456789abcdef"),
+		time.Minute,
+		time.Hour,
+	)
+	if _, err := service.Login(context.Background(), "admin", "password"); !errors.Is(err, repositoryErr) {
+		t.Fatalf("Login error=%v", err)
 	}
 }
 

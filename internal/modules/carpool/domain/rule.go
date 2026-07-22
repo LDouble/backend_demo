@@ -38,8 +38,14 @@ type Search struct {
 
 // ValidateTripInput validates a trip before persistence.
 func ValidateTripInput(in TripInput, now time.Time) error {
-	if strings.TrimSpace(in.Title) == "" || len(in.Title) > 200 || strings.TrimSpace(in.Origin) == "" || strings.TrimSpace(in.Destination) == "" {
+	title := strings.TrimSpace(in.Title)
+	origin := strings.TrimSpace(in.Origin)
+	destination := strings.TrimSpace(in.Destination)
+	if title == "" || origin == "" || destination == "" {
 		return fmt.Errorf("标题、出发地和目的地不能为空")
+	}
+	if len([]rune(title)) > 200 || len([]rune(origin)) > 500 || len([]rune(destination)) > 500 {
+		return fmt.Errorf("标题、出发地或目的地长度超出限制")
 	}
 	if in.TotalSeats < 1 || in.TotalSeats > 20 {
 		return fmt.Errorf("座位数必须在 1 到 20 之间")

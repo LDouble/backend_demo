@@ -157,7 +157,7 @@ func (p *Processor) deliver(ctx context.Context, id uint64) error {
 	}
 	delivery, notice, user, err := p.store.LoadDelivery(ctx, id)
 	if err != nil {
-		return err
+		return p.releaseDelivery(ctx, id, lockedAt, err)
 	}
 	if delivery.Status == "sent" || delivery.Status == "canceled" {
 		return nil
@@ -167,7 +167,11 @@ func (p *Processor) deliver(ctx context.Context, id uint64) error {
 	}
 	providerID, err := p.provider.Send(ctx, user, notice, delivery.Channel, strconv.FormatUint(delivery.ID, 10))
 	if err == nil {
-		return ignoreLostLease(p.store.CompleteDelivery(ctx, id, lockedAt, providerID))
+		completeErr := p.store.CompleteDelivery(ctx, id, lockedAt, providerID)
+		if completeErr == nil || errors.Is(completeErr, infrastructure.ErrLeaseLost) {
+			return nil
+		}
+		return p.releaseDelivery(ctx, id, lockedAt, completeErr)
 	}
 	retry, _ := asynq.GetRetryCount(ctx)
 	maxRetry, _ := asynq.GetMaxRetry(ctx)
@@ -178,6 +182,17 @@ func (p *Processor) deliver(ctx context.Context, id uint64) error {
 		return updateErr
 	}
 	return err
+}
+
+func (p *Processor) releaseDelivery(ctx context.Context, id uint64, lockedAt time.Time, cause error) error {
+	releaseErr := p.store.FailDelivery(ctx, id, lockedAt, cause, false)
+	if errors.Is(releaseErr, infrastructure.ErrLeaseLost) {
+		return nil
+	}
+	if releaseErr != nil {
+		return errors.Join(cause, fmt.Errorf("release delivery lease: %w", releaseErr))
+	}
+	return cause
 }
 
 func ignoreLostLease(err error) error {

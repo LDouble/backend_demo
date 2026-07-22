@@ -8,6 +8,15 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/api/generated"
 )
 
+// ReviewMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ReviewMarketplaceListing(c *gin.Context, id uint64, params generated.ReviewMarketplaceListingParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "ReviewMarketplaceListing", params)
+	h.idempotent(c, "ReviewMarketplaceListing", func() {
+		h.reviewMarketplaceListing(c)
+	})
+}
+
 // CreateMarketplaceListing adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) CreateMarketplaceListing(c *gin.Context, params generated.CreateMarketplaceListingParams) {
 	setGeneratedParams(c, "CreateMarketplaceListing", params)

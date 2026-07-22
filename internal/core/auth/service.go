@@ -16,6 +16,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
+	"gorm.io/gorm"
 )
 
 const accessType = "access"
@@ -79,12 +80,15 @@ func NewService(users UserRepository, sessions SessionStore, issuer string, key 
 // Login authenticates a user and creates a new device session.
 func (s *Service) Login(ctx context.Context, username, password string) (TokenPair, error) {
 	u, err := s.users.GetByUsername(ctx, username)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return TokenPair{}, fmt.Errorf("get user by username: %w", err)
+	}
 	passwordHash := dummyPasswordHash
-	if err == nil && u != nil {
+	if u != nil {
 		passwordHash = u.PasswordHash
 	}
 	passwordMatches := user.CheckPassword(passwordHash, password)
-	if err != nil || u == nil || !passwordMatches {
+	if u == nil || !passwordMatches {
 		return TokenPair{}, apperror.New(http.StatusUnauthorized, "invalid_credentials", "用户名或密码错误")
 	}
 	if u.Status != model.UserActive {

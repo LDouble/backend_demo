@@ -110,6 +110,110 @@ func TestPlanRejectsDestructiveChanges(t *testing.T) {
 	}
 }
 
+func TestPlanDiffsExistingIndexAndForeignKeyDefinitions(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, "schemas/relation.yaml", relationSchema("[parent_id]", false, true, "CASCADE"))
+	writeTestFile(t, root, "migrations/000001_core.up.sql", "SELECT 1;\n")
+	writeTestFile(t, root, "migrations/000001_core.down.sql", "SELECT 1;\n")
+	if err := Snapshot(context.Background(), root, "relation"); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, root, "schemas/relation.yaml", relationSchema("[parent_id, label]", true, true, "RESTRICT"))
+	plan, err := Plan(context.Background(), root, "relation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertOrderedSQL(t, plan.UpSQL,
+		"DROP FOREIGN KEY fk_children_parent_id",
+		"DROP INDEX idx_children_parent",
+		"ADD UNIQUE INDEX idx_children_parent (parent_id, label)",
+		"ADD CONSTRAINT fk_children_parent_id FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE RESTRICT",
+	)
+	assertOrderedSQL(t, plan.DownSQL,
+		"DROP FOREIGN KEY fk_children_parent_id",
+		"DROP INDEX idx_children_parent",
+		"ADD INDEX idx_children_parent (parent_id)",
+		"ADD CONSTRAINT fk_children_parent_id FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE CASCADE",
+	)
+	if !containsChange(plan.Destructive, "change index children.idx_children_parent") ||
+		!containsChange(plan.Destructive, "change foreign key children.parent_id") {
+		t.Fatalf("destructive=%v", plan.Destructive)
+	}
+}
+
+func TestPlanGeneratesReversibleForeignKeyAddAndDrop(t *testing.T) {
+	tests := []struct {
+		name            string
+		previousHasKey  bool
+		currentHasKey   bool
+		wantDestructive bool
+	}{
+		{name: "add", currentHasKey: true},
+		{name: "drop", previousHasKey: true, wantDestructive: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeTestFile(t, root, "schemas/relation.yaml", relationSchema("[parent_id]", false, test.previousHasKey, "CASCADE"))
+			writeTestFile(t, root, "migrations/000001_core.up.sql", "SELECT 1;\n")
+			writeTestFile(t, root, "migrations/000001_core.down.sql", "SELECT 1;\n")
+			if err := Snapshot(context.Background(), root, "relation"); err != nil {
+				t.Fatal(err)
+			}
+			writeTestFile(t, root, "schemas/relation.yaml", relationSchema("[parent_id]", false, test.currentHasKey, "CASCADE"))
+			plan, err := Plan(context.Background(), root, "relation")
+			if err != nil {
+				t.Fatal(err)
+			}
+			combinedSQL := plan.UpSQL + "\n" + plan.DownSQL
+			if !strings.Contains(combinedSQL, "ADD CONSTRAINT fk_children_parent_id FOREIGN KEY") ||
+				!strings.Contains(combinedSQL, "DROP FOREIGN KEY fk_children_parent_id") {
+				t.Fatalf("plan=%+v", plan)
+			}
+			if test.wantDestructive != containsChange(plan.Destructive, "drop foreign key children.parent_id") {
+				t.Fatalf("destructive=%v", plan.Destructive)
+			}
+		})
+	}
+}
+
+func relationSchema(indexFields string, unique, withForeignKey bool, onDelete string) string {
+	uniqueValue := ""
+	if unique {
+		uniqueValue = ", unique: true"
+	}
+	foreignKey := ""
+	if withForeignKey {
+		foreignKey = "    foreign_keys: [{field: parent_id, references: parents.id, on_delete: " + onDelete + "}]\n"
+	}
+	return "version: 2\nmodule: relation\nentities:\n" +
+		"  - name: Parent\n    table: parents\n    primary: true\n    fields:\n      - {name: name, type: string, size: 100, required: true}\n" +
+		"  - name: Child\n    table: children\n    fields:\n      - {name: parent_id, type: uint64, required: true}\n      - {name: label, type: string, size: 100, required: true}\n" +
+		"    indexes: [{name: idx_children_parent, fields: " + indexFields + uniqueValue + "}]\n" + foreignKey +
+		"crud: [create, get]\n"
+}
+
+func assertOrderedSQL(t *testing.T, sql string, fragments ...string) {
+	t.Helper()
+	position := -1
+	for _, fragment := range fragments {
+		next := strings.Index(sql, fragment)
+		if next <= position {
+			t.Fatalf("SQL fragment %q is missing or out of order:\n%s", fragment, sql)
+		}
+		position = next
+	}
+}
+
+func containsChange(changes []string, want string) bool {
+	for _, change := range changes {
+		if change == want {
+			return true
+		}
+	}
+	return false
+}
+
 func testSchema(extra string) string {
 	return "version: 2\nmodule: activity\nentities:\n  - name: Activity\n    table: activities\n    primary: true\n    fields:\n      - {name: title, type: string, size: 200, required: true}\n" + extra + "crud: [create, get]\n"
 }
