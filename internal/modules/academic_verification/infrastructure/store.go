@@ -165,7 +165,7 @@ func (s *Store) VerifyCredentials(
 		if err != nil {
 			return err
 		}
-		if err = s.supersedePending(txCtx, tx, userID, request.ID); err != nil {
+		if err = s.supersedePending(txCtx, tx, userID, request.ID, now); err != nil {
 			return err
 		}
 		if err = s.roles.EnsureMemberForUser(txCtx, userID); err != nil {
@@ -268,7 +268,7 @@ func (s *Store) Approve(
 		if err != nil {
 			return err
 		}
-		if err = s.supersedePending(txCtx, tx, request.UserId, request.ID); err != nil {
+		if err = s.supersedePending(txCtx, tx, request.UserId, request.ID, now); err != nil {
 			return err
 		}
 		if request.MaterialId != nil {
@@ -283,7 +283,7 @@ func (s *Store) Approve(
 		if err = s.roles.EnsureMemberForUser(txCtx, request.UserId); err != nil {
 			return fmt.Errorf("grant member role: %w", err)
 		}
-		if err = writeVerificationEvent(tx, identity.ID, request.ID, request.UserId, domain.RequestApproved, newVersion); err != nil {
+		if err = writeVerificationEvent(tx, identity.ID, request.ID, request.UserId, domain.RequestApproved, identity.Version); err != nil {
 			return err
 		}
 		request.Status = domain.RequestApproved
@@ -404,15 +404,20 @@ func (s *Store) ClaimCleanup(ctx context.Context, now time.Time, limit int) ([]d
 	claimed := []domain.AcademicVerificationMaterial{}
 	err := s.transaction(ctx, func(txCtx context.Context, tx *gorm.DB) error {
 		q := platformquery.Use(tx).AcademicVerificationMaterial
-		// Generated predicates cannot group the two retention clocks, so this repository-scoped clause is parameterized.
+		// Generated predicates cannot group the retention clocks and stale-lease condition,
+		// so this repository-scoped clause is parameterized.
 		rows := []domain.AcademicVerificationMaterial{}
 		err := q.WithContext(txCtx).UnderlyingDB().
 			Where(
-				"(status = ? AND expires_at <= ?) OR (status = ? AND delete_after IS NOT NULL AND delete_after <= ?)",
+				"(status = ? AND expires_at <= ?) OR "+
+					"(status = ? AND delete_after IS NOT NULL AND delete_after <= ?) OR "+
+					"(status = ? AND updated_at <= ?)",
 				domain.MaterialAvailable,
 				now,
 				domain.MaterialBound,
 				now,
+				domain.MaterialDeleting,
+				now.Add(-domain.CleanupClaimLease),
 			).
 			Clauses(clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}}}}).
 			Limit(limit).
@@ -423,13 +428,18 @@ func (s *Store) ClaimCleanup(ctx context.Context, now time.Time, limit int) ([]d
 		for i := range rows {
 			row := &rows[i]
 			result, updateErr := q.WithContext(txCtx).
-				Where(q.ID.Eq(row.ID), q.Status.Eq(row.Status)).
-				UpdateSimple(q.Status.Value(domain.MaterialDeleting), q.Version.Add(1))
+				Where(q.ID.Eq(row.ID), q.Status.Eq(row.Status), q.Version.Eq(row.Version)).
+				UpdateSimple(
+					q.Status.Value(domain.MaterialDeleting),
+					q.UpdatedAt.Value(now),
+					q.Version.Add(1),
+				)
 			if updateErr != nil {
 				return updateErr
 			}
 			if result.RowsAffected == 1 {
 				row.Status = domain.MaterialDeleting
+				row.UpdatedAt = now
 				row.Version++
 				claimed = append(claimed, *row)
 			}
@@ -515,11 +525,45 @@ func (s *Store) replaceIdentity(
 	return identity, nil
 }
 
-func (s *Store) supersedePending(ctx context.Context, tx *gorm.DB, userID, successfulRequestID uint64) error {
-	q := platformquery.Use(tx).AcademicVerificationRequest
-	_, err := q.WithContext(ctx).Where(
-		q.UserId.Eq(userID), q.Status.Eq(domain.RequestPending), q.ID.Neq(successfulRequestID),
-	).UpdateSimple(q.Status.Value(domain.RequestSuperseded), q.Version.Add(1))
+func (s *Store) supersedePending(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uint64,
+	successfulRequestID uint64,
+	now time.Time,
+) error {
+	queries := platformquery.Use(tx)
+	requests := queries.AcademicVerificationRequest
+	pending, err := requests.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where(
+		requests.UserId.Eq(userID),
+		requests.Status.Eq(domain.RequestPending),
+		requests.ID.Neq(successfulRequestID),
+	).Find()
+	if err != nil || len(pending) == 0 {
+		return err
+	}
+	if _, err = requests.WithContext(ctx).Where(
+		requests.UserId.Eq(userID),
+		requests.Status.Eq(domain.RequestPending),
+		requests.ID.Neq(successfulRequestID),
+	).UpdateSimple(requests.Status.Value(domain.RequestSuperseded), requests.Version.Add(1)); err != nil {
+		return err
+	}
+
+	materialIDs := make([]uint64, 0, len(pending))
+	for _, request := range pending {
+		if request.MaterialId != nil {
+			materialIDs = append(materialIDs, *request.MaterialId)
+		}
+	}
+	if len(materialIDs) == 0 {
+		return nil
+	}
+	materials := queries.AcademicVerificationMaterial
+	_, err = materials.WithContext(ctx).Where(
+		materials.ID.In(materialIDs...),
+		materials.Status.Eq(domain.MaterialBound),
+	).UpdateSimple(materials.DeleteAfter.Value(now.Add(domain.ReviewedMaterialRetention)))
 	return err
 }
 

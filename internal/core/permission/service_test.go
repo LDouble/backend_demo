@@ -260,8 +260,10 @@ func TestBaseRolesAreBuiltInAndManaged(t *testing.T) {
 	if err != nil || len(roles) != 1 || roles[0] != model.MemberRole {
 		t.Fatalf("roles=%v err=%v", roles, err)
 	}
-	if err = svc.SetUserRoles(ctx, 42, []string{model.GuestRole}); err == nil {
-		t.Fatal("base roles must not be assigned through generic role management")
+	for _, role := range []string{model.GuestRole, model.MemberRole, " " + model.GuestRole + " ", " " + model.MemberRole + " "} {
+		if err = svc.SetUserRoles(ctx, 42, []string{role}); err == nil {
+			t.Fatalf("base role %q must not be assigned through generic role management", role)
+		}
 	}
 	rows, _, err := svc.ListRoles(ctx, 1, 100)
 	if err != nil {

@@ -315,12 +315,12 @@ func (s *Service) SetUserRoles(ctx context.Context, userID uint64, roles []strin
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	for _, role := range roles {
+	normalized := unique(roles)
+	for _, role := range normalized {
 		if role == model.GuestRole || role == model.MemberRole {
 			return apperror.New(http.StatusBadRequest, "managed_base_role", "guest/member 基础角色只能由教务认证状态管理")
 		}
 	}
-	normalized := unique(roles)
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := lockSuperAdminRole(tx); err != nil {
 			return err

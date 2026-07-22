@@ -40,6 +40,8 @@ const (
 	UnboundMaterialTTL = 24 * time.Hour
 	// ReviewedMaterialRetention is the post-review encrypted material retention.
 	ReviewedMaterialRetention = 30 * 24 * time.Hour
+	// CleanupClaimLease allows another worker to recover an abandoned deletion claim.
+	CleanupClaimLease = 15 * time.Minute
 )
 
 // Status is the caller-visible academic verification snapshot.
