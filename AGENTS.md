@@ -19,7 +19,7 @@ make build               # 构建全部命令
 make env && make compose-up
 ```
 
-提交前还需执行 `make check-architecture` 和 `git diff --check`。
+本地开发和提交前默认只执行轻量、与改动直接相关的检查：所有 Go 改动必须执行 `gofmt`，所有提交必须执行 `git diff --check`；根据改动范围运行目标包的 `go test`，涉及生成或迁移时分别运行 `make generate-check`、`make migration-check`，涉及分层依赖时运行 `make check-architecture`。本地无需默认执行完整的 race、覆盖率、generator、vet、lint、build 或 MySQL/Redis Compose 验收；这些完整检查统一由 PR CI 执行。只有定位 CI 失败，或改动无法由轻量检查充分验证时，才在本地补跑对应命令。
 
 ## 数据库开发规范
 
@@ -52,6 +52,6 @@ make env && make compose-up
 
 禁止提交 `.env`、真实密钥或生产地址。提交建议遵循 Conventional Commits，例如 `feat(db): add activity repository`。PR 必须说明迁移、生成文件、配置影响和实际执行的验证命令。
 
-创建或更新 PR 后，必须持续检查当前 head commit 对应的全部 CI jobs，确认每个 job 均以 `success` 结束。若任一 job 失败、超时或被取消，必须查看日志定位原因，完成修复并推送后重新检查；在全部 jobs 成功前禁止合并 PR。
+创建或更新 PR 后，必须由 PR CI 执行完整的 `make generate-check`、`make migration-check`、`make test-race`、`make test-core-coverage`、`make test-generator`、`make vet`、`make lint`、`make build`、`make check-architecture`、`git diff --check` 和 `make test-compose`。必须持续检查当前 head commit 对应的全部 CI jobs，确认每个 job 均以 `success` 结束。若任一 job 失败、超时或被取消，必须查看日志定位原因，完成修复并推送后重新检查；不得以“本地未运行完整测试”为由忽略 CI 结果，在全部 jobs 成功前禁止合并 PR。
 
 请求链路顺序为 Request ID → Body/Header 限制 → 认证 → 权限 → OpenAPI 校验 → Typed Params → 幂等控制 → 业务事务 → Domain Event/Outbox。production 必须启用 Redis TLS；运维证书文件读取必须保持明确路径边界和审计说明。
