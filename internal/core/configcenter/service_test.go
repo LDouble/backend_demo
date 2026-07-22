@@ -3,7 +3,6 @@ package configcenter
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"gorm.io/gorm"
