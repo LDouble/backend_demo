@@ -35,6 +35,7 @@ type Store interface {
 	RetryDeliveries(context.Context, uint64, time.Time) (int64, error)
 }
 
+// AdminFilter narrows the administrator notice list.
 type AdminFilter struct{ Keyword, Status, Category string }
 type filteredStore interface {
 	ListAdminFiltered(context.Context, int, int, AdminFilter) ([]domain.Notice, int64, error)

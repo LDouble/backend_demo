@@ -101,6 +101,7 @@ func (s *NoticeStore) ListAdmin(ctx context.Context, page, size int) ([]domain.N
 	return s.ListAdminFiltered(ctx, page, size, application.AdminFilter{})
 }
 
+// ListAdminFiltered returns a filtered administrator notice page.
 func (s *NoticeStore) ListAdminFiltered(ctx context.Context, page, size int, filter application.AdminFilter) ([]domain.Notice, int64, error) {
 	var total int64
 	base := idempotency.DB(ctx, s.db).Model(&domain.Notice{})
@@ -239,6 +240,7 @@ func (s *NoticeStore) ListDeliveries(ctx context.Context, noticeID uint64, page,
 	return s.ListDeliveriesFiltered(ctx, noticeID, page, size, "")
 }
 
+// ListDeliveriesFiltered returns a filtered delivery page for a notice.
 func (s *NoticeStore) ListDeliveriesFiltered(ctx context.Context, noticeID uint64, page, size int, status string) ([]domain.NoticeDelivery, int64, error) {
 	base := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).Where("notice_id = ?", noticeID)
 	if status != "" {

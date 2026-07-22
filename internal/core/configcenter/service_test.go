@@ -2,6 +2,9 @@ package configcenter
 
 import (
 	"context"
+	"errors"
+	"strings"
+
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"gorm.io/gorm"
 	"testing"
@@ -61,6 +64,34 @@ func (r *configRepo) UpdateVersion(_ context.Context, c *model.Config, expected 
 	return true, nil
 }
 func (r *configRepo) Delete(_ context.Context, id uint64) error { delete(r.rows, id); return nil }
+
+type filteredConfigRepo struct{ *configRepo }
+
+func (r *filteredConfigRepo) ListFiltered(ctx context.Context, group, _, _, _ string, page, size int) ([]model.Config, int64, error) {
+	return r.List(ctx, group, page, size)
+}
+
+type versionedConfigRepo struct {
+	*configRepo
+	matched bool
+	err     error
+}
+
+func (r *versionedConfigRepo) DeleteVersion(_ context.Context, id, _ uint64) (bool, error) {
+	if r.err != nil {
+		return false, r.err
+	}
+	if r.matched {
+		delete(r.rows, id)
+	}
+	return r.matched, nil
+}
+
+type runtimeErrorRepo struct{ *configRepo }
+
+func (r *runtimeErrorRepo) GetPublic(context.Context, string, string) (*model.Config, error) {
+	return nil, errors.New("database unavailable")
+}
 func TestConfigLifecycle(t *testing.T) {
 	ctx := context.Background()
 	repo := newConfigRepo()
