@@ -20,6 +20,78 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ConfigFormat.
+const (
+	ConfigFormatJson   ConfigFormat = "json"
+	ConfigFormatString ConfigFormat = "string"
+)
+
+// Valid indicates whether the value is a known member of the ConfigFormat enum.
+func (e ConfigFormat) Valid() bool {
+	switch e {
+	case ConfigFormatJson:
+		return true
+	case ConfigFormatString:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfigVisibility.
+const (
+	ConfigVisibilityAdmin  ConfigVisibility = "admin"
+	ConfigVisibilityPublic ConfigVisibility = "public"
+)
+
+// Valid indicates whether the value is a known member of the ConfigVisibility enum.
+func (e ConfigVisibility) Valid() bool {
+	switch e {
+	case ConfigVisibilityAdmin:
+		return true
+	case ConfigVisibilityPublic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateConfigRequestFormat.
+const (
+	CreateConfigRequestFormatJson   CreateConfigRequestFormat = "json"
+	CreateConfigRequestFormatString CreateConfigRequestFormat = "string"
+)
+
+// Valid indicates whether the value is a known member of the CreateConfigRequestFormat enum.
+func (e CreateConfigRequestFormat) Valid() bool {
+	switch e {
+	case CreateConfigRequestFormatJson:
+		return true
+	case CreateConfigRequestFormatString:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateConfigRequestVisibility.
+const (
+	CreateConfigRequestVisibilityAdmin  CreateConfigRequestVisibility = "admin"
+	CreateConfigRequestVisibilityPublic CreateConfigRequestVisibility = "public"
+)
+
+// Valid indicates whether the value is a known member of the CreateConfigRequestVisibility enum.
+func (e CreateConfigRequestVisibility) Valid() bool {
+	switch e {
+	case CreateConfigRequestVisibilityAdmin:
+		return true
+	case CreateConfigRequestVisibilityPublic:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateNoticeRequestChannels.
 const (
 	CreateNoticeRequestChannelsInApp CreateNoticeRequestChannels = "in_app"
@@ -53,6 +125,72 @@ func (e CreateNoticeRequestPriority) Valid() bool {
 	case CreateNoticeRequestPriorityNormal:
 		return true
 	case CreateNoticeRequestPriorityUrgent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NoticeChannels.
+const (
+	NoticeChannelsInApp NoticeChannels = "in_app"
+	NoticeChannelsPush  NoticeChannels = "push"
+)
+
+// Valid indicates whether the value is a known member of the NoticeChannels enum.
+func (e NoticeChannels) Valid() bool {
+	switch e {
+	case NoticeChannelsInApp:
+		return true
+	case NoticeChannelsPush:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NoticePriority.
+const (
+	NoticePriorityImportant NoticePriority = "important"
+	NoticePriorityNormal    NoticePriority = "normal"
+	NoticePriorityUrgent    NoticePriority = "urgent"
+)
+
+// Valid indicates whether the value is a known member of the NoticePriority enum.
+func (e NoticePriority) Valid() bool {
+	switch e {
+	case NoticePriorityImportant:
+		return true
+	case NoticePriorityNormal:
+		return true
+	case NoticePriorityUrgent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NoticeStatus.
+const (
+	Draft      NoticeStatus = "draft"
+	Published  NoticeStatus = "published"
+	Publishing NoticeStatus = "publishing"
+	Revoked    NoticeStatus = "revoked"
+	Scheduled  NoticeStatus = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the NoticeStatus enum.
+func (e NoticeStatus) Valid() bool {
+	switch e {
+	case Draft:
+		return true
+	case Published:
+		return true
+	case Publishing:
+		return true
+	case Revoked:
+		return true
+	case Scheduled:
 		return true
 	default:
 		return false
@@ -95,6 +233,24 @@ const (
 func (e TokenPairTokenType) Valid() bool {
 	switch e {
 	case Bearer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateConfigRequestVisibility.
+const (
+	UpdateConfigRequestVisibilityAdmin  UpdateConfigRequestVisibility = "admin"
+	UpdateConfigRequestVisibilityPublic UpdateConfigRequestVisibility = "public"
+)
+
+// Valid indicates whether the value is a known member of the UpdateConfigRequestVisibility enum.
+func (e UpdateConfigRequestVisibility) Valid() bool {
+	switch e {
+	case UpdateConfigRequestVisibilityAdmin:
+		return true
+	case UpdateConfigRequestVisibilityPublic:
 		return true
 	default:
 		return false
@@ -176,19 +332,153 @@ func (e UserStatusRequestStatus) Valid() bool {
 	}
 }
 
+// Defines values for ConfigFormatQuery.
+const (
+	ConfigFormatQueryJson   ConfigFormatQuery = "json"
+	ConfigFormatQueryString ConfigFormatQuery = "string"
+)
+
+// Valid indicates whether the value is a known member of the ConfigFormatQuery enum.
+func (e ConfigFormatQuery) Valid() bool {
+	switch e {
+	case ConfigFormatQueryJson:
+		return true
+	case ConfigFormatQueryString:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfigVisibilityQuery.
+const (
+	ConfigVisibilityQueryAdmin  ConfigVisibilityQuery = "admin"
+	ConfigVisibilityQueryPublic ConfigVisibilityQuery = "public"
+)
+
+// Valid indicates whether the value is a known member of the ConfigVisibilityQuery enum.
+func (e ConfigVisibilityQuery) Valid() bool {
+	switch e {
+	case ConfigVisibilityQueryAdmin:
+		return true
+	case ConfigVisibilityQueryPublic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListConfigsParamsFormat.
+const (
+	ListConfigsParamsFormatJson   ListConfigsParamsFormat = "json"
+	ListConfigsParamsFormatString ListConfigsParamsFormat = "string"
+)
+
+// Valid indicates whether the value is a known member of the ListConfigsParamsFormat enum.
+func (e ListConfigsParamsFormat) Valid() bool {
+	switch e {
+	case ListConfigsParamsFormatJson:
+		return true
+	case ListConfigsParamsFormatString:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListConfigsParamsVisibility.
+const (
+	ListConfigsParamsVisibilityAdmin  ListConfigsParamsVisibility = "admin"
+	ListConfigsParamsVisibilityPublic ListConfigsParamsVisibility = "public"
+)
+
+// Valid indicates whether the value is a known member of the ListConfigsParamsVisibility enum.
+func (e ListConfigsParamsVisibility) Valid() bool {
+	switch e {
+	case ListConfigsParamsVisibilityAdmin:
+		return true
+	case ListConfigsParamsVisibilityPublic:
+		return true
+	default:
+		return false
+	}
+}
+
+// AdminNotice defines model for AdminNotice.
+type AdminNotice struct {
+	Audience NoticeAudience `json:"audience"`
+	Notice   Notice         `json:"notice"`
+}
+
+// AdminNoticeEnvelope defines model for AdminNoticeEnvelope.
+type AdminNoticeEnvelope struct {
+	Data      AdminNotice `json:"data"`
+	RequestId string      `json:"request_id"`
+}
+
 // ChangeMyPasswordRequest defines model for ChangeMyPasswordRequest.
 type ChangeMyPasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
 	NewPassword     string `json:"new_password"`
 }
 
+// Config defines model for Config.
+type Config struct {
+	CreatedAt  time.Time        `json:"created_at"`
+	Encrypted  bool             `json:"encrypted"`
+	Format     ConfigFormat     `json:"format"`
+	Group      string           `json:"group"`
+	HasValue   bool             `json:"has_value"`
+	Id         uint64           `json:"id"`
+	Key        string           `json:"key"`
+	UpdatedAt  time.Time        `json:"updated_at"`
+	UpdatedBy  uint64           `json:"updated_by"`
+	Value      *string          `json:"value"`
+	Version    uint64           `json:"version"`
+	Visibility ConfigVisibility `json:"visibility"`
+}
+
+// ConfigFormat defines model for Config.Format.
+type ConfigFormat string
+
+// ConfigVisibility defines model for Config.Visibility.
+type ConfigVisibility string
+
+// ConfigEnvelope defines model for ConfigEnvelope.
+type ConfigEnvelope struct {
+	Data      Config `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// ConfigPage defines model for ConfigPage.
+type ConfigPage struct {
+	Items    []Config `json:"items"`
+	Page     int      `json:"page"`
+	PageSize int      `json:"page_size"`
+	Total    int64    `json:"total"`
+}
+
+// ConfigPageEnvelope defines model for ConfigPageEnvelope.
+type ConfigPageEnvelope struct {
+	Data      ConfigPage `json:"data"`
+	RequestId string     `json:"request_id"`
+}
+
 // CreateConfigRequest defines model for CreateConfigRequest.
 type CreateConfigRequest struct {
-	Encrypted *bool  `json:"encrypted,omitempty"`
-	Group     string `json:"group"`
-	Key       string `json:"key"`
-	Value     string `json:"value"`
+	Encrypted  *bool                          `json:"encrypted,omitempty"`
+	Format     *CreateConfigRequestFormat     `json:"format,omitempty"`
+	Group      string                         `json:"group"`
+	Key        string                         `json:"key"`
+	Value      string                         `json:"value"`
+	Visibility *CreateConfigRequestVisibility `json:"visibility,omitempty"`
 }
+
+// CreateConfigRequestFormat defines model for CreateConfigRequest.Format.
+type CreateConfigRequestFormat string
+
+// CreateConfigRequestVisibility defines model for CreateConfigRequest.Visibility.
+type CreateConfigRequestVisibility string
 
 // CreateNoticeRequest defines model for CreateNoticeRequest.
 type CreateNoticeRequest struct {
@@ -270,11 +560,89 @@ type LogoutResult struct {
 	LoggedOut bool `json:"logged_out"`
 }
 
+// Notice defines model for Notice.
+type Notice struct {
+	ActionPath  string           `json:"action_path"`
+	Body        string           `json:"body"`
+	Category    string           `json:"category"`
+	Channels    []NoticeChannels `json:"channels"`
+	CreatedAt   time.Time        `json:"created_at"`
+	CreatedBy   uint64           `json:"created_by"`
+	Id          uint64           `json:"id"`
+	Priority    NoticePriority   `json:"priority"`
+	PublishAt   *time.Time       `json:"publish_at,omitempty"`
+	PublishedAt *time.Time       `json:"published_at,omitempty"`
+	RevokedAt   *time.Time       `json:"revoked_at,omitempty"`
+	Status      NoticeStatus     `json:"status"`
+	Summary     string           `json:"summary"`
+	Title       string           `json:"title"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	UpdatedBy   uint64           `json:"updated_by"`
+	Version     uint64           `json:"version"`
+}
+
+// NoticeChannels defines model for Notice.Channels.
+type NoticeChannels string
+
+// NoticePriority defines model for Notice.Priority.
+type NoticePriority string
+
+// NoticeStatus defines model for Notice.Status.
+type NoticeStatus string
+
 // NoticeAudience defines model for NoticeAudience.
 type NoticeAudience struct {
 	All     bool     `json:"all"`
 	Roles   []string `json:"roles"`
 	UserIds []uint64 `json:"user_ids"`
+}
+
+// NoticeDelivery defines model for NoticeDelivery.
+type NoticeDelivery struct {
+	Attempts          int64     `json:"attempts"`
+	Channel           string    `json:"channel"`
+	CreatedAt         time.Time `json:"created_at"`
+	Id                uint64    `json:"id"`
+	LastError         *string   `json:"last_error,omitempty"`
+	NoticeId          uint64    `json:"notice_id"`
+	ProviderMessageId *string   `json:"provider_message_id,omitempty"`
+	Status            string    `json:"status"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	UserId            uint64    `json:"user_id"`
+}
+
+// NoticeDeliveryPage defines model for NoticeDeliveryPage.
+type NoticeDeliveryPage struct {
+	Items    []NoticeDelivery `json:"items"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"page_size"`
+	Total    int64            `json:"total"`
+}
+
+// NoticeDeliveryPageEnvelope defines model for NoticeDeliveryPageEnvelope.
+type NoticeDeliveryPageEnvelope struct {
+	Data      NoticeDeliveryPage `json:"data"`
+	RequestId string             `json:"request_id"`
+}
+
+// NoticeEnvelope defines model for NoticeEnvelope.
+type NoticeEnvelope struct {
+	Data      Notice `json:"data"`
+	RequestId string `json:"request_id"`
+}
+
+// NoticePage defines model for NoticePage.
+type NoticePage struct {
+	Items    []Notice `json:"items"`
+	Page     int      `json:"page"`
+	PageSize int      `json:"page_size"`
+	Total    int64    `json:"total"`
+}
+
+// NoticePageEnvelope defines model for NoticePageEnvelope.
+type NoticePageEnvelope struct {
+	Data      NoticePage `json:"data"`
+	RequestId string     `json:"request_id"`
 }
 
 // Permission defines model for Permission.
@@ -316,9 +684,31 @@ type PublishNoticeRequest struct {
 	PublishAt       *time.Time `json:"publish_at,omitempty"`
 }
 
+// ReadResult defines model for ReadResult.
+type ReadResult struct {
+	Read bool `json:"read"`
+}
+
+// ReadResultEnvelope defines model for ReadResultEnvelope.
+type ReadResultEnvelope struct {
+	Data      ReadResult `json:"data"`
+	RequestId string     `json:"request_id"`
+}
+
 // RefreshRequest defines model for RefreshRequest.
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
+}
+
+// RetryNotice defines model for RetryNotice.
+type RetryNotice struct {
+	Retried int64 `json:"retried"`
+}
+
+// RetryNoticeEnvelope defines model for RetryNoticeEnvelope.
+type RetryNoticeEnvelope struct {
+	Data      RetryNotice `json:"data"`
+	RequestId string      `json:"request_id"`
 }
 
 // Role defines model for Role.
@@ -362,6 +752,21 @@ type RolePermissionsEnvelope struct {
 	RequestId string          `json:"request_id"`
 }
 
+// RuntimeConfig defines model for RuntimeConfig.
+type RuntimeConfig struct {
+	Group     string      `json:"group"`
+	Key       string      `json:"key"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	Value     interface{} `json:"value"`
+	Version   uint64      `json:"version"`
+}
+
+// RuntimeConfigEnvelope defines model for RuntimeConfigEnvelope.
+type RuntimeConfigEnvelope struct {
+	Data      RuntimeConfig `json:"data"`
+	RequestId string        `json:"request_id"`
+}
+
 // SuccessEnvelope defines model for SuccessEnvelope.
 type SuccessEnvelope struct {
 	Data      interface{} `json:"data"`
@@ -385,11 +790,26 @@ type TokenPairEnvelope struct {
 	RequestId string    `json:"request_id"`
 }
 
+// UnreadCount defines model for UnreadCount.
+type UnreadCount struct {
+	Count int64 `json:"count"`
+}
+
+// UnreadCountEnvelope defines model for UnreadCountEnvelope.
+type UnreadCountEnvelope struct {
+	Data      UnreadCount `json:"data"`
+	RequestId string      `json:"request_id"`
+}
+
 // UpdateConfigRequest defines model for UpdateConfigRequest.
 type UpdateConfigRequest struct {
-	ExpectedVersion uint64  `json:"expected_version"`
-	Value           *string `json:"value,omitempty"`
+	ExpectedVersion uint64                         `json:"expected_version"`
+	Value           *string                        `json:"value,omitempty"`
+	Visibility      *UpdateConfigRequestVisibility `json:"visibility,omitempty"`
 }
+
+// UpdateConfigRequestVisibility defines model for UpdateConfigRequest.Visibility.
+type UpdateConfigRequestVisibility string
 
 // UpdateNoticeRequest defines model for UpdateNoticeRequest.
 type UpdateNoticeRequest struct {
@@ -419,6 +839,17 @@ type UpdateRoleRequest struct {
 type UpdateUserRequest struct {
 	Password *string `json:"password,omitempty"`
 	Username *string `json:"username,omitempty"`
+}
+
+// UpdatedCount defines model for UpdatedCount.
+type UpdatedCount struct {
+	Updated int64 `json:"updated"`
+}
+
+// UpdatedCountEnvelope defines model for UpdatedCountEnvelope.
+type UpdatedCountEnvelope struct {
+	Data      UpdatedCount `json:"data"`
+	RequestId string       `json:"request_id"`
 }
 
 // User defines model for User.
@@ -482,6 +913,15 @@ type VersionRequest struct {
 	ExpectedVersion uint64 `json:"expected_version"`
 }
 
+// ConfigFormatQuery defines model for ConfigFormatQuery.
+type ConfigFormatQuery string
+
+// ConfigVisibilityQuery defines model for ConfigVisibilityQuery.
+type ConfigVisibilityQuery string
+
+// ExpectedVersion defines model for ExpectedVersion.
+type ExpectedVersion = uint64
+
 // Group defines model for Group.
 type Group = string
 
@@ -491,11 +931,23 @@ type ID = uint64
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
 
+// Keyword defines model for Keyword.
+type Keyword = string
+
 // Page defines model for Page.
 type Page = int
 
 // PageSize defines model for PageSize.
 type PageSize = int
+
+// AdminNoticeResponse defines model for AdminNoticeResponse.
+type AdminNoticeResponse = AdminNoticeEnvelope
+
+// ConfigPageResponse defines model for ConfigPageResponse.
+type ConfigPageResponse = ConfigPageEnvelope
+
+// ConfigResponse defines model for ConfigResponse.
+type ConfigResponse = ConfigEnvelope
 
 // CurrentUserResponse defines model for CurrentUserResponse.
 type CurrentUserResponse = CurrentUserEnvelope
@@ -509,8 +961,23 @@ type Error = ErrorEnvelope
 // LogoutResponse defines model for LogoutResponse.
 type LogoutResponse = LogoutEnvelope
 
+// NoticeDeliveryPageResponse defines model for NoticeDeliveryPageResponse.
+type NoticeDeliveryPageResponse = NoticeDeliveryPageEnvelope
+
+// NoticePageResponse defines model for NoticePageResponse.
+type NoticePageResponse = NoticePageEnvelope
+
+// NoticeResponse defines model for NoticeResponse.
+type NoticeResponse = NoticeEnvelope
+
 // PermissionCatalogResponse defines model for PermissionCatalogResponse.
 type PermissionCatalogResponse = PermissionCatalogEnvelope
+
+// ReadResultResponse defines model for ReadResultResponse.
+type ReadResultResponse = ReadResultEnvelope
+
+// RetryNoticeResponse defines model for RetryNoticeResponse.
+type RetryNoticeResponse = RetryNoticeEnvelope
 
 // RolePageResponse defines model for RolePageResponse.
 type RolePageResponse = RolePageEnvelope
@@ -521,11 +988,20 @@ type RolePermissionsResponse = RolePermissionsEnvelope
 // RoleResponse defines model for RoleResponse.
 type RoleResponse = RoleEnvelope
 
+// RuntimeConfigResponse defines model for RuntimeConfigResponse.
+type RuntimeConfigResponse = RuntimeConfigEnvelope
+
 // Success defines model for Success.
 type Success = SuccessEnvelope
 
 // TokenPairResponse defines model for TokenPairResponse.
 type TokenPairResponse = TokenPairEnvelope
+
+// UnreadCountResponse defines model for UnreadCountResponse.
+type UnreadCountResponse = UnreadCountEnvelope
+
+// UpdatedCountResponse defines model for UpdatedCountResponse.
+type UpdatedCountResponse = UpdatedCountEnvelope
 
 // UserPageResponse defines model for UserPageResponse.
 type UserPageResponse = UserPageEnvelope
@@ -785,8 +1261,11 @@ type ReviewMarketplaceListingParams struct {
 
 // ListAdminNoticesParams defines parameters for ListAdminNotices.
 type ListAdminNoticesParams struct {
-	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
-	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Page     *int32  `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32  `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Keyword  *string `form:"keyword,omitempty" json:"keyword,omitempty"`
+	Status   *string `form:"status,omitempty" json:"status,omitempty"`
+	Category *string `form:"category,omitempty" json:"category,omitempty"`
 }
 
 // CreateNoticeParams defines parameters for CreateNotice.
@@ -807,8 +1286,9 @@ type UpdateNoticeParams struct {
 
 // ListNoticeDeliveriesParams defines parameters for ListNoticeDeliveries.
 type ListNoticeDeliveriesParams struct {
-	Page     *int32 `form:"page,omitempty" json:"page,omitempty"`
-	PageSize *int32 `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Page     *int32  `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32  `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Status   *string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // RetryNoticeDeliveriesParams defines parameters for RetryNoticeDeliveries.
@@ -889,10 +1369,19 @@ type LeaveCarpoolTripParams struct {
 
 // ListConfigsParams defines parameters for ListConfigs.
 type ListConfigsParams struct {
-	Page     *Page     `form:"page,omitempty" json:"page,omitempty"`
-	PageSize *PageSize `form:"page_size,omitempty" json:"page_size,omitempty"`
-	Group    *Group    `form:"group,omitempty" json:"group,omitempty"`
+	Page       *Page                        `form:"page,omitempty" json:"page,omitempty"`
+	PageSize   *PageSize                    `form:"page_size,omitempty" json:"page_size,omitempty"`
+	Group      *Group                       `form:"group,omitempty" json:"group,omitempty"`
+	Keyword    *Keyword                     `form:"keyword,omitempty" json:"keyword,omitempty"`
+	Format     *ListConfigsParamsFormat     `form:"format,omitempty" json:"format,omitempty"`
+	Visibility *ListConfigsParamsVisibility `form:"visibility,omitempty" json:"visibility,omitempty"`
 }
+
+// ListConfigsParamsFormat defines parameters for ListConfigs.
+type ListConfigsParamsFormat string
+
+// ListConfigsParamsVisibility defines parameters for ListConfigs.
+type ListConfigsParamsVisibility string
 
 // CreateConfigParams defines parameters for CreateConfig.
 type CreateConfigParams struct {
@@ -901,7 +1390,8 @@ type CreateConfigParams struct {
 
 // DeleteConfigParams defines parameters for DeleteConfig.
 type DeleteConfigParams struct {
-	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+	ExpectedVersion ExpectedVersion `form:"expected_version" json:"expected_version"`
+	IdempotencyKey  IdempotencyKey  `json:"Idempotency-Key"`
 }
 
 // UpdateConfigParams defines parameters for UpdateConfig.
@@ -1582,6 +2072,9 @@ type ServerInterface interface {
 
 	// (PUT /api/v1/roles/{id}/permissions)
 	SetPermissions(c *gin.Context, id ID, params SetPermissionsParams)
+
+	// (GET /api/v1/runtime-configs/{group}/{key})
+	GetRuntimeConfig(c *gin.Context, group string, key string)
 
 	// (GET /api/v1/users)
 	ListUsers(c *gin.Context, params ListUsersParams)
@@ -2883,6 +3376,30 @@ func (siw *ServerInterfaceWrapper) ListAdminNotices(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", c.Request.URL.Query(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter keyword: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", c.Request.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "category" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "category", c.Request.URL.Query(), &params.Category, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter category: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -3104,6 +3621,14 @@ func (siw *ServerInterfaceWrapper) ListNoticeDeliveries(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", c.Request.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3692,6 +4217,30 @@ func (siw *ServerInterfaceWrapper) ListConfigs(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", c.Request.URL.Query(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter keyword: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "format" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "format", c.Request.URL.Query(), &params.Format, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter format: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "visibility" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "visibility", c.Request.URL.Query(), &params.Visibility, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter visibility: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -3762,6 +4311,14 @@ func (siw *ServerInterfaceWrapper) DeleteConfig(c *gin.Context) {
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params DeleteConfigParams
+
+	// ------------- Required query parameter "expected_version" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "expected_version", c.Request.URL.Query(), &params.ExpectedVersion, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter expected_version: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	headers := c.Request.Header
 
@@ -5256,6 +5813,40 @@ func (siw *ServerInterfaceWrapper) SetPermissions(c *gin.Context) {
 	siw.Handler.SetPermissions(c, id, params)
 }
 
+// GetRuntimeConfig operation middleware
+func (siw *ServerInterfaceWrapper) GetRuntimeConfig(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "group" -------------
+	var group string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "group", c.Param("group"), &group, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter group: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "key" -------------
+	var key string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "key", c.Param("key"), &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter key: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetRuntimeConfig(c, group, key)
+}
+
 // ListUsers operation middleware
 func (siw *ServerInterfaceWrapper) ListUsers(c *gin.Context) {
 
@@ -5619,6 +6210,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/configs/:id", wrapper.DeleteConfig)
 	router.GET(options.BaseURL+"/api/v1/configs/:id", wrapper.GetConfig)
 	router.PUT(options.BaseURL+"/api/v1/configs/:id", wrapper.UpdateConfig)
+	router.GET(options.BaseURL+"/api/v1/runtime-configs/:group/:key", wrapper.GetRuntimeConfig)
 	router.GET(options.BaseURL+"/api/v1/academic-verification", wrapper.GetAcademicVerification)
 	router.POST(options.BaseURL+"/api/v1/academic-verification/credentials", wrapper.VerifyAcademicCredentials)
 	router.POST(options.BaseURL+"/api/v1/academic-verification/materials", wrapper.UploadAcademicVerificationMaterial)
@@ -5696,102 +6288,118 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"AP//",
+	"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",
+	"bWBsWA6Z//Xcr+e0rZWt/w8AAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

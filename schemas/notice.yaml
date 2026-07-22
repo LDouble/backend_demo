@@ -82,6 +82,10 @@ operations:
     query: &paging
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+      - {name: keyword, type: string, max_length: 128}
+      - {name: status, type: string, max_length: 16}
+      - {name: category, type: string, max_length: 64}
+    responses: [{status: 200, kind: success, ref: NoticePageResponse}]
   - operation_id: CreateNotice
     method: POST
     idempotency: required
@@ -90,12 +94,13 @@ operations:
     permission: notice:manage
     summary: 创建通知草稿
     body: {ref: CreateNoticeRequest}
-    responses: [{status: 201, kind: success}]
+    responses: [{status: 201, kind: success, ref: NoticeResponse}]
   - operation_id: GetAdminNotice
     method: GET
     path: /api/v1/admin/notices/{id}
     permission: notice:manage_item
     summary: 查询通知详情
+    responses: [{status: 200, kind: success, ref: AdminNoticeResponse}]
   - operation_id: UpdateNotice
     method: PATCH
     idempotency: required
@@ -104,6 +109,7 @@ operations:
     permission: notice:manage_item
     summary: 更新通知草稿
     body: {ref: UpdateNoticeRequest}
+    responses: [{status: 200, kind: success, ref: NoticeResponse}]
   - operation_id: DeleteNotice
     method: DELETE
     idempotency: required
@@ -112,6 +118,7 @@ operations:
     permission: notice:manage_item
     summary: 删除通知草稿
     query: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]
+    responses: [{status: 200, kind: success, ref: DeleteResultResponse}]
   - operation_id: PublishNotice
     method: POST
     idempotency: required
@@ -120,6 +127,7 @@ operations:
     permission: notice:publish
     summary: 发布通知
     body: {ref: PublishNoticeRequest}
+    responses: [{status: 200, kind: success, ref: NoticeResponse}]
   - operation_id: RevokeNotice
     method: POST
     idempotency: required
@@ -128,12 +136,17 @@ operations:
     permission: notice:revoke
     summary: 撤回通知
     body: {ref: VersionRequest}
+    responses: [{status: 200, kind: success, ref: NoticeResponse}]
   - operation_id: ListNoticeDeliveries
     method: GET
     path: /api/v1/admin/notices/{id}/deliveries
     permission: notice:deliveries
     summary: 查询通知投递
-    query: *paging
+    query:
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+      - {name: status, type: string, max_length: 16}
+    responses: [{status: 200, kind: success, ref: NoticeDeliveryPageResponse}]
   - operation_id: RetryNoticeDeliveries
     method: POST
     idempotency: required
@@ -141,6 +154,7 @@ operations:
     path: /api/v1/admin/notices/{id}/deliveries/retry
     permission: notice:retry
     summary: 重试失败投递
+    responses: [{status: 200, kind: success, ref: RetryNoticeResponse}]
   - operation_id: ListMyNotices
     default_roles: [guest, member]
     method: GET
@@ -152,12 +166,14 @@ operations:
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
       - {name: unread, type: boolean}
       - {name: category, type: string}
+    responses: [{status: 200, kind: success, ref: NoticePageResponse}]
   - operation_id: GetUnreadNoticeCount
     default_roles: [guest, member]
     method: GET
     path: /api/v1/notices/unread-count
     permission: notice:unread
     summary: 查询未读数量
+    responses: [{status: 200, kind: success, ref: UnreadCountResponse}]
   - operation_id: ReadAllNotices
     default_roles: [member]
     method: PUT
@@ -166,12 +182,14 @@ operations:
     path: /api/v1/notices/read-all
     permission: notice:read_all
     summary: 全部标记已读
+    responses: [{status: 200, kind: success, ref: UpdatedCountResponse}]
   - operation_id: GetMyNotice
     default_roles: [guest, member]
     method: GET
     path: /api/v1/notices/{id}
     permission: notice:read_item
     summary: 查询我的通知详情
+    responses: [{status: 200, kind: success, ref: NoticeResponse}]
   - operation_id: ReadNotice
     default_roles: [member]
     method: PUT
@@ -180,3 +198,4 @@ operations:
     path: /api/v1/notices/{id}/read
     permission: notice:mark_read
     summary: 标记通知已读
+    responses: [{status: 200, kind: success, ref: ReadResultResponse}]

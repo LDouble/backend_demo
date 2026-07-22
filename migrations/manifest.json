@@ -152,6 +152,14 @@
     {
       "path": "migrations/20260722091200_academic_verification.up.sql",
       "sha256": "997b706671ef9d07986c6ced41bc2b56ced238153a7758b30fe54532ad7699e3"
+    },
+    {
+      "path": "migrations/20260722111033_add_config_json_visibility.down.sql",
+      "sha256": "447a41b0c2a337bb1d3fa00ecd2c1c4a512644111ba9c82ad7f2bd4e75617c82"
+    },
+    {
+      "path": "migrations/20260722111033_add_config_json_visibility.up.sql",
+      "sha256": "3bf3152261b7410ab8da90325665b0116442b1dfde1341d39b3f63cf96cfa885"
     }
   ]
 }

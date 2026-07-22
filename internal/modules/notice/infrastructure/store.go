@@ -98,8 +98,22 @@ func (s *NoticeStore) Get(ctx context.Context, id uint64) (*domain.Notice, []dom
 
 // ListAdmin returns all notice states for administrators.
 func (s *NoticeStore) ListAdmin(ctx context.Context, page, size int) ([]domain.Notice, int64, error) {
+	return s.ListAdminFiltered(ctx, page, size, application.AdminFilter{})
+}
+
+func (s *NoticeStore) ListAdminFiltered(ctx context.Context, page, size int, filter application.AdminFilter) ([]domain.Notice, int64, error) {
 	var total int64
 	base := idempotency.DB(ctx, s.db).Model(&domain.Notice{})
+	if filter.Status != "" {
+		base = base.Where("status = ?", filter.Status)
+	}
+	if filter.Category != "" {
+		base = base.Where("category = ?", filter.Category)
+	}
+	if filter.Keyword != "" {
+		like := "%" + filter.Keyword + "%"
+		base = base.Where("(title LIKE ? OR summary LIKE ?)", like, like)
+	}
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -222,7 +236,14 @@ func (s *NoticeStore) MarkAllRead(ctx context.Context, userID uint64, now time.T
 
 // ListDeliveries returns external deliveries for a notice.
 func (s *NoticeStore) ListDeliveries(ctx context.Context, noticeID uint64, page, size int) ([]domain.NoticeDelivery, int64, error) {
+	return s.ListDeliveriesFiltered(ctx, noticeID, page, size, "")
+}
+
+func (s *NoticeStore) ListDeliveriesFiltered(ctx context.Context, noticeID uint64, page, size int, status string) ([]domain.NoticeDelivery, int64, error) {
 	base := idempotency.DB(ctx, s.db).Model(&domain.NoticeDelivery{}).Where("notice_id = ?", noticeID)
+	if status != "" {
+		base = base.Where("status = ?", status)
+	}
 	var total int64
 	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, err

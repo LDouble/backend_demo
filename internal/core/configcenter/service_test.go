@@ -42,6 +42,15 @@ func (r *configRepo) List(_ context.Context, group string, _, _ int) ([]model.Co
 	}
 	return out, int64(len(out)), nil
 }
+func (r *configRepo) GetPublic(_ context.Context, group, key string) (*model.Config, error) {
+	for _, v := range r.rows {
+		if v.Group == group && v.Key == key && v.Format == "json" && v.Visibility == "public" && !v.Encrypted {
+			clone := *v
+			return &clone, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
 func (r *configRepo) UpdateVersion(_ context.Context, c *model.Config, expected uint64) (bool, error) {
 	v, ok := r.rows[c.ID]
 	if !ok || v.Version != expected {
@@ -109,5 +118,35 @@ func TestPlainConfigAndValidation(t *testing.T) {
 	}
 	if _, err = svc.Create(ctx, "", "key", "x", false, 1); err == nil {
 		t.Fatal("empty group must fail")
+	}
+}
+
+func TestJSONRuntimeConfig(t *testing.T) {
+	ctx := context.Background()
+	cipher, _ := NewCipher([]byte("0123456789abcdef0123456789abcdef"))
+	svc := NewService(newConfigRepo(), cipher)
+	created, err := svc.Create(ctx, "miniapp", "startup", `{"home":{"banners":[{"image":"a"}]}}`, "json", "public", false, uint64(7))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Format != "json" || created.Visibility != "public" {
+		t.Fatalf("metadata=%#v", created)
+	}
+	runtime, _, err := svc.Runtime(ctx, "miniapp", "startup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	home := runtime.Value.(map[string]any)
+	if len(home["home"].(map[string]any)["banners"].([]any)) != 1 {
+		t.Fatalf("runtime=%#v", runtime.Value)
+	}
+	if _, err = svc.Create(ctx, "miniapp", "detail", `{"version":1}`, "json", "public", false, uint64(7)); err != nil {
+		t.Fatal(err)
+	}
+	if runtime, _, err = svc.Runtime(ctx, "miniapp", "startup"); err != nil || runtime.Key != "startup" {
+		t.Fatalf("runtime=%#v err=%v", runtime, err)
+	}
+	if _, err = svc.Create(ctx, "miniapp", "bad", "not-json", "json", "public", false, uint64(7)); err == nil {
+		t.Fatal("invalid json must fail")
 	}
 }
