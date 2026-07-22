@@ -1,0 +1,9 @@
+-- {{.Header}}
+-- Source: {{.Source}}
+{{- if .Entities}}
+SET FOREIGN_KEY_CHECKS = 0;
+{{range .Entities}}DROP TABLE IF EXISTS {{.Table}};
+{{end}}SET FOREIGN_KEY_CHECKS = 1;
+{{- else}}
+DROP TABLE IF EXISTS {{.Entity.Table}};
+{{- end}}

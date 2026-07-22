@@ -1,0 +1,13 @@
+// {{.Header}}
+// Source: {{.Source}}
+
+// Package api exposes {{.Module}} transport adapters.
+package api
+
+import "{{.ModulePath}}/internal/modules/{{.Module}}/application"
+
+// Handler is the extension point for generated OpenAPI operations.
+type Handler struct { service *application.Service }
+
+// NewHandler creates a {{.Module}} API handler.
+func NewHandler(service *application.Service) *Handler { return &Handler{service: service} }

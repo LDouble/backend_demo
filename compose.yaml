@@ -1,0 +1,94 @@
+x-app-build: &app-build
+  context: .
+  args:
+    GOPROXY: "${GOPROXY:-https://goproxy.cn,direct}"
+
+x-app-environment: &app-environment
+  CAMPUS_SERVER_ADDRESS: ":8080"
+  CAMPUS_MYSQL_DSN: "${CAMPUS_MYSQL_USER:?请先运行 make env}:${CAMPUS_MYSQL_PASSWORD:?请先运行 make env}@tcp(mysql:3306)/${CAMPUS_MYSQL_DATABASE:?请先运行 make env}?charset=utf8mb4&parseTime=true&loc=Local"
+  CAMPUS_REDIS_ADDRESS: "redis:6379"
+  CAMPUS_REDIS_PASSWORD: "${CAMPUS_REDIS_PASSWORD:?请先运行 make env}"
+  CAMPUS_JWT_SECRET: "${CAMPUS_JWT_SECRET:?请先运行 make env}"
+  CAMPUS_CONFIG_MASTER_KEY: "${CAMPUS_CONFIG_MASTER_KEY:?请先运行 make env}"
+  CAMPUS_ADMIN_USERNAME: "${CAMPUS_ADMIN_USERNAME:?请先运行 make env}"
+  CAMPUS_ADMIN_PASSWORD: "${CAMPUS_ADMIN_PASSWORD:?请先运行 make env}"
+  CAMPUS_WORKER_REDIS_DB: "${CAMPUS_WORKER_REDIS_DB:-1}"
+  CAMPUS_WORKER_CONCURRENCY: "${CAMPUS_WORKER_CONCURRENCY:-10}"
+  CAMPUS_WORKER_POLL_INTERVAL: "${CAMPUS_WORKER_POLL_INTERVAL:-1s}"
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: "${CAMPUS_MYSQL_DATABASE:?请先运行 make env}"
+      MYSQL_USER: "${CAMPUS_MYSQL_USER:?请先运行 make env}"
+      MYSQL_PASSWORD: "${CAMPUS_MYSQL_PASSWORD:?请先运行 make env}"
+      MYSQL_ROOT_PASSWORD: "${CAMPUS_MYSQL_ROOT_PASSWORD:?请先运行 make env}"
+    ports:
+      - "127.0.0.1:${CAMPUS_MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$CAMPUS_REDIS_PASSWORD\""]
+    environment:
+      CAMPUS_REDIS_PASSWORD: "${CAMPUS_REDIS_PASSWORD:?请先运行 make env}"
+    ports:
+      - "127.0.0.1:${CAMPUS_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$CAMPUS_REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: *app-build
+    entrypoint: ["/app/campusctl"]
+    command: ["migration", "up"]
+    environment: *app-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  bootstrap:
+    build: *app-build
+    entrypoint: ["/app/campusctl"]
+    command: ["admin", "bootstrap"]
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    build: *app-build
+    environment: *app-environment
+    ports:
+      - "127.0.0.1:${CAMPUS_HTTP_PORT:-8080}:8080"
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    build: *app-build
+    entrypoint: ["/app/worker"]
+    environment: *app-environment
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+
+volumes:
+  mysql-data:

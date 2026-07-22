@@ -1,0 +1,43 @@
+// {{.Header}}
+// Source: {{.Source}}
+
+// Package application coordinates {{.Module}} use cases.
+package application
+
+import (
+	"context"
+
+	"{{.ModulePath}}/internal/modules/{{.Module}}/domain"
+)
+
+// Service coordinates generated CRUD operations and handwritten domain rules.
+type Service struct { repository domain.Repository }
+
+// NewService creates a {{.Module}} application service.
+func NewService(repository domain.Repository) *Service { return &Service{repository: repository} }
+{{if has .CRUD "create"}}
+// Create persists a new {{.Entity.Name}}.
+func (s *Service) Create(ctx context.Context, value *domain.{{.Entity.Name}}) error {
+	return s.repository.Create(ctx, value)
+}
+{{end}}{{if has .CRUD "get"}}
+// Get returns one {{.Entity.Name}} by ID.
+func (s *Service) Get(ctx context.Context, id uint64) (*domain.{{.Entity.Name}}, error) {
+	return s.repository.Get(ctx, id)
+}
+{{end}}{{if has .CRUD "list"}}
+// List returns a page of {{.Entity.Name}} values.
+func (s *Service) List(ctx context.Context, page, pageSize int) ([]domain.{{.Entity.Name}}, int64, error) {
+	return s.repository.List(ctx, page, pageSize)
+}
+{{end}}{{if has .CRUD "update"}}
+// Update persists an existing {{.Entity.Name}}.
+func (s *Service) Update(ctx context.Context, value *domain.{{.Entity.Name}}) error {
+	return s.repository.Update(ctx, value)
+}
+{{end}}{{if has .CRUD "delete"}}
+// Delete removes one {{.Entity.Name}} by ID.
+func (s *Service) Delete(ctx context.Context, id uint64) error {
+	return s.repository.Delete(ctx, id)
+}
+{{end}}

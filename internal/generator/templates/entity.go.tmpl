@@ -1,0 +1,19 @@
+// {{.Header}}
+// Source: {{.Source}}
+
+package domain
+
+import "time"
+
+// {{.Entity.Name}} is the persistent domain entity for the {{.Module}} module.
+type {{.Entity.Name}} struct {
+	ID uint64 `gorm:"primaryKey;autoIncrement" json:"id"`
+{{- range .Entity.Fields}}
+	{{.GoName}} {{.GoType}} `gorm:"{{.GORMTag}}" json:"{{.JSONName}}"`
+{{- end}}
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// TableName returns the schema-controlled database table.
+func ({{.Entity.Name}}) TableName() string { return "{{.Entity.Table}}" }

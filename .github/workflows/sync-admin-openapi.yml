@@ -1,0 +1,80 @@
+name: Sync admin OpenAPI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - api/openapi.base.yaml
+      - api/openapi.yaml
+      - api/modules/**
+      - schemas/**
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out backend
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify generated backend contract
+        run: make generate-check
+
+      - name: Check out admin repository
+        uses: actions/checkout@v4
+        with:
+          repository: LDouble/campus-admin-web
+          token: ${{ secrets.ADMIN_REPO_TOKEN }}
+          path: campus-admin-web
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: campus-admin-web/pnpm-lock.yaml
+
+      - name: Install admin dependencies
+        run: pnpm --dir campus-admin-web install --frozen-lockfile
+
+      - name: Update contract and generated client
+        run: |
+          pnpm --dir campus-admin-web api:sync \
+            --source "$GITHUB_WORKSPACE/api/openapi.yaml" \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA"
+
+      - name: Verify admin application
+        run: |
+          pnpm --dir campus-admin-web -F @vben/web-antd typecheck
+          pnpm --dir campus-admin-web exec oxlint apps/web-antd/src
+          pnpm --dir campus-admin-web test:admin
+          pnpm --dir campus-admin-web build:antd
+
+      - name: Create or update synchronization pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          path: campus-admin-web
+          token: ${{ secrets.ADMIN_REPO_TOKEN }}
+          branch: chore/sync-backend-openapi
+          base: main
+          commit-message: "chore(api): sync backend OpenAPI"
+          title: "chore(api): sync backend OpenAPI"
+          body: |
+            Automated synchronization from `${{ github.repository }}@${{ github.sha }}`.
+
+            The contract snapshot, source manifest, and generated client have passed the admin checks.
+          delete-branch: false

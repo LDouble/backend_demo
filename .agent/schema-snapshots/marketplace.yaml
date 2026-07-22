@@ -1,0 +1,290 @@
+version: 2
+module: marketplace
+entity:
+    name: Listing
+    table: marketplace_listings
+    primary: true
+    fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: description
+          type: text
+          required: true
+        - name: price_cents
+          type: int64
+          required: true
+        - name: currency
+          type: string
+          required: true
+          size: 3
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: rejection_reason
+          type: string
+          required: false
+          size: 500
+        - name: owner_id
+          type: uint64
+          required: true
+          index: true
+        - name: contact_type
+          type: string
+          required: true
+          size: 16
+        - name: contact_ciphertext
+          type: string
+          required: true
+          size: 4096
+        - name: reviewed_by
+          type: uint64
+          required: false
+        - name: reviewed_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+entities:
+    - name: Listing
+      table: marketplace_listings
+      primary: true
+      fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: description
+          type: text
+          required: true
+        - name: price_cents
+          type: int64
+          required: true
+        - name: currency
+          type: string
+          required: true
+          size: 3
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: rejection_reason
+          type: string
+          required: false
+          size: 500
+        - name: owner_id
+          type: uint64
+          required: true
+          index: true
+        - name: contact_type
+          type: string
+          required: true
+          size: 16
+        - name: contact_ciphertext
+          type: string
+          required: true
+          size: 4096
+        - name: reviewed_by
+          type: uint64
+          required: false
+        - name: reviewed_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+    - name: ListingImage
+      table: marketplace_listing_images
+      fields:
+        - name: listing_id
+          type: uint64
+          required: true
+        - name: url
+          type: string
+          required: true
+          size: 2048
+        - name: position
+          type: int64
+          required: true
+      indexes:
+        - name: uk_listing_image_position
+          fields:
+            - listing_id
+            - position
+          unique: true
+      foreign_keys:
+        - field: listing_id
+          references: marketplace_listings.id
+          on_delete: CASCADE
+    - name: MarketplaceReservation
+      table: marketplace_reservations
+      fields:
+        - name: listing_id
+          type: uint64
+          required: true
+          index: true
+        - name: trade_order_id
+          type: uint64
+          required: true
+          unique: true
+        - name: buyer_id
+          type: uint64
+          required: true
+          index: true
+        - name: status
+          type: string
+          required: true
+          size: 16
+          index: true
+        - name: expires_at
+          type: datetime
+          required: true
+          index: true
+        - name: version
+          type: uint64
+          required: true
+      indexes:
+        - name: idx_reservation_expiry
+          fields:
+            - status
+            - expires_at
+      foreign_keys:
+        - field: listing_id
+          references: marketplace_listings.id
+          on_delete: RESTRICT
+crud:
+    - create
+    - delete
+    - get
+    - list
+    - update
+permissions:
+    - name: marketplace:create
+      path: /api/v1/marketplace/listings
+      methods:
+        - POST
+    - name: marketplace:order_create
+      path: /api/v1/marketplace/orders
+      methods:
+        - POST
+    - name: marketplace:submit
+      path: /api/v1/marketplace/listings/:id/submit
+      methods:
+        - POST
+    - name: marketplace:withdraw
+      path: /api/v1/marketplace/listings/:id/withdraw
+      methods:
+        - POST
+operations:
+    - operation_id: CreateMarketplaceListing
+      method: POST
+      path: /api/v1/marketplace/listings
+      permission: marketplace:create
+      idempotency: required
+      summary: 创建二手商品草稿
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: title
+              type: string
+              required: true
+            - name: description
+              type: string
+              required: true
+            - name: price_cents
+              type: integer
+              required: true
+              format: int64
+              minimum: 1
+            - name: contact_type
+              type: string
+              required: true
+            - name: contact
+              type: string
+              required: true
+            - name: image_urls
+              type: array
+              items: string
+      responses:
+        - status: 201
+          kind: success
+        - status: 400
+          kind: error
+    - operation_id: SubmitMarketplaceListing
+      method: POST
+      path: /api/v1/marketplace/listings/{id}/submit
+      permission: marketplace:submit
+      idempotency: required
+      summary: 提交商品审核
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: WithdrawMarketplaceListing
+      method: POST
+      path: /api/v1/marketplace/listings/{id}/withdraw
+      permission: marketplace:withdraw
+      idempotency: required
+      summary: 撤回商品
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: CreateMarketplaceOrder
+      method: POST
+      path: /api/v1/marketplace/orders
+      permission: marketplace:order_create
+      idempotency: required
+      summary: 原子保留商品并创建订单
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: listing_id
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 201
+          kind: success
+        - status: 409
+          kind: error

@@ -1,0 +1,87 @@
+version: 2
+module: carpool
+entities:
+  - name: Trip
+    table: carpool_trips
+    primary: true
+    fields:
+      - {name: title, type: string, size: 200, required: true}
+      - {name: origin, type: string, size: 500, required: true}
+      - {name: destination, type: string, size: 500, required: true}
+      - {name: departure_at, type: datetime, required: true, index: true}
+      - {name: total_seats, type: int64, required: true}
+      - {name: occupied_seats, type: int64, required: true}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: organizer_id, type: uint64, required: true, index: true}
+      - {name: contact_type, type: string, size: 16, required: true}
+      - {name: contact_ciphertext, type: text, required: true}
+      - {name: version, type: uint64, required: true}
+    indexes: [{name: idx_carpool_open_departure, fields: [status, departure_at]}]
+  - name: Participant
+    table: carpool_participants
+    fields:
+      - {name: trip_id, type: uint64, required: true}
+      - {name: user_id, type: uint64, required: true}
+      - {name: status, type: string, size: 16, required: true, index: true}
+      - {name: joined_at, type: datetime, required: true}
+      - {name: cancelled_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+    indexes: [{name: uk_carpool_trip_user, fields: [trip_id, user_id], unique: true}]
+    foreign_keys: [{field: trip_id, references: carpool_trips.id, on_delete: CASCADE}]
+crud: [create, get, list, update]
+operations:
+  - operation_id: ListCarpoolTrips
+    method: GET
+    path: /api/v1/carpool/trips
+    permission: carpool:read
+    summary: 搜索开放拼车行程
+    query:
+      - {name: origin, type: string}
+      - {name: destination, type: string}
+      - {name: departure_date, type: string, format: date}
+      - {name: seats_needed, type: integer, format: int64, minimum: 1}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success}]
+  - operation_id: CreateCarpoolTrip
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    path: /api/v1/carpool/trips
+    permission: carpool:create
+    summary: 发起拼车行程
+    body: {fields: [{name: title, type: string, required: true, max_length: 200}, {name: origin, type: string, required: true, max_length: 500}, {name: destination, type: string, required: true, max_length: 500}, {name: departure_at, type: string, format: date-time, required: true}, {name: total_seats, type: integer, format: int64, required: true, minimum: 1}, {name: contact_type, type: string, required: true, max_length: 16}, {name: contact, type: string, required: true, max_length: 200}]}
+    responses: [{status: 201, kind: success}]
+  - operation_id: GetCarpoolTrip
+    method: GET
+    path: /api/v1/carpool/trips/{id}
+    permission: carpool:read_item
+    summary: 查看拼车行程
+    responses: [{status: 200, kind: success}]
+  - operation_id: JoinCarpoolTrip
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    path: /api/v1/carpool/trips/{id}/join
+    permission: carpool:join
+    summary: 原子加入拼车行程
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: LeaveCarpoolTrip
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    path: /api/v1/carpool/trips/{id}/leave
+    permission: carpool:leave
+    summary: 退出拼车行程
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}]
+  - operation_id: CancelCarpoolTrip
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    path: /api/v1/carpool/trips/{id}/cancel
+    permission: carpool:cancel
+    summary: 取消拼车行程
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}]

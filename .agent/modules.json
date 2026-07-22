@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "name": "activity",
+      "entity": "Activity",
+      "entities": [
+        "Activity",
+        "ActivityRegistration"
+      ],
+      "schema": "schemas/activity.yaml"
+    },
+    {
+      "name": "carpool",
+      "entity": "Trip",
+      "entities": [
+        "Trip",
+        "Participant"
+      ],
+      "schema": "schemas/carpool.yaml"
+    },
+    {
+      "name": "errand",
+      "entity": "Task",
+      "entities": [
+        "Task",
+        "Transition"
+      ],
+      "schema": "schemas/errand.yaml"
+    },
+    {
+      "name": "marketplace",
+      "entity": "Listing",
+      "entities": [
+        "Listing",
+        "ListingImage",
+        "MarketplaceReservation"
+      ],
+      "schema": "schemas/marketplace.yaml"
+    },
+    {
+      "name": "notice",
+      "entity": "Notice",
+      "entities": [
+        "Notice",
+        "NoticeAudience",
+        "NoticeRecipient",
+        "NoticeDelivery",
+        "OutboxEvent"
+      ],
+      "schema": "schemas/notice.yaml"
+    },
+    {
+      "name": "payment",
+      "entity": "PaymentIntent",
+      "entities": [
+        "PaymentIntent",
+        "PaymentTransaction",
+        "PaymentRefund",
+        "PaymentCallback"
+      ],
+      "schema": "schemas/payment.yaml"
+    },
+    {
+      "name": "trade",
+      "entity": "Order",
+      "entities": [
+        "Order",
+        "OrderTransition"
+      ],
+      "schema": "schemas/trade.yaml"
+    }
+  ]
+}

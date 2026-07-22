@@ -1,0 +1,77 @@
+// {{.Header}}
+// Source: {{.Source}}
+
+// Package infrastructure implements {{.Module}} persistence contracts.
+package infrastructure
+
+import (
+	"context"
+	"fmt"
+
+	platformquery "{{.ModulePath}}/internal/infrastructure/mysql/query"
+	"{{.ModulePath}}/internal/modules/{{.Module}}/domain"
+	"gorm.io/gorm"
+)
+
+// Repository is the generated type-safe GORM Query persistence adapter.
+type Repository struct { query *platformquery.Query }
+
+// NewRepository creates a {{.Module}} repository.
+func NewRepository(db *gorm.DB) *Repository { return &Repository{query: platformquery.Use(db)} }
+{{if has .CRUD "create"}}
+// Create inserts a {{.Entity.Name}}.
+func (r *Repository) Create(ctx context.Context, value *domain.{{.Entity.Name}}) error {
+	if err := r.query.{{.Entity.Name}}.WithContext(ctx).Create(value); err != nil {
+		return fmt.Errorf("create {{.Module}}: %w", err)
+	}
+	return nil
+}
+{{end}}{{if has .CRUD "get"}}
+// Get returns one {{.Entity.Name}} by primary key.
+func (r *Repository) Get(ctx context.Context, id uint64) (*domain.{{.Entity.Name}}, error) {
+	q := r.query.{{.Entity.Name}}
+	value, err := q.WithContext(ctx).Where(q.ID.Eq(id)).First()
+	if err != nil {
+		return nil, fmt.Errorf("get {{.Module}}: %w", err)
+	}
+	return value, nil
+}
+{{end}}{{if has .CRUD "list"}}
+// List returns a deterministic page ordered by primary key.
+func (r *Repository) List(ctx context.Context, page, pageSize int) ([]domain.{{.Entity.Name}}, int64, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+	q := r.query.{{.Entity.Name}}
+	dao := q.WithContext(ctx)
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, fmt.Errorf("count {{.Module}}: %w", err)
+	}
+	values, err := dao.Order(q.ID).Offset((page-1)*pageSize).Limit(pageSize).Find()
+	if err != nil {
+		return nil, 0, fmt.Errorf("list {{.Module}}: %w", err)
+	}
+	rows := make([]domain.{{.Entity.Name}}, len(values))
+	for i := range values { rows[i] = *values[i] }
+	return rows, total, nil
+}
+{{end}}{{if has .CRUD "update"}}
+// Update saves a {{.Entity.Name}} by primary key.
+func (r *Repository) Update(ctx context.Context, value *domain.{{.Entity.Name}}) error {
+	if err := r.query.{{.Entity.Name}}.WithContext(ctx).Save(value); err != nil {
+		return fmt.Errorf("update {{.Module}}: %w", err)
+	}
+	return nil
+}
+{{end}}{{if has .CRUD "delete"}}
+// Delete removes a {{.Entity.Name}} by primary key.
+func (r *Repository) Delete(ctx context.Context, id uint64) error {
+	q := r.query.{{.Entity.Name}}
+	if _, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Delete(); err != nil {
+		return fmt.Errorf("delete {{.Module}}: %w", err)
+	}
+	return nil
+}
+{{end}}
+
+var _ domain.Repository = (*Repository)(nil)

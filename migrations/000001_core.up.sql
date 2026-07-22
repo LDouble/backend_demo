@@ -1,0 +1,39 @@
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  username VARCHAR(32) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(16) NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id), UNIQUE KEY uk_users_username (username), KEY idx_users_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS roles (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(64) NOT NULL,
+  description VARCHAR(255) NOT NULL DEFAULT '',
+  builtin BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id), UNIQUE KEY uk_roles_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS configs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  config_group VARCHAR(64) NOT NULL,
+  config_key VARCHAR(128) NOT NULL,
+  value LONGTEXT NOT NULL,
+  encrypted BOOLEAN NOT NULL DEFAULT FALSE,
+  version BIGINT UNSIGNED NOT NULL DEFAULT 1,
+  updated_by BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id), UNIQUE KEY uk_configs_group_key (config_group, config_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS casbin_rule (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  ptype VARCHAR(100), v0 VARCHAR(100), v1 VARCHAR(100), v2 VARCHAR(100),
+  v3 VARCHAR(100), v4 VARCHAR(100), v5 VARCHAR(100),
+  PRIMARY KEY (id), UNIQUE KEY unique_index (ptype, v0, v1, v2, v3, v4, v5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,0 +1,495 @@
+version: 2
+module: errand
+entity:
+    name: Task
+    table: errand_tasks
+    primary: true
+    fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: description
+          type: text
+          required: true
+        - name: reward_cents
+          type: int64
+          required: true
+        - name: currency
+          type: string
+          required: true
+          size: 3
+        - name: pickup_location
+          type: string
+          required: true
+          size: 500
+        - name: dropoff_location
+          type: string
+          required: true
+          size: 500
+        - name: deadline
+          type: datetime
+          required: true
+          index: true
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: requester_id
+          type: uint64
+          required: true
+          index: true
+        - name: contact_type
+          type: string
+          required: true
+          size: 16
+        - name: contact_ciphertext
+          type: string
+          required: true
+          size: 4096
+        - name: runner_id
+          type: uint64
+          required: false
+          index: true
+        - name: trade_order_id
+          type: uint64
+          required: false
+          unique: true
+        - name: accepted_at
+          type: datetime
+          required: false
+        - name: picked_up_at
+          type: datetime
+          required: false
+        - name: delivered_at
+          type: datetime
+          required: false
+        - name: completed_at
+          type: datetime
+          required: false
+        - name: cancelled_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+    indexes:
+        - name: idx_errand_open_deadline
+          fields:
+            - status
+            - deadline
+entities:
+    - name: Task
+      table: errand_tasks
+      primary: true
+      fields:
+        - name: title
+          type: string
+          required: true
+          size: 200
+        - name: description
+          type: text
+          required: true
+        - name: reward_cents
+          type: int64
+          required: true
+        - name: currency
+          type: string
+          required: true
+          size: 3
+        - name: pickup_location
+          type: string
+          required: true
+          size: 500
+        - name: dropoff_location
+          type: string
+          required: true
+          size: 500
+        - name: deadline
+          type: datetime
+          required: true
+          index: true
+        - name: status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: requester_id
+          type: uint64
+          required: true
+          index: true
+        - name: contact_type
+          type: string
+          required: true
+          size: 16
+        - name: contact_ciphertext
+          type: string
+          required: true
+          size: 4096
+        - name: runner_id
+          type: uint64
+          required: false
+          index: true
+        - name: trade_order_id
+          type: uint64
+          required: false
+          unique: true
+        - name: accepted_at
+          type: datetime
+          required: false
+        - name: picked_up_at
+          type: datetime
+          required: false
+        - name: delivered_at
+          type: datetime
+          required: false
+        - name: completed_at
+          type: datetime
+          required: false
+        - name: cancelled_at
+          type: datetime
+          required: false
+        - name: version
+          type: uint64
+          required: true
+      indexes:
+        - name: idx_errand_open_deadline
+          fields:
+            - status
+            - deadline
+    - name: Transition
+      table: errand_transitions
+      fields:
+        - name: task_id
+          type: uint64
+          required: true
+        - name: from_status
+          type: string
+          required: true
+          size: 24
+        - name: to_status
+          type: string
+          required: true
+          size: 24
+        - name: actor_id
+          type: uint64
+          required: false
+        - name: reason
+          type: string
+          required: false
+          size: 500
+        - name: idempotency_key
+          type: string
+          required: true
+          size: 128
+          unique: true
+      indexes:
+        - name: idx_errand_transition_task
+          fields:
+            - task_id
+      foreign_keys:
+        - field: task_id
+          references: errand_tasks.id
+          on_delete: CASCADE
+crud:
+    - create
+    - get
+    - list
+    - update
+permissions:
+    - name: errand:accept
+      path: /api/v1/errands/:id/accept
+      methods:
+        - POST
+    - name: errand:cancel
+      path: /api/v1/errands/:id/cancel
+      methods:
+        - POST
+    - name: errand:complete
+      path: /api/v1/errands/:id/complete
+      methods:
+        - POST
+    - name: errand:create
+      path: /api/v1/errands
+      methods:
+        - POST
+    - name: errand:deliver
+      path: /api/v1/errands/:id/deliver
+      methods:
+        - POST
+    - name: errand:pickup
+      path: /api/v1/errands/:id/pickup
+      methods:
+        - POST
+    - name: errand:read
+      path: /api/v1/errands
+      methods:
+        - GET
+    - name: errand:read_item
+      path: /api/v1/errands/:id
+      methods:
+        - GET
+    - name: errand:read_mine
+      path: /api/v1/errands/mine
+      methods:
+        - GET
+    - name: errand:update
+      path: /api/v1/errands/:id
+      methods:
+        - PATCH
+operations:
+    - operation_id: ListErrands
+      method: GET
+      path: /api/v1/errands
+      permission: errand:read
+      summary: 浏览待接跑腿任务
+      query:
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: CreateErrand
+      method: POST
+      path: /api/v1/errands
+      permission: errand:create
+      idempotency: required
+      summary: 发布跑腿任务
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: title
+              type: string
+              required: true
+            - name: description
+              type: string
+              required: true
+            - name: reward_cents
+              type: integer
+              required: true
+              format: int64
+              minimum: 1
+            - name: pickup_location
+              type: string
+              required: true
+            - name: dropoff_location
+              type: string
+              required: true
+            - name: deadline
+              type: string
+              required: true
+              format: date-time
+            - name: contact_type
+              type: string
+              required: true
+            - name: contact
+              type: string
+              required: true
+      responses:
+        - status: 201
+          kind: success
+        - status: 400
+          kind: error
+    - operation_id: ListMyErrands
+      method: GET
+      path: /api/v1/errands/mine
+      permission: errand:read_mine
+      summary: 查询我的跑腿任务
+      query:
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: GetErrand
+      method: GET
+      path: /api/v1/errands/{id}
+      permission: errand:read_item
+      summary: 查询跑腿任务详情
+      responses:
+        - status: 200
+          kind: success
+        - status: 404
+          kind: error
+    - operation_id: UpdateErrand
+      method: PATCH
+      path: /api/v1/errands/{id}
+      permission: errand:update
+      idempotency: required
+      summary: 修改未接单的跑腿任务
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: title
+              type: string
+              required: true
+            - name: description
+              type: string
+              required: true
+            - name: reward_cents
+              type: integer
+              required: true
+              format: int64
+              minimum: 1
+            - name: pickup_location
+              type: string
+              required: true
+            - name: dropoff_location
+              type: string
+              required: true
+            - name: deadline
+              type: string
+              required: true
+              format: date-time
+            - name: contact_type
+              type: string
+            - name: contact
+              type: string
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: AcceptErrand
+      method: POST
+      path: /api/v1/errands/{id}/accept
+      permission: errand:accept
+      idempotency: required
+      summary: 原子接单并创建交易订单
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 201
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: CancelErrand
+      method: POST
+      path: /api/v1/errands/{id}/cancel
+      permission: errand:cancel
+      idempotency: required
+      summary: 取消跑腿任务
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: CompleteErrand
+      method: POST
+      path: /api/v1/errands/{id}/complete
+      permission: errand:complete
+      idempotency: required
+      summary: 发布者确认跑腿完成
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: DeliverErrand
+      method: POST
+      path: /api/v1/errands/{id}/deliver
+      permission: errand:deliver
+      idempotency: required
+      summary: 跑腿员确认送达
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: PickupErrand
+      method: POST
+      path: /api/v1/errands/{id}/pickup
+      permission: errand:pickup
+      idempotency: required
+      summary: 跑腿员确认取件
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error

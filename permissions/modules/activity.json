@@ -1,0 +1,110 @@
+{
+  "module": "activity",
+  "permissions": [
+    {
+      "name": "activity:admin_approve",
+      "path_pattern": "/api/v1/admin/activities/:id/approve",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:admin_cancel",
+      "path_pattern": "/api/v1/admin/activities/:id/cancel",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:admin_create",
+      "path_pattern": "/api/v1/admin/activities",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:admin_finish",
+      "path_pattern": "/api/v1/admin/activities/:id/finish",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:admin_list",
+      "path_pattern": "/api/v1/admin/activities",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "activity:admin_publish",
+      "path_pattern": "/api/v1/admin/activities/:id/publish",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:admin_read",
+      "path_pattern": "/api/v1/admin/activities/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "activity:admin_reject",
+      "path_pattern": "/api/v1/admin/activities/:id/reject",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:admin_submit_review",
+      "path_pattern": "/api/v1/admin/activities/:id/submit-review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:admin_update",
+      "path_pattern": "/api/v1/admin/activities/:id",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "name": "activity:list",
+      "path_pattern": "/api/v1/activities",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "activity:read",
+      "path_pattern": "/api/v1/activities/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "activity:register",
+      "path_pattern": "/api/v1/activities/:id/registrations",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "activity:registration_cancel",
+      "path_pattern": "/api/v1/activities/:id/registrations/me",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "name": "activity:registration_mine",
+      "path_pattern": "/api/v1/activities/registrations/mine",
+      "methods": [
+        "GET"
+      ]
+    }
+  ]
+}

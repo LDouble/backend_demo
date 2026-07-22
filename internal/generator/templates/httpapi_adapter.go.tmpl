@@ -1,0 +1,30 @@
+// {{.Header}}
+// Source: {{.Source}}
+
+package httpapi
+
+{{- if .Operations}}
+import (
+	"github.com/gin-gonic/gin"
+	"{{.ModulePath}}/internal/api/generated"
+)
+
+{{range .Operations}}
+// {{.OperationID}} adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) {{.OperationID}}(c *gin.Context{{range pathParams .Path}}, {{.}} uint64{{end}}{{if or .Headers .Query}}, params generated.{{.OperationID}}Params{{end}}) {
+{{- range pathParams .Path}}
+	setGeneratedPathParam(c, "{{.}}", {{.}})
+{{- end}}
+{{- if or .Headers .Query}}
+	setGeneratedParams(c, "{{.OperationID}}", params)
+{{- end}}
+	{{- if eq .Idempotency "required"}}
+	h.idempotent(c, "{{.OperationID}}", func() {
+		h.{{lowerFirst .OperationID}}(c)
+	})
+	{{- else}}
+	h.{{lowerFirst .OperationID}}(c)
+	{{- end}}
+}
+{{end}}
+{{- end}}

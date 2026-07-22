@@ -1,0 +1,85 @@
+{
+  "module": "notice",
+  "permissions": [
+    {
+      "name": "notice:deliveries",
+      "path_pattern": "/api/v1/admin/notices/:id/deliveries",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "notice:manage",
+      "path_pattern": "/api/v1/admin/notices",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "name": "notice:manage_item",
+      "path_pattern": "/api/v1/admin/notices/:id",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "name": "notice:mark_read",
+      "path_pattern": "/api/v1/notices/:id/read",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "name": "notice:publish",
+      "path_pattern": "/api/v1/admin/notices/:id/publish",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "notice:read",
+      "path_pattern": "/api/v1/notices",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "notice:read_all",
+      "path_pattern": "/api/v1/notices/read-all",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "name": "notice:read_item",
+      "path_pattern": "/api/v1/notices/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "notice:retry",
+      "path_pattern": "/api/v1/admin/notices/:id/deliveries/retry",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "notice:revoke",
+      "path_pattern": "/api/v1/admin/notices/:id/revoke",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "notice:unread",
+      "path_pattern": "/api/v1/notices/unread-count",
+      "methods": [
+        "GET"
+      ]
+    }
+  ]
+}

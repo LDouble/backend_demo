@@ -1,0 +1,40 @@
+{
+  "module": "marketplace",
+  "permissions": [
+    {
+      "name": "marketplace:create",
+      "path_pattern": "/api/v1/marketplace/listings",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "marketplace:order_create",
+      "path_pattern": "/api/v1/marketplace/orders",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "marketplace:review",
+      "path_pattern": "/api/v1/admin/marketplace/listings/:id/review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "marketplace:submit",
+      "path_pattern": "/api/v1/marketplace/listings/:id/submit",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "marketplace:withdraw",
+      "path_pattern": "/api/v1/marketplace/listings/:id/withdraw",
+      "methods": [
+        "POST"
+      ]
+    }
+  ]
+}

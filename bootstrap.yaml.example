@@ -1,0 +1,24 @@
+server:
+  address: ":8080"
+  max_body_bytes: 1048576
+  max_header_bytes: 65536
+  trusted_proxy_cidrs: []
+  require_proxy_https: false
+mysql:
+  dsn: "campus:campus@tcp(127.0.0.1:3306)/campus?charset=utf8mb4&parseTime=True&loc=Local"
+redis:
+  address: "127.0.0.1:6379"
+  password: ""
+  db: 0
+  tls: false
+  # Certificate file names below are resolved inside this explicit root.
+  tls_files_root: "/run/secrets/redis"
+  ca_file: ""
+  client_cert_file: ""
+  client_key_file: ""
+  server_name: ""
+  insecure_skip_verify: false
+worker:
+  redis_db: 1
+  concurrency: 10
+  poll_interval: 1s

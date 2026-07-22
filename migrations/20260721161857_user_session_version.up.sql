@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD COLUMN session_version BIGINT UNSIGNED NOT NULL DEFAULT 1 AFTER status;
