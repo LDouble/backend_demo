@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  # Bootstrap the workflow for this initial PR. Future PRs run through the
+  # pull_request trigger once this file exists on master.
+  push:
+    branches: [feat_base]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Generated files and static checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check generated files
+        run: make generate-check
+
+      - name: Check migrations
+        run: make migration-check
+
+      - name: Check architecture
+        run: make check-architecture
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Vet
+        run: make vet
+
+      - name: Lint
+        run: make lint
+
+      - name: Build
+        run: make build
+
+  tests:
+    name: Tests and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run race tests
+        run: make test-race
+
+      - name: Check core coverage
+        run: make test-core-coverage
+
+      - name: Check generator coverage
+        run: make test-generator
