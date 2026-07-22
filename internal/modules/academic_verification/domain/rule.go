@@ -1,3 +1,4 @@
+// Package domain defines academic-verification state and persistence entities.
 package domain
 
 import "time"

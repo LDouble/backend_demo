@@ -443,7 +443,8 @@ func (s *Schema) normalizeAPIOperations() error {
 			return fmt.Errorf("duplicate operation route %q", routeKey)
 		}
 		seenRoutes[routeKey] = struct{}{}
-		if isWriteMethod(op.Method) {
+		switch {
+		case isWriteMethod(op.Method):
 			if err := normalizeIdempotency(op); err != nil {
 				return err
 			}
@@ -453,9 +454,9 @@ func (s *Schema) normalizeAPIOperations() error {
 			if op.AcademicVerification != "required" && op.AcademicVerification != "none" {
 				return fmt.Errorf("operation %q has invalid academic_verification %q", op.OperationID, op.AcademicVerification)
 			}
-		} else if op.Idempotency != "" {
+		case op.Idempotency != "":
 			return fmt.Errorf("read operation %q must not declare idempotency", op.OperationID)
-		} else if op.AcademicVerification != "" {
+		case op.AcademicVerification != "":
 			return fmt.Errorf("read operation %q must not declare academic_verification", op.OperationID)
 		}
 		if op.RequestContent == "" {

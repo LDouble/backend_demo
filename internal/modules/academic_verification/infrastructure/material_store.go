@@ -66,7 +66,7 @@ func (s *EncryptedMaterialStore) Save(ctx context.Context, plaintext []byte, _ s
 	if err != nil {
 		return "", fmt.Errorf("open academic material root: %w", err)
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 	file, err := root.OpenFile(storageKey, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return "", fmt.Errorf("create academic material: %w", err)
@@ -103,12 +103,12 @@ func (s *EncryptedMaterialStore) Open(ctx context.Context, storageKey string) ([
 	if err != nil {
 		return nil, fmt.Errorf("open academic material root: %w", err)
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 	file, err := root.Open(storageKey)
 	if err != nil {
 		return nil, fmt.Errorf("open academic material file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	info, err := file.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("stat academic material: %w", err)
@@ -141,7 +141,7 @@ func (s *EncryptedMaterialStore) Delete(ctx context.Context, storageKey string) 
 	if err != nil {
 		return fmt.Errorf("open academic material root: %w", err)
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 	if err = root.Remove(storageKey); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("remove academic material: %w", err)
 	}

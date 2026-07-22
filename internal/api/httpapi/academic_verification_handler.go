@@ -28,7 +28,7 @@ func (h *Handler) uploadAcademicVerificationMaterial(c *gin.Context) {
 		failure(c, apperror.New(http.StatusBadRequest, "invalid_material", "无法读取学生证图片"))
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	material, err := h.academic.Upload(c.Request.Context(), c.GetUint64(userIDKey), file)
 	if err != nil {
 		failure(c, err)
