@@ -23,6 +23,11 @@ func (h *Handler) Logout(c *gin.Context) { h.logout(c) }
 // GetMe handles the generated current-user operation.
 func (h *Handler) GetMe(c *gin.Context) { h.me(c) }
 
+// ChangeMyPassword handles current-user password rotation.
+func (h *Handler) ChangeMyPassword(c *gin.Context, _ generated.ChangeMyPasswordParams) {
+	h.idempotent(c, "ChangeMyPassword", func() { h.changeMyPassword(c) })
+}
+
 // ListPermissionCatalog handles the generated permission-directory operation.
 func (h *Handler) ListPermissionCatalog(c *gin.Context) { h.listPermissionCatalog(c) }
 

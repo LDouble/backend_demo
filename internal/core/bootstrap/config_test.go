@@ -13,6 +13,9 @@ func setRequired(t *testing.T) {
 	t.Setenv("CAMPUS_MYSQL_DSN", "user:pass@tcp(localhost:3306)/db")
 	t.Setenv("CAMPUS_JWT_SECRET", "0123456789abcdef0123456789abcdef")
 	t.Setenv("CAMPUS_CONFIG_MASTER_KEY", base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	t.Setenv("CAMPUS_ACADEMIC_MATERIAL_KEY", base64.StdEncoding.EncodeToString([]byte("abcdef0123456789abcdef0123456789")))
+	t.Setenv("CAMPUS_ACADEMIC_MATERIAL_ROOT", t.TempDir())
+	t.Setenv("CAMPUS_ACADEMIC_PROVIDER_FILE", filepath.Join(t.TempDir(), "academic.json"))
 }
 
 func TestLoadAllEnvironmentOverrides(t *testing.T) {
@@ -211,6 +214,8 @@ func TestPurposeSpecificLoadersRequireOnlyTheirSecrets(t *testing.T) {
 		t.Fatalf("LoadAdminBootstrap() error = %v", err)
 	}
 	t.Setenv("CAMPUS_CONFIG_MASTER_KEY", base64.StdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	t.Setenv("CAMPUS_ACADEMIC_MATERIAL_KEY", base64.StdEncoding.EncodeToString([]byte("abcdef0123456789abcdef0123456789")))
+	t.Setenv("CAMPUS_ACADEMIC_MATERIAL_ROOT", t.TempDir())
 	t.Setenv("CAMPUS_REDIS_TLS", "true")
 	if _, err := LoadWorker(""); err != nil {
 		t.Fatalf("LoadWorker() error = %v", err)

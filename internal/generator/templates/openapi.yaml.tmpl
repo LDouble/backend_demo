@@ -16,6 +16,9 @@ paths:{{if and (not .OperationRoutes) (not .Routes)}} {}{{end}}
       summary: {{printf "%q" .Summary}}
       x-generated-module: {{$.Module}}
       x-permission: {{.Permission}}
+{{- if .AcademicVerification}}
+      x-academic-verification: {{.AcademicVerification}}
+{{- end}}
       security: [{bearerAuth: []}]
 {{- $pathParams := pathParams $path}}
 {{- if or $pathParams .Headers .Query}}
@@ -66,7 +69,7 @@ paths:{{if and (not .OperationRoutes) (not .Routes)}} {}{{end}}
       requestBody:
         required: true
         content:
-          application/json:
+          {{.RequestContent}}:
             schema:
 {{- if .Body.Ref}}
               $ref: "#/components/schemas/{{.Body.Ref}}"

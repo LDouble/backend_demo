@@ -88,6 +88,9 @@ func (h *Handler) ListMyNotices(c *gin.Context, params generated.ListMyNoticesPa
 
 // ReadAllNotices adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) ReadAllNotices(c *gin.Context) {
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.readAllNotices(c)
 }
 
@@ -105,5 +108,8 @@ func (h *Handler) GetMyNotice(c *gin.Context, id uint64) {
 // ReadNotice adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) ReadNotice(c *gin.Context, id uint64) {
 	setGeneratedPathParam(c, "id", id)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.readNotice(c)
 }

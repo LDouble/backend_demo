@@ -61,6 +61,9 @@ func TestNoticeSpecRecipientsAndPaths(t *testing.T) {
 		{name: "removed", event: core.Event{EventType: "listing.removed", Payload: []byte(`{"listing_id":4,"owner_id":7}`)}, wantUsers: 1, wantAction: "/api/v1/marketplace/listings/4"},
 		{name: "completed", event: core.Event{AggregateID: 11, EventType: "order.completed", Payload: []byte(`{"order_type":"marketplace","buyer_id":7,"seller_id":8}`)}, wantUsers: 2, wantAction: "/api/v1/orders/11"},
 		{name: "deduplicates party", event: core.Event{AggregateID: 12, EventType: "order.expired", Payload: []byte(`{"order_type":"marketplace","buyer_id":7,"seller_id":7}`)}, wantUsers: 1, wantAction: "/api/v1/orders/12"},
+		{name: "academic approved", event: core.Event{EventType: "academic_verification.approved", Payload: []byte(`{"user_id":21,"request_id":31,"status":"approved","action_path":"/pages/academic-verification/index"}`)}, wantUsers: 1, wantAction: "/pages/academic-verification/index"},
+		{name: "academic rejected", event: core.Event{EventType: "academic_verification.rejected", Payload: []byte(`{"user_id":22,"request_id":32,"status":"rejected","action_path":"/pages/academic-verification/index"}`)}, wantUsers: 1, wantAction: "/pages/academic-verification/index"},
+		{name: "academic revoked", event: core.Event{EventType: "academic_verification.revoked", Payload: []byte(`{"user_id":23,"status":"revoked","action_path":"/pages/academic-verification/index"}`)}, wantUsers: 1, wantAction: "/pages/academic-verification/index"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

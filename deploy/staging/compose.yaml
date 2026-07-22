@@ -14,6 +14,8 @@ x-runtime-environment: &runtime-environment
   CAMPUS_REDIS_CLIENT_CERT_FILE: client.crt
   CAMPUS_REDIS_CLIENT_KEY_FILE: client.key
   CAMPUS_REDIS_SERVER_NAME: redis
+  CAMPUS_ACADEMIC_MATERIAL_KEY: "${CAMPUS_ACADEMIC_MATERIAL_KEY:?set CAMPUS_ACADEMIC_MATERIAL_KEY}"
+  CAMPUS_ACADEMIC_MATERIAL_ROOT: /var/lib/campus/academic-materials
 
 x-app: &app
   image: "${CAMPUS_IMAGE:?set CAMPUS_IMAGE to an immutable digest}"
@@ -151,8 +153,14 @@ services:
       CAMPUS_REQUIRE_PROXY_HTTPS: "true"
       CAMPUS_JWT_SECRET: "${CAMPUS_JWT_SECRET:?set CAMPUS_JWT_SECRET}"
       CAMPUS_CONFIG_MASTER_KEY: "${CAMPUS_CONFIG_MASTER_KEY:?set CAMPUS_CONFIG_MASTER_KEY}"
+      CAMPUS_ACADEMIC_PROVIDER_FILE: /run/secrets/academic-provider.json
+      CAMPUS_SERVER_MAX_BODY_BYTES: "6291456"
     volumes:
       - app-redis-tls:/run/secrets/redis-tls:ro
+      - academic-materials:/var/lib/campus/academic-materials
+    secrets:
+      - source: academic_provider
+        target: /run/secrets/academic-provider.json
     depends_on:
       bootstrap:
         condition: service_completed_successfully
@@ -175,6 +183,7 @@ services:
       CAMPUS_WORKER_POLL_INTERVAL: "${CAMPUS_WORKER_POLL_INTERVAL:-1s}"
     volumes:
       - app-redis-tls:/run/secrets/redis-tls:ro
+      - academic-materials:/var/lib/campus/academic-materials
     depends_on:
       bootstrap:
         condition: service_completed_successfully
@@ -194,6 +203,7 @@ volumes:
   redis-data: {}
   redis-tls: {}
   app-redis-tls: {}
+  academic-materials: {}
   caddy-data: {}
   caddy-config: {}
 
@@ -210,3 +220,5 @@ secrets:
     file: "${CAMPUS_REDIS_CLIENT_CERT_FILE:?set CAMPUS_REDIS_CLIENT_CERT_FILE}"
   redis_client_key:
     file: "${CAMPUS_REDIS_CLIENT_KEY_FILE:?set CAMPUS_REDIS_CLIENT_KEY_FILE}"
+  academic_provider:
+    file: "${CAMPUS_ACADEMIC_PROVIDER_FILE:?set CAMPUS_ACADEMIC_PROVIDER_FILE}"

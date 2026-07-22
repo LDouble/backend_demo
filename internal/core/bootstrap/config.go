@@ -17,14 +17,15 @@ import (
 
 // Config contains startup and security configuration.
 type Config struct {
-	Environment string       `yaml:"environment"`
-	Server      ServerConfig `yaml:"server"`
-	MySQL       MySQLConfig  `yaml:"mysql"`
-	Redis       RedisConfig  `yaml:"redis"`
-	Worker      WorkerConfig `yaml:"worker"`
-	JWT         JWTConfig    `yaml:"-"`
-	Secret      SecretConfig `yaml:"-"`
-	Admin       AdminConfig  `yaml:"-"`
+	Environment string         `yaml:"environment"`
+	Server      ServerConfig   `yaml:"server"`
+	MySQL       MySQLConfig    `yaml:"mysql"`
+	Redis       RedisConfig    `yaml:"redis"`
+	Worker      WorkerConfig   `yaml:"worker"`
+	Academic    AcademicConfig `yaml:"academic"`
+	JWT         JWTConfig      `yaml:"-"`
+	Secret      SecretConfig   `yaml:"-"`
+	Admin       AdminConfig    `yaml:"-"`
 }
 
 // ServerConfig contains HTTP listener settings.
@@ -62,6 +63,12 @@ type WorkerConfig struct {
 	PollInterval time.Duration `yaml:"poll_interval"`
 }
 
+// AcademicConfig contains non-secret provider and private-storage paths.
+type AcademicConfig struct {
+	MaterialRoot string `yaml:"material_root"`
+	ProviderFile string `yaml:"provider_file"`
+}
+
 // JWTConfig contains signing and lifetime settings.
 type JWTConfig struct {
 	Issuer     string
@@ -71,7 +78,10 @@ type JWTConfig struct {
 }
 
 // SecretConfig contains decoded encryption keys.
-type SecretConfig struct{ ConfigKey []byte }
+type SecretConfig struct {
+	ConfigKey           []byte
+	AcademicMaterialKey []byte
+}
 
 // AdminConfig contains first-administrator bootstrap values.
 type AdminConfig struct {
@@ -92,22 +102,27 @@ const (
 func (c Config) IsProduction() bool { return c.Environment == EnvironmentProduction }
 
 type loadRequirements struct {
-	jwt       bool
-	configKey bool
-	server    bool
-	redis     bool
-	worker    bool
-	admin     bool
+	jwt              bool
+	configKey        bool
+	server           bool
+	redis            bool
+	worker           bool
+	admin            bool
+	academicMaterial bool
+	academicProvider bool
 }
 
 // Load reads API configuration and applies CAMPUS_ environment overrides.
 func Load(path string) (Config, error) {
-	return load(path, loadRequirements{jwt: true, configKey: true, server: true, redis: true, worker: true})
+	return load(path, loadRequirements{
+		jwt: true, configKey: true, server: true, redis: true, worker: true,
+		academicMaterial: true, academicProvider: true,
+	})
 }
 
 // LoadWorker reads configuration required by the asynchronous worker.
 func LoadWorker(path string) (Config, error) {
-	return load(path, loadRequirements{configKey: true, redis: true, worker: true})
+	return load(path, loadRequirements{configKey: true, redis: true, worker: true, academicMaterial: true})
 }
 
 // LoadMigration reads only the configuration required to run migrations.
@@ -123,7 +138,7 @@ func LoadAdminBootstrap(path string) (Config, error) {
 func load(path string, requirements loadRequirements) (Config, error) {
 	cfg := Config{
 		Environment: EnvironmentDevelopment,
-		Server:      ServerConfig{Address: ":8080", MaxBodyBytes: 1 << 20, MaxHeaderBytes: 64 << 10},
+		Server:      ServerConfig{Address: ":8080", MaxBodyBytes: 6 << 20, MaxHeaderBytes: 64 << 10},
 		Redis:       RedisConfig{Address: "127.0.0.1:6379"},
 		Worker:      WorkerConfig{RedisDB: 1, Concurrency: 10, PollInterval: time.Second},
 		JWT:         JWTConfig{Issuer: "campus-platform", AccessTTL: 15 * time.Minute, RefreshTTL: 7 * 24 * time.Hour},
@@ -155,6 +170,17 @@ func load(path string, requirements loadRequirements) (Config, error) {
 	}
 	if requirements.configKey && len(cfg.Secret.ConfigKey) != 32 {
 		return Config{}, fmt.Errorf("CAMPUS_CONFIG_MASTER_KEY must be base64 for exactly 32 bytes")
+	}
+	if requirements.academicMaterial {
+		if len(cfg.Secret.AcademicMaterialKey) != 32 {
+			return Config{}, fmt.Errorf("CAMPUS_ACADEMIC_MATERIAL_KEY must be base64 for exactly 32 bytes")
+		}
+		if strings.TrimSpace(cfg.Academic.MaterialRoot) == "" || !filepath.IsAbs(cfg.Academic.MaterialRoot) {
+			return Config{}, fmt.Errorf("CAMPUS_ACADEMIC_MATERIAL_ROOT must be an absolute path")
+		}
+	}
+	if requirements.academicProvider && (strings.TrimSpace(cfg.Academic.ProviderFile) == "" || !filepath.IsAbs(cfg.Academic.ProviderFile)) {
+		return Config{}, fmt.Errorf("CAMPUS_ACADEMIC_PROVIDER_FILE must be an absolute path")
 	}
 	if requirements.server {
 		for _, cidr := range cfg.Server.TrustedProxyCIDRs {
@@ -279,12 +305,21 @@ func override(c *Config) error {
 		}
 		c.Worker.PollInterval = d
 	}
+	if v := os.Getenv("CAMPUS_ACADEMIC_MATERIAL_ROOT"); v != "" {
+		c.Academic.MaterialRoot = v
+	}
+	if v := os.Getenv("CAMPUS_ACADEMIC_PROVIDER_FILE"); v != "" {
+		c.Academic.ProviderFile = v
+	}
 	if v := os.Getenv("CAMPUS_JWT_ISSUER"); v != "" {
 		c.JWT.Issuer = v
 	}
 	c.JWT.Secret = []byte(os.Getenv("CAMPUS_JWT_SECRET"))
 	if raw := os.Getenv("CAMPUS_CONFIG_MASTER_KEY"); raw != "" {
 		c.Secret.ConfigKey, _ = base64.StdEncoding.DecodeString(raw)
+	}
+	if raw := os.Getenv("CAMPUS_ACADEMIC_MATERIAL_KEY"); raw != "" {
+		c.Secret.AcademicMaterialKey, _ = base64.StdEncoding.DecodeString(raw)
 	}
 	c.Admin.Username = os.Getenv("CAMPUS_ADMIN_USERNAME")
 	c.Admin.Password = os.Getenv("CAMPUS_ADMIN_PASSWORD")

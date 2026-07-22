@@ -76,6 +76,10 @@
       "path_pattern": "/api/v1/activities",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
       ]
     },
     {
@@ -83,6 +87,10 @@
       "path_pattern": "/api/v1/activities/:id",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
       ]
     },
     {
@@ -90,6 +98,9 @@
       "path_pattern": "/api/v1/activities/:id/registrations",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -97,6 +108,9 @@
       "path_pattern": "/api/v1/activities/:id/registrations/me",
       "methods": [
         "DELETE"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -104,6 +118,9 @@
       "path_pattern": "/api/v1/activities/registrations/mine",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
       ]
     }
   ]

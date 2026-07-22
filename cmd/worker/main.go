@@ -18,6 +18,8 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/logger"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/redisclient"
+	academicapp "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/application"
+	academicinfra "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/infrastructure"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	carpoolinfra "github.com/weouc-plus/campus-platform/internal/modules/carpool/infrastructure"
 	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
@@ -70,6 +72,14 @@ func run() error {
 	}
 	carpools := carpoolapp.NewManager(carpoolinfra.NewStore(db, cipher))
 	marketplace := marketplaceapp.NewManager(marketplaceinfra.NewStore(db, cipher))
+	materialStore, err := academicinfra.NewEncryptedMaterialStore(
+		cfg.Academic.MaterialRoot,
+		cfg.Secret.AcademicMaterialKey,
+	)
+	if err != nil {
+		return err
+	}
+	academic := academicapp.NewManager(academicinfra.NewStore(db, nil), materialStore, nil, nil)
 	mux := asynq.NewServeMux()
 	processor.Register(mux)
 	relay := noticeworker.NewRelay(store, client, cfg.Worker.PollInterval, log)
@@ -78,7 +88,7 @@ func run() error {
 		domaineventinfra.NewLogPublisher(log),
 	)
 	domainRelay := domaineventinfra.NewRelay(db, domainPublisher, cfg.Worker.PollInterval, log)
-	errCh := make(chan error, 5)
+	errCh := make(chan error, 6)
 	var workers sync.WaitGroup
 	runWorker := func(work func() error) {
 		workers.Add(1)
@@ -91,6 +101,7 @@ func run() error {
 	runWorker(func() error { return domainRelay.Run(ctx) })
 	runWorker(func() error { return runCarpoolCompletion(ctx, carpools, cfg.Worker.PollInterval, log) })
 	runWorker(func() error { return runMarketplaceExpiry(ctx, marketplace, time.Minute, log) })
+	runWorker(func() error { return runAcademicMaterialCleanup(ctx, academic, time.Hour, log) })
 	runWorker(func() error { return server.Run(mux) })
 	log.Info("notice worker started", zap.Int("concurrency", cfg.Worker.Concurrency), zap.Int("redis_db", cfg.Worker.RedisDB))
 	var runErr error
@@ -113,6 +124,15 @@ func runCarpoolCompletion(ctx context.Context, carpools *carpoolapp.Manager, int
 
 func runMarketplaceExpiry(ctx context.Context, marketplace *marketplaceapp.Manager, interval time.Duration, log *zap.Logger) error {
 	return runPeriodic(ctx, interval, "marketplace reservation expiry", log, marketplace.ExpireReservations)
+}
+
+func runAcademicMaterialCleanup(
+	ctx context.Context,
+	academic *academicapp.Manager,
+	interval time.Duration,
+	log *zap.Logger,
+) error {
+	return runPeriodic(ctx, interval, "academic material cleanup", log, academic.CleanupExpired)
 }
 
 func runPeriodic(ctx context.Context, interval time.Duration, name string, log *zap.Logger, work func(context.Context) (int64, error)) error {

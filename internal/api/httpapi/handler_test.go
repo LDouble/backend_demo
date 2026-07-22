@@ -48,6 +48,14 @@ type accountFailureLimiter struct {
 	loginIPs []string
 }
 
+type alwaysVerified struct{}
+
+func (alwaysVerified) IsVerified(context.Context, uint64) (bool, error) { return true, nil }
+
+type neverVerified struct{}
+
+func (neverVerified) IsVerified(context.Context, uint64) (bool, error) { return false, nil }
+
 func (l *accountFailureLimiter) AllowLoginIP(_ context.Context, ip string) (bool, error) {
 	l.loginIPs = append(l.loginIPs, ip)
 	return true, nil
@@ -142,6 +150,52 @@ func TestInfrastructureErrorsAreNotExposed(t *testing.T) {
 	assertErrorEnvelope(t, response, http.StatusInternalServerError, "internal_error")
 	if strings.Contains(response.Body.String(), "mysql") || strings.Contains(response.Body.String(), "secret") {
 		t.Fatalf("internal error leaked: %s", response.Body.String())
+	}
+}
+
+func TestAcademicVerificationGateCannotBeBypassedBySuperAdmin(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	fixture.handler.WithAcademicVerificationGate(neverVerified{})
+	router, err := fixture.handler.Router()
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := performJSON(
+		t,
+		router,
+		http.MethodPost,
+		"/api/v1/carpool/trips",
+		fixture.adminToken,
+		map[string]any{
+			"title": "Campus ride", "origin": "Station", "destination": "Campus",
+			"departure_at": time.Now().UTC().Add(time.Hour).Format(time.RFC3339),
+			"total_seats":  2, "contact_type": "phone", "contact": "13800138000",
+		},
+	)
+	assertErrorEnvelope(t, response, http.StatusForbidden, "academic_verification_required")
+}
+
+func TestChangeMyPasswordRevokesAllSessions(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	newPassword := "replacement-password-123"
+	response := performJSON(t, fixture.router, http.MethodPatch, "/api/v1/auth/me/password", fixture.adminToken, map[string]string{
+		"current_password": fixture.userPassword,
+		"new_password":     newPassword,
+	})
+	if response.Code != http.StatusOK {
+		t.Fatalf("change password status=%d body=%s", response.Code, response.Body.String())
+	}
+	response = perform(t, fixture.router, http.MethodGet, "/api/v1/auth/me", fixture.adminToken, nil)
+	assertErrorEnvelope(t, response, http.StatusUnauthorized, "session_expired")
+	response = performJSON(t, fixture.router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
+		"username": "admin", "password": fixture.userPassword,
+	})
+	assertErrorEnvelope(t, response, http.StatusUnauthorized, "invalid_credentials")
+	response = performJSON(t, fixture.router, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
+		"username": "admin", "password": newPassword,
+	})
+	if response.Code != http.StatusOK {
+		t.Fatalf("new password login status=%d body=%s", response.Code, response.Body.String())
 	}
 }
 
@@ -329,8 +383,8 @@ func TestHandlerFailureScenarios(t *testing.T) {
 				}
 				return perform(t, f.router, http.MethodGet, "/api/v1/auth/me", token, nil)
 			},
-			wantStatus: http.StatusForbidden,
-			wantCode:   "user_disabled",
+			wantStatus: http.StatusUnauthorized,
+			wantCode:   "session_expired",
 		},
 		{
 			name: "重复用户名",
@@ -776,10 +830,12 @@ func newHandlerFixtureWithLimiter(t *testing.T, limiter httpapi.AuthLimiter) *ha
 	}
 	sessions := &memorySessionStore{session: make(map[string]string)}
 	authService := auth.NewService(platformmysql.NewUserRepository(db), sessions, "test", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	users.WithSessionRevoker(authService)
 	activities := activityapp.NewManager(activityinfra.NewStore(db, cipher))
 	handler := httpapi.New(authService, users, permissions, configcenter.NewService(platformmysql.NewConfigRepository(db), cipher), func(context.Context) error { return nil }, func(context.Context) error { return nil }, zap.NewNop()).
 		WithDatabase(db).
-		WithActivities(activities)
+		WithActivities(activities).
+		WithAcademicVerificationGate(alwaysVerified{})
 	if limiter != nil {
 		handler.WithAuthLimiter(limiter)
 	}

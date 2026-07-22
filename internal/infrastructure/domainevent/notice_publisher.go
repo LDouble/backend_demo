@@ -28,11 +28,15 @@ func NewNoticePublisher(db *gorm.DB) *NoticePublisher {
 }
 
 type noticeEventPayload struct {
-	ListingID uint64 `json:"listing_id"`
-	OwnerID   uint64 `json:"owner_id"`
-	BuyerID   uint64 `json:"buyer_id"`
-	SellerID  uint64 `json:"seller_id"`
-	OrderType string `json:"order_type"`
+	ListingID  uint64 `json:"listing_id"`
+	OwnerID    uint64 `json:"owner_id"`
+	BuyerID    uint64 `json:"buyer_id"`
+	SellerID   uint64 `json:"seller_id"`
+	OrderType  string `json:"order_type"`
+	UserID     uint64 `json:"user_id"`
+	RequestID  uint64 `json:"request_id"`
+	Status     string `json:"status"`
+	ActionPath string `json:"action_path"`
 }
 
 // Publish idempotently persists a published in-app notice for supported events.
@@ -50,7 +54,7 @@ func (p *NoticePublisher) Publish(ctx context.Context, event core.Event) error {
 	return p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		notice := domain.Notice{
 			Title: spec.title, Summary: spec.summary, Body: spec.summary,
-			Category: "marketplace", Priority: domain.PriorityNormal,
+			Category: spec.category, Priority: domain.PriorityNormal,
 			Status: domain.StatusPublished, ActionPath: &spec.actionPath,
 			PushEnabled: false, PublishAt: &now, PublishedAt: &now,
 			Version: 1, CreatedBy: 0, UpdatedBy: 0, SourceEventId: &event.ID,
@@ -103,6 +107,7 @@ func (p *NoticePublisher) enrichLegacyListingOwner(ctx context.Context, event co
 }
 
 type eventNoticeSpec struct {
+	category   string
 	title      string
 	summary    string
 	actionPath string
@@ -113,6 +118,8 @@ func noticeSpecFor(event core.Event) (eventNoticeSpec, bool, error) {
 	supported := map[string]struct{}{
 		"listing.reviewed": {}, "listing.removed": {}, "order.created": {},
 		"order.cancelled": {}, "order.completed": {}, "order.expired": {},
+		"academic_verification.approved": {}, "academic_verification.rejected": {},
+		"academic_verification.revoked": {},
 	}
 	if _, ok := supported[event.EventType]; !ok {
 		return eventNoticeSpec{}, false, nil
@@ -124,7 +131,7 @@ func noticeSpecFor(event core.Event) (eventNoticeSpec, bool, error) {
 	if strings.HasPrefix(event.EventType, "order.") && payload.OrderType != tradedomain.OrderTypeMarketplace {
 		return eventNoticeSpec{}, false, nil
 	}
-	spec := eventNoticeSpec{}
+	spec := eventNoticeSpec{category: "marketplace"}
 	switch event.EventType {
 	case "listing.reviewed":
 		spec.title, spec.summary = "商品审核结果", "你的二手商品审核状态已更新"
@@ -134,6 +141,21 @@ func noticeSpecFor(event core.Event) (eventNoticeSpec, bool, error) {
 		spec.title, spec.summary = "商品已下架", "你的二手商品已被管理员下架"
 		spec.actionPath = fmt.Sprintf("/api/v1/marketplace/listings/%d", payload.ListingID)
 		spec.recipients = []uint64{payload.OwnerID}
+	case "academic_verification.approved":
+		spec.category = "academic_verification"
+		spec.title, spec.summary = "教务认证已通过", "你的教务认证状态已更新"
+		spec.actionPath = payload.ActionPath
+		spec.recipients = []uint64{payload.UserID}
+	case "academic_verification.rejected":
+		spec.category = "academic_verification"
+		spec.title, spec.summary = "教务认证未通过", "你的教务认证申请已被驳回"
+		spec.actionPath = payload.ActionPath
+		spec.recipients = []uint64{payload.UserID}
+	case "academic_verification.revoked":
+		spec.category = "academic_verification"
+		spec.title, spec.summary = "教务认证已撤销", "你的教务认证状态已被管理员撤销"
+		spec.actionPath = payload.ActionPath
+		spec.recipients = []uint64{payload.UserID}
 	default:
 		spec.title = orderEventTitle(event.EventType)
 		spec.summary = "二手交易订单状态已更新"

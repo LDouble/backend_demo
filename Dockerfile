@@ -15,6 +15,9 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /out/server /out/campusctl /out/worker ./
 COPY --chown=65532:65532 migrations ./migrations
+RUN mkdir -p /var/lib/campus/academic-materials && \
+    chown 65532:65532 /var/lib/campus/academic-materials && \
+    chmod 0750 /var/lib/campus/academic-materials
 EXPOSE 8080
 USER 65532:65532
 ENTRYPOINT ["/app/server"]

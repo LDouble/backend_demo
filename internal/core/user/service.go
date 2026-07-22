@@ -97,13 +97,26 @@ func (s *Service) Create(ctx context.Context, username, password string) (*model
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 	if assigner, ok := s.guard.(interface {
-		EnsureMemberForUser(context.Context, uint64) error
+		EnsureGuestForUser(context.Context, uint64) error
 	}); ok {
-		if err := assigner.EnsureMemberForUser(ctx, u.ID); err != nil {
-			return nil, fmt.Errorf("assign member role: %w", err)
+		if err := assigner.EnsureGuestForUser(ctx, u.ID); err != nil {
+			return nil, fmt.Errorf("assign guest role: %w", err)
 		}
 	}
 	return u, nil
+}
+
+// ChangePassword verifies the current password and revokes every active session.
+func (s *Service) ChangePassword(ctx context.Context, id uint64, currentPassword, newPassword string) error {
+	u, err := s.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !CheckPassword(u.PasswordHash, currentPassword) {
+		return apperror.New(http.StatusUnauthorized, "invalid_current_password", "当前密码错误")
+	}
+	_, err = s.Update(ctx, id, nil, &newPassword)
+	return err
 }
 
 // Get returns a user by ID.

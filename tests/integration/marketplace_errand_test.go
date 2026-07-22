@@ -150,7 +150,9 @@ func createIntegrationUser(t *testing.T, client http.Client, base, adminToken, u
 	}
 	created := resource{}
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{"username": username, "password": integrationPassword}), &created)
-	return integrationUser{id: created.ID, token: loginWithCredentials(t, base, username, integrationPassword), username: username}
+	token := loginWithCredentials(t, base, username, integrationPassword)
+	verifyAcademicCredentials(t, client, base, token)
+	return integrationUser{id: created.ID, token: token, username: username}
 }
 func grantMarketplaceErrandPermissions(t *testing.T, client http.Client, base, adminToken, suffix string, userIDs ...uint64) uint64 {
 	t.Helper()

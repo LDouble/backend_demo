@@ -100,7 +100,7 @@ func TestRBACLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	roles, err := svc.GetUserRoles(ctx, 2)
-	if err != nil || len(roles) != 2 || roles[0] != "config_reader" || roles[1] != model.MemberRole {
+	if err != nil || len(roles) != 2 || roles[0] != "config_reader" || roles[1] != model.GuestRole {
 		t.Fatalf("roles=%v err=%v", roles, err)
 	}
 	allowed, _ = svc.Enforce(ctx, 2, "/api/v1/configs", "GET")
@@ -240,7 +240,7 @@ func TestSuperAdminProtection(t *testing.T) {
 	}
 }
 
-func TestMemberRoleIsBuiltInAndAlwaysAssigned(t *testing.T) {
+func TestBaseRolesAreBuiltInAndManaged(t *testing.T) {
 	ctx := context.Background()
 	svc := testService(t)
 	if _, err := svc.CreateRole(ctx, model.MemberRole, "legacy member", false); err != nil {
@@ -259,6 +259,11 @@ func TestMemberRoleIsBuiltInAndAlwaysAssigned(t *testing.T) {
 	roles, err := svc.GetUserRoles(ctx, 42)
 	if err != nil || len(roles) != 1 || roles[0] != model.MemberRole {
 		t.Fatalf("roles=%v err=%v", roles, err)
+	}
+	for _, role := range []string{model.GuestRole, model.MemberRole, " " + model.GuestRole + " ", " " + model.MemberRole + " "} {
+		if err = svc.SetUserRoles(ctx, 42, []string{role}); err == nil {
+			t.Fatalf("base role %q must not be assigned through generic role management", role)
+		}
 	}
 	rows, _, err := svc.ListRoles(ctx, 1, 100)
 	if err != nil {
@@ -279,6 +284,33 @@ func TestMemberRoleIsBuiltInAndAlwaysAssigned(t *testing.T) {
 		}
 	}
 	t.Fatal("member role not found")
+}
+
+func TestGuestReadsPublicContentAndOnlyMemberGetsBusinessWrites(t *testing.T) {
+	ctx := context.Background()
+	svc := testService(t)
+	if err := svc.EnsureGuestForUser(ctx, 42); err != nil {
+		t.Fatal(err)
+	}
+	read, err := svc.Enforce(ctx, 42, "/api/v1/activities", "GET")
+	if err != nil || !read {
+		t.Fatalf("guest public read=%v err=%v", read, err)
+	}
+	write, err := svc.Enforce(ctx, 42, "/api/v1/activities/1/registrations", "POST")
+	if err != nil || write {
+		t.Fatalf("guest business write=%v err=%v", write, err)
+	}
+	if err = svc.EnsureMemberForUser(ctx, 42); err != nil {
+		t.Fatal(err)
+	}
+	write, err = svc.Enforce(ctx, 42, "/api/v1/activities/1/registrations", "POST")
+	if err != nil || !write {
+		t.Fatalf("member business write=%v err=%v", write, err)
+	}
+	roles, err := svc.GetUserRoles(ctx, 42)
+	if err != nil || len(roles) != 1 || roles[0] != model.MemberRole {
+		t.Fatalf("base roles=%v err=%v", roles, err)
+	}
 }
 
 func TestPermissionValidation(t *testing.T) {

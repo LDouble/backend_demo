@@ -61,6 +61,7 @@ paths:
       summary: "发起拼车行程"
       x-generated-module: carpool
       x-permission: carpool:create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -129,6 +130,7 @@ paths:
       summary: "取消拼车行程"
       x-generated-module: carpool
       x-permission: carpool:cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -161,6 +163,7 @@ paths:
       summary: "原子加入拼车行程"
       x-generated-module: carpool
       x-permission: carpool:join
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -195,6 +198,7 @@ paths:
       summary: "退出拼车行程"
       x-generated-module: carpool
       x-permission: carpool:leave
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}

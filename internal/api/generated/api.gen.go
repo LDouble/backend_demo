@@ -176,6 +176,12 @@ func (e UserStatusRequestStatus) Valid() bool {
 	}
 }
 
+// ChangeMyPasswordRequest defines model for ChangeMyPasswordRequest.
+type ChangeMyPasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 // CreateConfigRequest defines model for CreateConfigRequest.
 type CreateConfigRequest struct {
 	Encrypted *bool  `json:"encrypted,omitempty"`
@@ -542,6 +548,34 @@ type Refresh = RefreshRequest
 // UpdateUser defines model for UpdateUser.
 type UpdateUser = UpdateUserRequest
 
+// VerifyAcademicCredentialsJSONBody defines parameters for VerifyAcademicCredentials.
+type VerifyAcademicCredentialsJSONBody struct {
+	Password  string `json:"password"`
+	StudentNo string `json:"student_no"`
+}
+
+// VerifyAcademicCredentialsParams defines parameters for VerifyAcademicCredentials.
+type VerifyAcademicCredentialsParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// UploadAcademicVerificationMaterialMultipartBody defines parameters for UploadAcademicVerificationMaterial.
+type UploadAcademicVerificationMaterialMultipartBody struct {
+	File openapi_types.File `json:"file"`
+}
+
+// SubmitStudentCardVerificationJSONBody defines parameters for SubmitStudentCardVerification.
+type SubmitStudentCardVerificationJSONBody struct {
+	MaterialId uint64 `json:"material_id"`
+	RealName   string `json:"real_name"`
+	StudentNo  string `json:"student_no"`
+}
+
+// SubmitStudentCardVerificationParams defines parameters for SubmitStudentCardVerification.
+type SubmitStudentCardVerificationParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // ListActivitiesParams defines parameters for ListActivities.
 type ListActivitiesParams struct {
 	Keyword   *string             `form:"keyword,omitempty" json:"keyword,omitempty"`
@@ -568,6 +602,45 @@ type CancelMyActivityRegistrationJSONBody struct {
 
 // CancelMyActivityRegistrationParams defines parameters for CancelMyActivityRegistration.
 type CancelMyActivityRegistrationParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// RevokeAcademicIdentityJSONBody defines parameters for RevokeAcademicIdentity.
+type RevokeAcademicIdentityJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+	Reason          string `json:"reason"`
+}
+
+// RevokeAcademicIdentityParams defines parameters for RevokeAcademicIdentity.
+type RevokeAcademicIdentityParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// ListAdminAcademicVerificationRequestsParams defines parameters for ListAdminAcademicVerificationRequests.
+type ListAdminAcademicVerificationRequestsParams struct {
+	Status   *string `form:"status,omitempty" json:"status,omitempty"`
+	Page     *int32  `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *int32  `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// ApproveAcademicVerificationRequestJSONBody defines parameters for ApproveAcademicVerificationRequest.
+type ApproveAcademicVerificationRequestJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// ApproveAcademicVerificationRequestParams defines parameters for ApproveAcademicVerificationRequest.
+type ApproveAcademicVerificationRequestParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// RejectAcademicVerificationRequestJSONBody defines parameters for RejectAcademicVerificationRequest.
+type RejectAcademicVerificationRequestJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+	Reason          string `json:"reason"`
+}
+
+// RejectAcademicVerificationRequestParams defines parameters for RejectAcademicVerificationRequest.
+type RejectAcademicVerificationRequestParams struct {
 	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
@@ -751,6 +824,11 @@ type PublishNoticeParams struct {
 // RevokeNoticeParams defines parameters for RevokeNotice.
 type RevokeNoticeParams struct {
 	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// ChangeMyPasswordParams defines parameters for ChangeMyPassword.
+type ChangeMyPasswordParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // ListCarpoolTripsParams defines parameters for ListCarpoolTrips.
@@ -1091,8 +1169,26 @@ type SetUserStatusParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
+// VerifyAcademicCredentialsJSONRequestBody defines body for VerifyAcademicCredentials for application/json ContentType.
+type VerifyAcademicCredentialsJSONRequestBody VerifyAcademicCredentialsJSONBody
+
+// UploadAcademicVerificationMaterialMultipartRequestBody defines body for UploadAcademicVerificationMaterial for multipart/form-data ContentType.
+type UploadAcademicVerificationMaterialMultipartRequestBody UploadAcademicVerificationMaterialMultipartBody
+
+// SubmitStudentCardVerificationJSONRequestBody defines body for SubmitStudentCardVerification for application/json ContentType.
+type SubmitStudentCardVerificationJSONRequestBody SubmitStudentCardVerificationJSONBody
+
 // CancelMyActivityRegistrationJSONRequestBody defines body for CancelMyActivityRegistration for application/json ContentType.
 type CancelMyActivityRegistrationJSONRequestBody CancelMyActivityRegistrationJSONBody
+
+// RevokeAcademicIdentityJSONRequestBody defines body for RevokeAcademicIdentity for application/json ContentType.
+type RevokeAcademicIdentityJSONRequestBody RevokeAcademicIdentityJSONBody
+
+// ApproveAcademicVerificationRequestJSONRequestBody defines body for ApproveAcademicVerificationRequest for application/json ContentType.
+type ApproveAcademicVerificationRequestJSONRequestBody ApproveAcademicVerificationRequestJSONBody
+
+// RejectAcademicVerificationRequestJSONRequestBody defines body for RejectAcademicVerificationRequest for application/json ContentType.
+type RejectAcademicVerificationRequestJSONRequestBody RejectAcademicVerificationRequestJSONBody
 
 // CreateAdminActivityJSONRequestBody defines body for CreateAdminActivity for application/json ContentType.
 type CreateAdminActivityJSONRequestBody CreateAdminActivityJSONBody
@@ -1135,6 +1231,9 @@ type RevokeNoticeJSONRequestBody = VersionRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
+
+// ChangeMyPasswordJSONRequestBody defines body for ChangeMyPassword for application/json ContentType.
+type ChangeMyPasswordJSONRequestBody = ChangeMyPasswordRequest
 
 // RefreshJSONRequestBody defines body for Refresh for application/json ContentType.
 type RefreshJSONRequestBody = RefreshRequest
@@ -1222,6 +1321,18 @@ type SetUserStatusJSONRequestBody = UserStatusRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GetAcademicVerification 查询本人教务认证状态
+	// (GET /api/v1/academic-verification)
+	GetAcademicVerification(c *gin.Context)
+	// VerifyAcademicCredentials 同步验证教务凭据
+	// (POST /api/v1/academic-verification/credentials)
+	VerifyAcademicCredentials(c *gin.Context, params VerifyAcademicCredentialsParams)
+	// UploadAcademicVerificationMaterial 上传单张学生证材料
+	// (POST /api/v1/academic-verification/materials)
+	UploadAcademicVerificationMaterial(c *gin.Context)
+	// SubmitStudentCardVerification 提交学生证人工审核
+	// (POST /api/v1/academic-verification/student-card)
+	SubmitStudentCardVerification(c *gin.Context, params SubmitStudentCardVerificationParams)
 	// ListActivities 用户侧浏览已发布活动
 	// (GET /api/v1/activities)
 	ListActivities(c *gin.Context, params ListActivitiesParams)
@@ -1237,6 +1348,24 @@ type ServerInterface interface {
 	// CancelMyActivityRegistration 取消我的活动报名
 	// (DELETE /api/v1/activities/{id}/registrations/me)
 	CancelMyActivityRegistration(c *gin.Context, id uint64, params CancelMyActivityRegistrationParams)
+	// RevokeAcademicIdentity 撤销已认证身份
+	// (POST /api/v1/admin/academic-verification/identities/{id}/revoke)
+	RevokeAcademicIdentity(c *gin.Context, id uint64, params RevokeAcademicIdentityParams)
+	// GetAdminAcademicVerificationMaterial 受控读取认证材料
+	// (GET /api/v1/admin/academic-verification/materials/{id})
+	GetAdminAcademicVerificationMaterial(c *gin.Context, id uint64)
+	// ListAdminAcademicVerificationRequests 分页查询认证申请
+	// (GET /api/v1/admin/academic-verification/requests)
+	ListAdminAcademicVerificationRequests(c *gin.Context, params ListAdminAcademicVerificationRequestsParams)
+	// GetAdminAcademicVerificationRequest 查询认证申请详情
+	// (GET /api/v1/admin/academic-verification/requests/{id})
+	GetAdminAcademicVerificationRequest(c *gin.Context, id uint64)
+	// ApproveAcademicVerificationRequest 批准认证申请
+	// (POST /api/v1/admin/academic-verification/requests/{id}/approve)
+	ApproveAcademicVerificationRequest(c *gin.Context, id uint64, params ApproveAcademicVerificationRequestParams)
+	// RejectAcademicVerificationRequest 驳回认证申请
+	// (POST /api/v1/admin/academic-verification/requests/{id}/reject)
+	RejectAcademicVerificationRequest(c *gin.Context, id uint64, params RejectAcademicVerificationRequestParams)
 	// ListAdminActivities 管理端查询活动列表
 	// (GET /api/v1/admin/activities)
 	ListAdminActivities(c *gin.Context, params ListAdminActivitiesParams)
@@ -1312,6 +1441,9 @@ type ServerInterface interface {
 
 	// (GET /api/v1/auth/me)
 	GetMe(c *gin.Context)
+
+	// (PATCH /api/v1/auth/me/password)
+	ChangeMyPassword(c *gin.Context, params ChangeMyPasswordParams)
 
 	// (POST /api/v1/auth/refresh)
 	Refresh(c *gin.Context)
@@ -1487,6 +1619,118 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// GetAcademicVerification operation middleware
+func (siw *ServerInterfaceWrapper) GetAcademicVerification(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAcademicVerification(c)
+}
+
+// VerifyAcademicCredentials operation middleware
+func (siw *ServerInterfaceWrapper) VerifyAcademicCredentials(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params VerifyAcademicCredentialsParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.VerifyAcademicCredentials(c, params)
+}
+
+// UploadAcademicVerificationMaterial operation middleware
+func (siw *ServerInterfaceWrapper) UploadAcademicVerificationMaterial(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UploadAcademicVerificationMaterial(c)
+}
+
+// SubmitStudentCardVerification operation middleware
+func (siw *ServerInterfaceWrapper) SubmitStudentCardVerification(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SubmitStudentCardVerificationParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SubmitStudentCardVerification(c, params)
+}
 
 // ListActivities operation middleware
 func (siw *ServerInterfaceWrapper) ListActivities(c *gin.Context) {
@@ -1701,6 +1945,255 @@ func (siw *ServerInterfaceWrapper) CancelMyActivityRegistration(c *gin.Context) 
 	}
 
 	siw.Handler.CancelMyActivityRegistration(c, id, params)
+}
+
+// RevokeAcademicIdentity operation middleware
+func (siw *ServerInterfaceWrapper) RevokeAcademicIdentity(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RevokeAcademicIdentityParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RevokeAcademicIdentity(c, id, params)
+}
+
+// GetAdminAcademicVerificationMaterial operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminAcademicVerificationMaterial(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAdminAcademicVerificationMaterial(c, id)
+}
+
+// ListAdminAcademicVerificationRequests operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminAcademicVerificationRequests(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminAcademicVerificationRequestsParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", c.Request.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAdminAcademicVerificationRequests(c, params)
+}
+
+// GetAdminAcademicVerificationRequest operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminAcademicVerificationRequest(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAdminAcademicVerificationRequest(c, id)
+}
+
+// ApproveAcademicVerificationRequest operation middleware
+func (siw *ServerInterfaceWrapper) ApproveAcademicVerificationRequest(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ApproveAcademicVerificationRequestParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ApproveAcademicVerificationRequest(c, id, params)
+}
+
+// RejectAcademicVerificationRequest operation middleware
+func (siw *ServerInterfaceWrapper) RejectAcademicVerificationRequest(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RejectAcademicVerificationRequestParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RejectAcademicVerificationRequest(c, id, params)
 }
 
 // ListAdminActivities operation middleware
@@ -2817,6 +3310,49 @@ func (siw *ServerInterfaceWrapper) GetMe(c *gin.Context) {
 	}
 
 	siw.Handler.GetMe(c)
+}
+
+// ChangeMyPassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangeMyPassword(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ChangeMyPasswordParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ChangeMyPassword(c, params)
 }
 
 // Refresh operation middleware
@@ -5063,6 +5599,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/v1/auth/refresh", wrapper.Refresh)
 	router.POST(options.BaseURL+"/api/v1/auth/logout", wrapper.Logout)
 	router.GET(options.BaseURL+"/api/v1/auth/me", wrapper.GetMe)
+	router.PATCH(options.BaseURL+"/api/v1/auth/me/password", wrapper.ChangeMyPassword)
 	router.GET(options.BaseURL+"/api/v1/permissions", wrapper.ListPermissionCatalog)
 	router.GET(options.BaseURL+"/api/v1/users", wrapper.ListUsers)
 	router.POST(options.BaseURL+"/api/v1/users", wrapper.CreateUser)
@@ -5082,6 +5619,16 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/configs/:id", wrapper.DeleteConfig)
 	router.GET(options.BaseURL+"/api/v1/configs/:id", wrapper.GetConfig)
 	router.PUT(options.BaseURL+"/api/v1/configs/:id", wrapper.UpdateConfig)
+	router.GET(options.BaseURL+"/api/v1/academic-verification", wrapper.GetAcademicVerification)
+	router.POST(options.BaseURL+"/api/v1/academic-verification/credentials", wrapper.VerifyAcademicCredentials)
+	router.POST(options.BaseURL+"/api/v1/academic-verification/materials", wrapper.UploadAcademicVerificationMaterial)
+	router.POST(options.BaseURL+"/api/v1/academic-verification/student-card", wrapper.SubmitStudentCardVerification)
+	router.POST(options.BaseURL+"/api/v1/admin/academic-verification/identities/:id/revoke", wrapper.RevokeAcademicIdentity)
+	router.GET(options.BaseURL+"/api/v1/admin/academic-verification/materials/:id", wrapper.GetAdminAcademicVerificationMaterial)
+	router.GET(options.BaseURL+"/api/v1/admin/academic-verification/requests", wrapper.ListAdminAcademicVerificationRequests)
+	router.GET(options.BaseURL+"/api/v1/admin/academic-verification/requests/:id", wrapper.GetAdminAcademicVerificationRequest)
+	router.POST(options.BaseURL+"/api/v1/admin/academic-verification/requests/:id/approve", wrapper.ApproveAcademicVerificationRequest)
+	router.POST(options.BaseURL+"/api/v1/admin/academic-verification/requests/:id/reject", wrapper.RejectAcademicVerificationRequest)
 	router.GET(options.BaseURL+"/api/v1/activities", wrapper.ListActivities)
 	router.GET(options.BaseURL+"/api/v1/activities/registrations/mine", wrapper.ListMyActivityRegistrations)
 	router.GET(options.BaseURL+"/api/v1/activities/:id", wrapper.GetActivity)
@@ -5149,89 +5696,102 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"AP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

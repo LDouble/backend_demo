@@ -1,0 +1,146 @@
+version: 2
+module: academic_verification
+entities:
+  - name: AcademicIdentity
+    table: academic_identities
+    primary: true
+    fields:
+      - {name: user_id, type: uint64, required: true, unique: true}
+      - {name: student_no, type: string, size: 64, required: true, unique: true}
+      - {name: real_name, type: string, size: 100, required: true}
+      - {name: method, type: string, size: 24, required: true}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: verified_at, type: datetime, required: true}
+      - {name: revoked_at, type: datetime}
+      - {name: revoke_reason, type: string, size: 500}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: uk_academic_identity_user, fields: [user_id], unique: true}
+      - {name: uk_academic_identity_student_no, fields: [student_no], unique: true}
+  - name: AcademicVerificationMaterial
+    table: academic_verification_materials
+    fields:
+      - {name: user_id, type: uint64, required: true, index: true}
+      - {name: storage_key, type: string, size: 128, required: true, unique: true}
+      - {name: mime_type, type: string, size: 32, required: true}
+      - {name: size_bytes, type: int64, required: true}
+      - {name: sha256, type: string, size: 64, required: true, index: true}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: bound_request_id, type: uint64}
+      - {name: expires_at, type: datetime, required: true, index: true}
+      - {name: delete_after, type: datetime, index: true}
+      - {name: deleted_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: uk_academic_material_storage_key, fields: [storage_key], unique: true}
+      - {name: idx_academic_material_cleanup, fields: [status, expires_at, delete_after]}
+  - name: AcademicVerificationRequest
+    table: academic_verification_requests
+    fields:
+      - {name: user_id, type: uint64, required: true, index: true}
+      - {name: student_no, type: string, size: 64, required: true, index: true}
+      - {name: real_name, type: string, size: 100, required: true}
+      - {name: method, type: string, size: 24, required: true}
+      - {name: material_id, type: uint64}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: review_reason, type: string, size: 500}
+      - {name: reviewed_by, type: uint64}
+      - {name: reviewed_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: idx_academic_request_review, fields: [status, user_id]}
+crud: [create, get, list, update]
+operations:
+  - operation_id: GetAcademicVerification
+    default_roles: [guest, member]
+    method: GET
+    path: /api/v1/academic-verification
+    permission: academic_verification:read
+    summary: 查询本人教务认证状态
+  - operation_id: UploadAcademicVerificationMaterial
+    default_roles: [guest, member]
+    method: POST
+    idempotency: inherent
+    academic_verification: none
+    request_content: multipart/form-data
+    path: /api/v1/academic-verification/materials
+    permission: academic_verification:upload
+    summary: 上传单张学生证材料
+    body: {fields: [{name: file, type: string, format: binary, required: true}]}
+    responses: [{status: 201, kind: success}, {status: 400, kind: error}, {status: 413, kind: error}]
+  - operation_id: SubmitStudentCardVerification
+    default_roles: [guest, member]
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/academic-verification/student-card
+    permission: academic_verification:submit_card
+    summary: 提交学生证人工审核
+    body:
+      fields:
+        - {name: real_name, type: string, required: true, max_length: 100}
+        - {name: student_no, type: string, required: true, max_length: 64}
+        - {name: material_id, type: integer, format: uint64, required: true, minimum: 1}
+    responses: [{status: 201, kind: success}, {status: 409, kind: error}]
+  - operation_id: VerifyAcademicCredentials
+    default_roles: [guest, member]
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/academic-verification/credentials
+    permission: academic_verification:credentials
+    summary: 同步验证教务凭据
+    body:
+      fields:
+        - {name: student_no, type: string, required: true, max_length: 64}
+        - {name: password, type: string, required: true, max_length: 256}
+    responses: [{status: 200, kind: success}, {status: 401, kind: error}, {status: 429, kind: error}, {status: 503, kind: error}]
+  - operation_id: ListAdminAcademicVerificationRequests
+    method: GET
+    path: /api/v1/admin/academic-verification/requests
+    permission: academic_verification:admin_list
+    summary: 分页查询认证申请
+    query:
+      - {name: status, type: string}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+  - operation_id: GetAdminAcademicVerificationRequest
+    method: GET
+    path: /api/v1/admin/academic-verification/requests/{id}
+    permission: academic_verification:admin_read
+    summary: 查询认证申请详情
+  - operation_id: GetAdminAcademicVerificationMaterial
+    method: GET
+    path: /api/v1/admin/academic-verification/materials/{id}
+    permission: academic_verification:admin_material
+    summary: 受控读取认证材料
+  - operation_id: ApproveAcademicVerificationRequest
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/admin/academic-verification/requests/{id}/approve
+    permission: academic_verification:admin_approve
+    summary: 批准认证申请
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+  - operation_id: RejectAcademicVerificationRequest
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/admin/academic-verification/requests/{id}/reject
+    permission: academic_verification:admin_reject
+    summary: 驳回认证申请
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: reason, type: string, required: true, max_length: 500}
+  - operation_id: RevokeAcademicIdentity
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/admin/academic-verification/identities/{id}/revoke
+    permission: academic_verification:admin_revoke
+    summary: 撤销已认证身份
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: reason, type: string, required: true, max_length: 500}

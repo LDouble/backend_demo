@@ -6,6 +6,9 @@
       "path_pattern": "/api/v1/errands/:id/accept",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -13,6 +16,9 @@
       "path_pattern": "/api/v1/errands/:id/cancel",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -20,6 +26,9 @@
       "path_pattern": "/api/v1/errands/:id/complete",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -27,6 +36,9 @@
       "path_pattern": "/api/v1/errands",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -34,6 +46,9 @@
       "path_pattern": "/api/v1/errands/:id/deliver",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -41,6 +56,9 @@
       "path_pattern": "/api/v1/errands/:id/pickup",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -48,6 +66,10 @@
       "path_pattern": "/api/v1/errands",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
       ]
     },
     {
@@ -55,6 +77,10 @@
       "path_pattern": "/api/v1/errands/:id",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
       ]
     },
     {
@@ -62,6 +88,9 @@
       "path_pattern": "/api/v1/errands/mine",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -69,6 +98,9 @@
       "path_pattern": "/api/v1/errands/:id",
       "methods": [
         "PATCH"
+      ],
+      "default_roles": [
+        "member"
       ]
     }
   ]

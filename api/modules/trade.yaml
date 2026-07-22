@@ -54,6 +54,7 @@ paths:
       summary: "取消交易订单"
       x-generated-module: trade
       x-permission: trade:cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -88,6 +89,7 @@ paths:
       summary: "确认交易完成"
       x-generated-module: trade
       x-permission: trade:complete
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}

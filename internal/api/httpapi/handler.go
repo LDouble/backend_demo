@@ -20,6 +20,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
+	academicapp "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/application"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
@@ -42,6 +43,8 @@ type Handler struct {
 	errands           *errandapp.Manager
 	carpools          *carpoolapp.Manager
 	trades            *tradeapp.Manager
+	academic          *academicapp.Manager
+	academicGate      AcademicVerificationGate
 	mysql             func(context.Context) error
 	redis             func(context.Context) error
 	log               *zap.Logger
@@ -94,6 +97,41 @@ func (h *Handler) WithCarpools(manager *carpoolapp.Manager) *Handler {
 
 // WithTrades attaches participant-scoped trade order queries.
 func (h *Handler) WithTrades(manager *tradeapp.Manager) *Handler { h.trades = manager; return h }
+
+// WithAcademicVerification attaches academic identity verification and its runtime write gate.
+func (h *Handler) WithAcademicVerification(manager *academicapp.Manager) *Handler {
+	h.academic = manager
+	h.academicGate = manager
+	return h
+}
+
+// AcademicVerificationGate is the narrow runtime boundary used before business writes.
+type AcademicVerificationGate interface {
+	IsVerified(context.Context, uint64) (bool, error)
+}
+
+// WithAcademicVerificationGate overrides only the write gate, primarily for isolated adapters.
+func (h *Handler) WithAcademicVerificationGate(gate AcademicVerificationGate) *Handler {
+	h.academicGate = gate
+	return h
+}
+
+func (h *Handler) requireAcademicVerification(c *gin.Context) bool {
+	if h.academicGate == nil {
+		failure(c, apperror.New(http.StatusServiceUnavailable, "academic_verification_unavailable", "教务认证服务暂不可用"))
+		return false
+	}
+	verified, err := h.academicGate.IsVerified(c.Request.Context(), c.GetUint64(userIDKey))
+	if err != nil {
+		failure(c, err)
+		return false
+	}
+	if !verified {
+		failure(c, apperror.New(http.StatusForbidden, "academic_verification_required", "完成教务认证后才能执行此操作"))
+		return false
+	}
+	return true
+}
 
 // New creates an HTTP handler backed by the supplied core services.
 func New(authService *auth.Service, userService *user.Service, permissionService *permission.Service, configService *configcenter.Service, mysqlPing, redisPing func(context.Context) error, log *zap.Logger) *Handler {
@@ -413,6 +451,23 @@ func (h *Handler) me(c *gin.Context) {
 		return
 	}
 	success(c, 200, gin.H{"user": u, "roles": roles, "permissions": permissionCodes})
+}
+
+func (h *Handler) changeMyPassword(c *gin.Context) {
+	var request generated.ChangeMyPasswordRequest
+	if !bind(c, &request) {
+		return
+	}
+	if err := h.users.ChangePassword(
+		c.Request.Context(),
+		c.GetUint64(userIDKey),
+		request.CurrentPassword,
+		request.NewPassword,
+	); err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusOK, gin.H{"password_changed": true, "reauthentication_required": true})
 }
 
 func (h *Handler) listPermissionCatalog(c *gin.Context) {

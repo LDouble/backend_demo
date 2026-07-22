@@ -38,6 +38,7 @@ paths:
       summary: "发布跑腿任务"
       x-generated-module: errand
       x-permission: errand:create
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - name: Idempotency-Key
@@ -134,6 +135,7 @@ paths:
       summary: "修改未接单的跑腿任务"
       x-generated-module: errand
       x-permission: errand:update
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -193,6 +195,7 @@ paths:
       summary: "原子接单并创建交易订单"
       x-generated-module: errand
       x-permission: errand:accept
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -227,6 +230,7 @@ paths:
       summary: "取消跑腿任务"
       x-generated-module: errand
       x-permission: errand:cancel
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -261,6 +265,7 @@ paths:
       summary: "发布者确认跑腿完成"
       x-generated-module: errand
       x-permission: errand:complete
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -295,6 +300,7 @@ paths:
       summary: "跑腿员确认送达"
       x-generated-module: errand
       x-permission: errand:deliver
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
@@ -329,6 +335,7 @@ paths:
       summary: "跑腿员确认取件"
       x-generated-module: errand
       x-permission: errand:pickup
+      x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}

@@ -16,34 +16,40 @@ import (
 )
 
 var (
-	Q                      = new(Query)
-	Activity               *activity
-	ActivityRegistration   *activityRegistration
-	Config                 *config
-	Listing                *listing
-	ListingImage           *listingImage
-	MarketplaceReservation *marketplaceReservation
-	Notice                 *notice
-	NoticeAudience         *noticeAudience
-	NoticeDelivery         *noticeDelivery
-	NoticeRecipient        *noticeRecipient
-	Order                  *order
-	OrderTransition        *orderTransition
-	OutboxEvent            *outboxEvent
-	Participant            *participant
-	PaymentCallback        *paymentCallback
-	PaymentIntent          *paymentIntent
-	PaymentRefund          *paymentRefund
-	PaymentTransaction     *paymentTransaction
-	Role                   *role
-	Task                   *task
-	Transition             *transition
-	Trip                   *trip
-	User                   *user
+	Q                            = new(Query)
+	AcademicIdentity             *academicIdentity
+	AcademicVerificationMaterial *academicVerificationMaterial
+	AcademicVerificationRequest  *academicVerificationRequest
+	Activity                     *activity
+	ActivityRegistration         *activityRegistration
+	Config                       *config
+	Listing                      *listing
+	ListingImage                 *listingImage
+	MarketplaceReservation       *marketplaceReservation
+	Notice                       *notice
+	NoticeAudience               *noticeAudience
+	NoticeDelivery               *noticeDelivery
+	NoticeRecipient              *noticeRecipient
+	Order                        *order
+	OrderTransition              *orderTransition
+	OutboxEvent                  *outboxEvent
+	Participant                  *participant
+	PaymentCallback              *paymentCallback
+	PaymentIntent                *paymentIntent
+	PaymentRefund                *paymentRefund
+	PaymentTransaction           *paymentTransaction
+	Role                         *role
+	Task                         *task
+	Transition                   *transition
+	Trip                         *trip
+	User                         *user
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	AcademicIdentity = &Q.AcademicIdentity
+	AcademicVerificationMaterial = &Q.AcademicVerificationMaterial
+	AcademicVerificationRequest = &Q.AcademicVerificationRequest
 	Activity = &Q.Activity
 	ActivityRegistration = &Q.ActivityRegistration
 	Config = &Q.Config
@@ -71,59 +77,65 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:                     db,
-		Activity:               newActivity(db, opts...),
-		ActivityRegistration:   newActivityRegistration(db, opts...),
-		Config:                 newConfig(db, opts...),
-		Listing:                newListing(db, opts...),
-		ListingImage:           newListingImage(db, opts...),
-		MarketplaceReservation: newMarketplaceReservation(db, opts...),
-		Notice:                 newNotice(db, opts...),
-		NoticeAudience:         newNoticeAudience(db, opts...),
-		NoticeDelivery:         newNoticeDelivery(db, opts...),
-		NoticeRecipient:        newNoticeRecipient(db, opts...),
-		Order:                  newOrder(db, opts...),
-		OrderTransition:        newOrderTransition(db, opts...),
-		OutboxEvent:            newOutboxEvent(db, opts...),
-		Participant:            newParticipant(db, opts...),
-		PaymentCallback:        newPaymentCallback(db, opts...),
-		PaymentIntent:          newPaymentIntent(db, opts...),
-		PaymentRefund:          newPaymentRefund(db, opts...),
-		PaymentTransaction:     newPaymentTransaction(db, opts...),
-		Role:                   newRole(db, opts...),
-		Task:                   newTask(db, opts...),
-		Transition:             newTransition(db, opts...),
-		Trip:                   newTrip(db, opts...),
-		User:                   newUser(db, opts...),
+		db:                           db,
+		AcademicIdentity:             newAcademicIdentity(db, opts...),
+		AcademicVerificationMaterial: newAcademicVerificationMaterial(db, opts...),
+		AcademicVerificationRequest:  newAcademicVerificationRequest(db, opts...),
+		Activity:                     newActivity(db, opts...),
+		ActivityRegistration:         newActivityRegistration(db, opts...),
+		Config:                       newConfig(db, opts...),
+		Listing:                      newListing(db, opts...),
+		ListingImage:                 newListingImage(db, opts...),
+		MarketplaceReservation:       newMarketplaceReservation(db, opts...),
+		Notice:                       newNotice(db, opts...),
+		NoticeAudience:               newNoticeAudience(db, opts...),
+		NoticeDelivery:               newNoticeDelivery(db, opts...),
+		NoticeRecipient:              newNoticeRecipient(db, opts...),
+		Order:                        newOrder(db, opts...),
+		OrderTransition:              newOrderTransition(db, opts...),
+		OutboxEvent:                  newOutboxEvent(db, opts...),
+		Participant:                  newParticipant(db, opts...),
+		PaymentCallback:              newPaymentCallback(db, opts...),
+		PaymentIntent:                newPaymentIntent(db, opts...),
+		PaymentRefund:                newPaymentRefund(db, opts...),
+		PaymentTransaction:           newPaymentTransaction(db, opts...),
+		Role:                         newRole(db, opts...),
+		Task:                         newTask(db, opts...),
+		Transition:                   newTransition(db, opts...),
+		Trip:                         newTrip(db, opts...),
+		User:                         newUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Activity               activity
-	ActivityRegistration   activityRegistration
-	Config                 config
-	Listing                listing
-	ListingImage           listingImage
-	MarketplaceReservation marketplaceReservation
-	Notice                 notice
-	NoticeAudience         noticeAudience
-	NoticeDelivery         noticeDelivery
-	NoticeRecipient        noticeRecipient
-	Order                  order
-	OrderTransition        orderTransition
-	OutboxEvent            outboxEvent
-	Participant            participant
-	PaymentCallback        paymentCallback
-	PaymentIntent          paymentIntent
-	PaymentRefund          paymentRefund
-	PaymentTransaction     paymentTransaction
-	Role                   role
-	Task                   task
-	Transition             transition
-	Trip                   trip
-	User                   user
+	AcademicIdentity             academicIdentity
+	AcademicVerificationMaterial academicVerificationMaterial
+	AcademicVerificationRequest  academicVerificationRequest
+	Activity                     activity
+	ActivityRegistration         activityRegistration
+	Config                       config
+	Listing                      listing
+	ListingImage                 listingImage
+	MarketplaceReservation       marketplaceReservation
+	Notice                       notice
+	NoticeAudience               noticeAudience
+	NoticeDelivery               noticeDelivery
+	NoticeRecipient              noticeRecipient
+	Order                        order
+	OrderTransition              orderTransition
+	OutboxEvent                  outboxEvent
+	Participant                  participant
+	PaymentCallback              paymentCallback
+	PaymentIntent                paymentIntent
+	PaymentRefund                paymentRefund
+	PaymentTransaction           paymentTransaction
+	Role                         role
+	Task                         task
+	Transition                   transition
+	Trip                         trip
+	User                         user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -132,30 +144,33 @@ func (q *Query) UnderlyingDB() *gorm.DB { return q.db }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:                     db,
-		Activity:               q.Activity.clone(db),
-		ActivityRegistration:   q.ActivityRegistration.clone(db),
-		Config:                 q.Config.clone(db),
-		Listing:                q.Listing.clone(db),
-		ListingImage:           q.ListingImage.clone(db),
-		MarketplaceReservation: q.MarketplaceReservation.clone(db),
-		Notice:                 q.Notice.clone(db),
-		NoticeAudience:         q.NoticeAudience.clone(db),
-		NoticeDelivery:         q.NoticeDelivery.clone(db),
-		NoticeRecipient:        q.NoticeRecipient.clone(db),
-		Order:                  q.Order.clone(db),
-		OrderTransition:        q.OrderTransition.clone(db),
-		OutboxEvent:            q.OutboxEvent.clone(db),
-		Participant:            q.Participant.clone(db),
-		PaymentCallback:        q.PaymentCallback.clone(db),
-		PaymentIntent:          q.PaymentIntent.clone(db),
-		PaymentRefund:          q.PaymentRefund.clone(db),
-		PaymentTransaction:     q.PaymentTransaction.clone(db),
-		Role:                   q.Role.clone(db),
-		Task:                   q.Task.clone(db),
-		Transition:             q.Transition.clone(db),
-		Trip:                   q.Trip.clone(db),
-		User:                   q.User.clone(db),
+		db:                           db,
+		AcademicIdentity:             q.AcademicIdentity.clone(db),
+		AcademicVerificationMaterial: q.AcademicVerificationMaterial.clone(db),
+		AcademicVerificationRequest:  q.AcademicVerificationRequest.clone(db),
+		Activity:                     q.Activity.clone(db),
+		ActivityRegistration:         q.ActivityRegistration.clone(db),
+		Config:                       q.Config.clone(db),
+		Listing:                      q.Listing.clone(db),
+		ListingImage:                 q.ListingImage.clone(db),
+		MarketplaceReservation:       q.MarketplaceReservation.clone(db),
+		Notice:                       q.Notice.clone(db),
+		NoticeAudience:               q.NoticeAudience.clone(db),
+		NoticeDelivery:               q.NoticeDelivery.clone(db),
+		NoticeRecipient:              q.NoticeRecipient.clone(db),
+		Order:                        q.Order.clone(db),
+		OrderTransition:              q.OrderTransition.clone(db),
+		OutboxEvent:                  q.OutboxEvent.clone(db),
+		Participant:                  q.Participant.clone(db),
+		PaymentCallback:              q.PaymentCallback.clone(db),
+		PaymentIntent:                q.PaymentIntent.clone(db),
+		PaymentRefund:                q.PaymentRefund.clone(db),
+		PaymentTransaction:           q.PaymentTransaction.clone(db),
+		Role:                         q.Role.clone(db),
+		Task:                         q.Task.clone(db),
+		Transition:                   q.Transition.clone(db),
+		Trip:                         q.Trip.clone(db),
+		User:                         q.User.clone(db),
 	}
 }
 
@@ -169,84 +184,93 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:                     db,
-		Activity:               q.Activity.replaceDB(db),
-		ActivityRegistration:   q.ActivityRegistration.replaceDB(db),
-		Config:                 q.Config.replaceDB(db),
-		Listing:                q.Listing.replaceDB(db),
-		ListingImage:           q.ListingImage.replaceDB(db),
-		MarketplaceReservation: q.MarketplaceReservation.replaceDB(db),
-		Notice:                 q.Notice.replaceDB(db),
-		NoticeAudience:         q.NoticeAudience.replaceDB(db),
-		NoticeDelivery:         q.NoticeDelivery.replaceDB(db),
-		NoticeRecipient:        q.NoticeRecipient.replaceDB(db),
-		Order:                  q.Order.replaceDB(db),
-		OrderTransition:        q.OrderTransition.replaceDB(db),
-		OutboxEvent:            q.OutboxEvent.replaceDB(db),
-		Participant:            q.Participant.replaceDB(db),
-		PaymentCallback:        q.PaymentCallback.replaceDB(db),
-		PaymentIntent:          q.PaymentIntent.replaceDB(db),
-		PaymentRefund:          q.PaymentRefund.replaceDB(db),
-		PaymentTransaction:     q.PaymentTransaction.replaceDB(db),
-		Role:                   q.Role.replaceDB(db),
-		Task:                   q.Task.replaceDB(db),
-		Transition:             q.Transition.replaceDB(db),
-		Trip:                   q.Trip.replaceDB(db),
-		User:                   q.User.replaceDB(db),
+		db:                           db,
+		AcademicIdentity:             q.AcademicIdentity.replaceDB(db),
+		AcademicVerificationMaterial: q.AcademicVerificationMaterial.replaceDB(db),
+		AcademicVerificationRequest:  q.AcademicVerificationRequest.replaceDB(db),
+		Activity:                     q.Activity.replaceDB(db),
+		ActivityRegistration:         q.ActivityRegistration.replaceDB(db),
+		Config:                       q.Config.replaceDB(db),
+		Listing:                      q.Listing.replaceDB(db),
+		ListingImage:                 q.ListingImage.replaceDB(db),
+		MarketplaceReservation:       q.MarketplaceReservation.replaceDB(db),
+		Notice:                       q.Notice.replaceDB(db),
+		NoticeAudience:               q.NoticeAudience.replaceDB(db),
+		NoticeDelivery:               q.NoticeDelivery.replaceDB(db),
+		NoticeRecipient:              q.NoticeRecipient.replaceDB(db),
+		Order:                        q.Order.replaceDB(db),
+		OrderTransition:              q.OrderTransition.replaceDB(db),
+		OutboxEvent:                  q.OutboxEvent.replaceDB(db),
+		Participant:                  q.Participant.replaceDB(db),
+		PaymentCallback:              q.PaymentCallback.replaceDB(db),
+		PaymentIntent:                q.PaymentIntent.replaceDB(db),
+		PaymentRefund:                q.PaymentRefund.replaceDB(db),
+		PaymentTransaction:           q.PaymentTransaction.replaceDB(db),
+		Role:                         q.Role.replaceDB(db),
+		Task:                         q.Task.replaceDB(db),
+		Transition:                   q.Transition.replaceDB(db),
+		Trip:                         q.Trip.replaceDB(db),
+		User:                         q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Activity               IActivityDo
-	ActivityRegistration   IActivityRegistrationDo
-	Config                 IConfigDo
-	Listing                IListingDo
-	ListingImage           IListingImageDo
-	MarketplaceReservation IMarketplaceReservationDo
-	Notice                 INoticeDo
-	NoticeAudience         INoticeAudienceDo
-	NoticeDelivery         INoticeDeliveryDo
-	NoticeRecipient        INoticeRecipientDo
-	Order                  IOrderDo
-	OrderTransition        IOrderTransitionDo
-	OutboxEvent            IOutboxEventDo
-	Participant            IParticipantDo
-	PaymentCallback        IPaymentCallbackDo
-	PaymentIntent          IPaymentIntentDo
-	PaymentRefund          IPaymentRefundDo
-	PaymentTransaction     IPaymentTransactionDo
-	Role                   IRoleDo
-	Task                   ITaskDo
-	Transition             ITransitionDo
-	Trip                   ITripDo
-	User                   IUserDo
+	AcademicIdentity             IAcademicIdentityDo
+	AcademicVerificationMaterial IAcademicVerificationMaterialDo
+	AcademicVerificationRequest  IAcademicVerificationRequestDo
+	Activity                     IActivityDo
+	ActivityRegistration         IActivityRegistrationDo
+	Config                       IConfigDo
+	Listing                      IListingDo
+	ListingImage                 IListingImageDo
+	MarketplaceReservation       IMarketplaceReservationDo
+	Notice                       INoticeDo
+	NoticeAudience               INoticeAudienceDo
+	NoticeDelivery               INoticeDeliveryDo
+	NoticeRecipient              INoticeRecipientDo
+	Order                        IOrderDo
+	OrderTransition              IOrderTransitionDo
+	OutboxEvent                  IOutboxEventDo
+	Participant                  IParticipantDo
+	PaymentCallback              IPaymentCallbackDo
+	PaymentIntent                IPaymentIntentDo
+	PaymentRefund                IPaymentRefundDo
+	PaymentTransaction           IPaymentTransactionDo
+	Role                         IRoleDo
+	Task                         ITaskDo
+	Transition                   ITransitionDo
+	Trip                         ITripDo
+	User                         IUserDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Activity:               q.Activity.WithContext(ctx),
-		ActivityRegistration:   q.ActivityRegistration.WithContext(ctx),
-		Config:                 q.Config.WithContext(ctx),
-		Listing:                q.Listing.WithContext(ctx),
-		ListingImage:           q.ListingImage.WithContext(ctx),
-		MarketplaceReservation: q.MarketplaceReservation.WithContext(ctx),
-		Notice:                 q.Notice.WithContext(ctx),
-		NoticeAudience:         q.NoticeAudience.WithContext(ctx),
-		NoticeDelivery:         q.NoticeDelivery.WithContext(ctx),
-		NoticeRecipient:        q.NoticeRecipient.WithContext(ctx),
-		Order:                  q.Order.WithContext(ctx),
-		OrderTransition:        q.OrderTransition.WithContext(ctx),
-		OutboxEvent:            q.OutboxEvent.WithContext(ctx),
-		Participant:            q.Participant.WithContext(ctx),
-		PaymentCallback:        q.PaymentCallback.WithContext(ctx),
-		PaymentIntent:          q.PaymentIntent.WithContext(ctx),
-		PaymentRefund:          q.PaymentRefund.WithContext(ctx),
-		PaymentTransaction:     q.PaymentTransaction.WithContext(ctx),
-		Role:                   q.Role.WithContext(ctx),
-		Task:                   q.Task.WithContext(ctx),
-		Transition:             q.Transition.WithContext(ctx),
-		Trip:                   q.Trip.WithContext(ctx),
-		User:                   q.User.WithContext(ctx),
+		AcademicIdentity:             q.AcademicIdentity.WithContext(ctx),
+		AcademicVerificationMaterial: q.AcademicVerificationMaterial.WithContext(ctx),
+		AcademicVerificationRequest:  q.AcademicVerificationRequest.WithContext(ctx),
+		Activity:                     q.Activity.WithContext(ctx),
+		ActivityRegistration:         q.ActivityRegistration.WithContext(ctx),
+		Config:                       q.Config.WithContext(ctx),
+		Listing:                      q.Listing.WithContext(ctx),
+		ListingImage:                 q.ListingImage.WithContext(ctx),
+		MarketplaceReservation:       q.MarketplaceReservation.WithContext(ctx),
+		Notice:                       q.Notice.WithContext(ctx),
+		NoticeAudience:               q.NoticeAudience.WithContext(ctx),
+		NoticeDelivery:               q.NoticeDelivery.WithContext(ctx),
+		NoticeRecipient:              q.NoticeRecipient.WithContext(ctx),
+		Order:                        q.Order.WithContext(ctx),
+		OrderTransition:              q.OrderTransition.WithContext(ctx),
+		OutboxEvent:                  q.OutboxEvent.WithContext(ctx),
+		Participant:                  q.Participant.WithContext(ctx),
+		PaymentCallback:              q.PaymentCallback.WithContext(ctx),
+		PaymentIntent:                q.PaymentIntent.WithContext(ctx),
+		PaymentRefund:                q.PaymentRefund.WithContext(ctx),
+		PaymentTransaction:           q.PaymentTransaction.WithContext(ctx),
+		Role:                         q.Role.WithContext(ctx),
+		Task:                         q.Task.WithContext(ctx),
+		Transition:                   q.Transition.WithContext(ctx),
+		Trip:                         q.Trip.WithContext(ctx),
+		User:                         q.User.WithContext(ctx),
 	}
 }
 

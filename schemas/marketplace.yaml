@@ -47,6 +47,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/marketplace/listings
     permission: marketplace:create
     summary: 创建二手商品草稿
@@ -60,7 +61,7 @@ operations:
         - {name: image_urls, type: array, items: string}
     responses: [{status: 201, kind: success}, {status: 400, kind: error}]
   - operation_id: ListMarketplaceListings
-    default_roles: [member]
+    default_roles: [guest, member]
     method: GET
     path: /api/v1/marketplace/listings
     permission: marketplace:read
@@ -82,7 +83,7 @@ operations:
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
   - operation_id: GetMarketplaceListing
-    default_roles: [member]
+    default_roles: [guest, member]
     method: GET
     path: /api/v1/marketplace/listings/{id}
     permission: marketplace:read_item
@@ -91,6 +92,7 @@ operations:
     default_roles: [member]
     method: PATCH
     idempotency: required
+    academic_verification: required
     path: /api/v1/marketplace/listings/{id}
     permission: marketplace:update
     summary: 修改草稿或被驳回商品
@@ -108,6 +110,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/marketplace/listings/{id}/submit
     permission: marketplace:submit
     summary: 提交商品审核
@@ -118,6 +121,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/marketplace/listings/{id}/withdraw
     permission: marketplace:withdraw
     summary: 撤回商品
@@ -127,6 +131,7 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/marketplace/listings/{id}/review
     permission: marketplace:review
     summary: 审核二手商品
@@ -140,6 +145,7 @@ operations:
     default_roles: [member]
     method: POST
     idempotency: required
+    academic_verification: required
     path: /api/v1/marketplace/orders
     permission: marketplace:order_create
     summary: 原子保留商品并创建订单
@@ -159,6 +165,7 @@ operations:
   - operation_id: RemoveMarketplaceListing
     method: DELETE
     idempotency: required
+    academic_verification: none
     path: /api/v1/admin/marketplace/listings/{id}
     permission: marketplace:remove
     summary: 管理员下架二手商品

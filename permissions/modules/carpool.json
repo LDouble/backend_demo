@@ -6,6 +6,9 @@
       "path_pattern": "/api/v1/carpool/trips/:id/cancel",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -13,6 +16,9 @@
       "path_pattern": "/api/v1/carpool/trips",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -20,6 +26,9 @@
       "path_pattern": "/api/v1/carpool/trips/:id/join",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -27,6 +36,9 @@
       "path_pattern": "/api/v1/carpool/trips/:id/leave",
       "methods": [
         "POST"
+      ],
+      "default_roles": [
+        "member"
       ]
     },
     {
@@ -34,6 +46,10 @@
       "path_pattern": "/api/v1/carpool/trips",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
       ]
     },
     {
@@ -41,6 +57,10 @@
       "path_pattern": "/api/v1/carpool/trips/:id",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
       ]
     }
   ]

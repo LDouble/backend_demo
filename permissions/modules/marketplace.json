@@ -35,6 +35,7 @@
         "GET"
       ],
       "default_roles": [
+        "guest",
         "member"
       ]
     },
@@ -45,6 +46,7 @@
         "GET"
       ],
       "default_roles": [
+        "guest",
         "member"
       ]
     },

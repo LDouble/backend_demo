@@ -8,6 +8,7 @@ const (
 	UserActive     = "active"
 	UserDisabled   = "disabled"
 	SuperAdminRole = "super_admin"
+	GuestRole      = "guest"
 	MemberRole     = "member"
 )
 

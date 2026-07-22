@@ -35,6 +35,16 @@ paths:
       operationId: GetMe
       security: [{bearerAuth: []}]
       responses: {"200": {$ref: "#/components/responses/CurrentUserResponse"}}
+  /api/v1/auth/me/password:
+    patch:
+      operationId: ChangeMyPassword
+      x-academic-verification: none
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ChangeMyPasswordRequest"}}}
+      responses: {"200": {$ref: "#/components/responses/Success"}, "401": {$ref: "#/components/responses/Error"}}
   /api/v1/permissions:
     get:
       operationId: ListPermissionCatalog
@@ -314,6 +324,12 @@ components:
     UpdateUserRequest:
       type: object
       properties: {username: {type: string, minLength: 3, maxLength: 32}, password: {type: string, minLength: 12}}
+    ChangeMyPasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: {type: string, minLength: 1, maxLength: 256}
+        new_password: {type: string, minLength: 12, maxLength: 256}
     UserStatusRequest:
       type: object
       required: [status]

@@ -16,6 +16,8 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/logger"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/redisclient"
+	academicapp "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/application"
+	academicinfra "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/infrastructure"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
 	activityinfra "github.com/weouc-plus/campus-platform/internal/modules/activity/infrastructure"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
@@ -47,6 +49,7 @@ type Runtime struct {
 	Errands     *errandapp.Manager
 	Carpools    *carpoolapp.Manager
 	Trades      *tradeapp.Manager
+	Academic    *academicapp.Manager
 }
 
 // Build initializes all runtime dependencies.
@@ -86,6 +89,23 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	configService := configcenter.NewService(mysql.NewConfigRepository(db), cipher)
 	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
 	userService := user.NewService(userRepo, permissionService).WithSessionRevoker(authService)
+	materialStore, err := academicinfra.NewEncryptedMaterialStore(
+		cfg.Academic.MaterialRoot,
+		cfg.Secret.AcademicMaterialKey,
+	)
+	if err != nil {
+		return nil, err
+	}
+	academicProvider, err := academicinfra.NewMockProvider(cfg.Academic.ProviderFile)
+	if err != nil {
+		return nil, err
+	}
+	academicService := academicapp.NewManager(
+		academicinfra.NewStore(db, permissionService),
+		materialStore,
+		academicProvider,
+		redisclient.NewAcademicLimiter(rdb, cfg.IsProduction()),
+	)
 	noticeService := noticeinfra.NewManager(db, nil)
 	activityService := activityinfra.NewManager(db, cipher)
 	marketplaceService := marketplaceinfra.NewManager(db, cipher)
@@ -106,7 +126,8 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		WithMarketplace(marketplaceService).
 		WithErrands(errandService).
 		WithCarpools(carpoolService).
-		WithTrades(tradeService)
+		WithTrades(tradeService).
+		WithAcademicVerification(academicService)
 	router, err := h.Router()
 	if err != nil {
 		return nil, err
@@ -121,6 +142,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	runtime.Errands = errandService
 	runtime.Carpools = carpoolService
 	runtime.Trades = tradeService
+	runtime.Academic = academicService
 	initialized = true
 	return runtime, nil
 }

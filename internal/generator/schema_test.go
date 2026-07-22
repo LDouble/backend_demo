@@ -304,3 +304,30 @@ func TestOperationsRequireIdempotencyDeclaration(t *testing.T) {
 		})
 	}
 }
+
+func TestOperationAcademicVerificationAndMultipart(t *testing.T) {
+	schema := validSchema()
+	schema.Operations = []APIOperation{{
+		OperationID:          "UploadMaterial",
+		Method:               "POST",
+		Path:                 "/api/v1/materials",
+		Permission:           "academic:upload",
+		Idempotency:          "inherent",
+		AcademicVerification: "none",
+		RequestContent:       "multipart/form-data",
+		Body: &APIObject{Fields: []APIField{{
+			Name: "file", Type: "string", Format: "binary", Required: true,
+		}}},
+	}}
+	if err := schema.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if schema.Operations[0].RequestContent != "multipart/form-data" {
+		t.Fatalf("request content = %q", schema.Operations[0].RequestContent)
+	}
+
+	schema.Operations[0].AcademicVerification = "bypass"
+	if err := schema.Normalize(); err == nil || !strings.Contains(err.Error(), "academic_verification") {
+		t.Fatalf("Normalize() error = %v", err)
+	}
+}

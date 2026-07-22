@@ -30,6 +30,9 @@ func (h *Handler) GetActivity(c *gin.Context, id uint64) {
 func (h *Handler) CreateActivityRegistration(c *gin.Context, id uint64, params generated.CreateActivityRegistrationParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "CreateActivityRegistration", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CreateActivityRegistration", func() {
 		h.createActivityRegistration(c)
 	})
@@ -39,6 +42,9 @@ func (h *Handler) CreateActivityRegistration(c *gin.Context, id uint64, params g
 func (h *Handler) CancelMyActivityRegistration(c *gin.Context, id uint64, params generated.CancelMyActivityRegistrationParams) {
 	setGeneratedPathParam(c, "id", id)
 	setGeneratedParams(c, "CancelMyActivityRegistration", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
 	h.idempotent(c, "CancelMyActivityRegistration", func() {
 		h.cancelMyActivityRegistration(c)
 	})

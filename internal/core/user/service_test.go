@@ -43,7 +43,7 @@ type assigningGuard struct {
 }
 
 func (g *assigningGuard) CanDisable(context.Context, uint64) (bool, error) { return true, nil }
-func (g *assigningGuard) EnsureMemberForUser(_ context.Context, id uint64) error {
+func (g *assigningGuard) EnsureGuestForUser(_ context.Context, id uint64) error {
 	g.assigned = id
 	return g.err
 }
@@ -122,7 +122,37 @@ func TestHashPasswordLength(t *testing.T) {
 	}
 }
 
-func TestCreateAssignsMemberRole(t *testing.T) {
+func TestChangePasswordVerifiesCurrentPasswordAndRevokesSessions(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	revoker := &fakeRevoker{}
+	service := NewService(repo, nil).WithSessionRevoker(revoker)
+	created, err := service.Create(ctx, "password.user", "initial-password-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = service.ChangePassword(ctx, created.ID, "wrong-password", "replacement-password-123"); err == nil {
+		t.Fatal("incorrect current password was accepted")
+	}
+	if len(revoker.users) != 0 {
+		t.Fatalf("sessions revoked after rejected password change: %v", revoker.users)
+	}
+	if err = service.ChangePassword(ctx, created.ID, "initial-password-123", "replacement-password-123"); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := repo.GetByID(ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !CheckPassword(stored.PasswordHash, "replacement-password-123") || stored.SessionVersion != 2 {
+		t.Fatalf("password/session version not updated: %+v", stored)
+	}
+	if len(revoker.users) != 1 || revoker.users[0] != created.ID {
+		t.Fatalf("sessions not revoked: %v", revoker.users)
+	}
+}
+
+func TestCreateAssignsGuestRole(t *testing.T) {
 	repo := newFakeRepo()
 	guard := &assigningGuard{}
 	svc := NewService(repo, guard)
