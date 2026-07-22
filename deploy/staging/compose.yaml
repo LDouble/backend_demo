@@ -1,11 +1,11 @@
 name: campus-staging
 
-x-app-environment: &app-environment
+x-database-environment: &database-environment
   CAMPUS_ENV: production
-  CAMPUS_SERVER_ADDRESS: ":8080"
-  CAMPUS_TRUSTED_PROXY_CIDRS: "127.0.0.1/32,172.30.0.0/24"
-  CAMPUS_REQUIRE_PROXY_HTTPS: "true"
   CAMPUS_MYSQL_DSN: "${CAMPUS_MYSQL_USER:?set CAMPUS_MYSQL_USER}:${CAMPUS_MYSQL_PASSWORD:?set CAMPUS_MYSQL_PASSWORD}@tcp(mysql:3306)/${CAMPUS_MYSQL_DATABASE:?set CAMPUS_MYSQL_DATABASE}?charset=utf8mb4&parseTime=true&loc=UTC"
+
+x-runtime-environment: &runtime-environment
+  <<: *database-environment
   CAMPUS_REDIS_ADDRESS: "redis:6379"
   CAMPUS_REDIS_PASSWORD: "${CAMPUS_REDIS_PASSWORD:?set CAMPUS_REDIS_PASSWORD}"
   CAMPUS_REDIS_TLS: "true"
@@ -14,25 +14,10 @@ x-app-environment: &app-environment
   CAMPUS_REDIS_CLIENT_CERT_FILE: client.crt
   CAMPUS_REDIS_CLIENT_KEY_FILE: client.key
   CAMPUS_REDIS_SERVER_NAME: redis
-  CAMPUS_JWT_SECRET: "${CAMPUS_JWT_SECRET:?set CAMPUS_JWT_SECRET}"
-  CAMPUS_CONFIG_MASTER_KEY: "${CAMPUS_CONFIG_MASTER_KEY:?set CAMPUS_CONFIG_MASTER_KEY}"
-  CAMPUS_ADMIN_USERNAME: "${CAMPUS_ADMIN_USERNAME:?set CAMPUS_ADMIN_USERNAME}"
-  CAMPUS_ADMIN_PASSWORD: "${CAMPUS_ADMIN_PASSWORD:?set CAMPUS_ADMIN_PASSWORD}"
-  CAMPUS_WORKER_REDIS_DB: "${CAMPUS_WORKER_REDIS_DB:-1}"
-  CAMPUS_WORKER_CONCURRENCY: "${CAMPUS_WORKER_CONCURRENCY:-10}"
-  CAMPUS_WORKER_POLL_INTERVAL: "${CAMPUS_WORKER_POLL_INTERVAL:-1s}"
 
 x-app: &app
   image: "${CAMPUS_IMAGE:?set CAMPUS_IMAGE to an immutable digest}"
   restart: unless-stopped
-  environment: *app-environment
-  secrets:
-    - source: redis_ca
-      target: redis-tls/ca.crt
-    - source: redis_client_cert
-      target: redis-tls/client.crt
-    - source: redis_client_key
-      target: redis-tls/client.key
   networks: [backend]
 
 services:
@@ -71,28 +56,63 @@ services:
       retries: 30
       start_period: 20s
 
+  redis-tls-init:
+    image: "${REDIS_IMAGE:-redis:7.4-alpine}"
+    user: "0:0"
+    restart: "no"
+    command:
+      - sh
+      - -ec
+      - |
+        mkdir -p /target/app /target/redis
+        cp /run/source/ca.crt /target/app/ca.crt
+        cp /run/source/client.crt /target/app/client.crt
+        cp /run/source/client.key /target/app/client.key
+        cp /run/source/redis.conf /target/redis/redis.conf
+        cp /run/source/ca.crt /target/redis/ca.crt
+        cp /run/source/server.crt /target/redis/server.crt
+        cp /run/source/server.key /target/redis/server.key
+        cp /run/source/client.crt /target/redis/client.crt
+        cp /run/source/client.key /target/redis/client.key
+        chown -R 65532:65532 /target/app
+        chmod 0500 /target/app
+        chmod 0444 /target/app/ca.crt /target/app/client.crt
+        chmod 0400 /target/app/client.key
+        chown -R redis:redis /target/redis
+        chmod 0500 /target/redis
+        chmod 0444 /target/redis/ca.crt /target/redis/server.crt /target/redis/client.crt
+        chmod 0400 /target/redis/redis.conf /target/redis/server.key /target/redis/client.key
+    secrets:
+      - source: redis_server_config
+        target: /run/source/redis.conf
+      - source: redis_ca
+        target: /run/source/ca.crt
+      - source: redis_server_cert
+        target: /run/source/server.crt
+      - source: redis_server_key
+        target: /run/source/server.key
+      - source: redis_client_cert
+        target: /run/source/client.crt
+      - source: redis_client_key
+        target: /run/source/client.key
+    volumes:
+      - app-redis-tls:/target/app
+      - redis-tls:/target/redis
+    networks: [backend]
+
   redis:
     image: "${REDIS_IMAGE:-redis:7.4-alpine}"
     restart: unless-stopped
-    command: ["redis-server", "/run/secrets/redis.conf"]
+    command: ["redis-server", "/run/secrets/redis-tls/redis.conf"]
     environment:
       CAMPUS_REDIS_PASSWORD: "${CAMPUS_REDIS_PASSWORD:?set CAMPUS_REDIS_PASSWORD}"
-    secrets:
-      - source: redis_server_config
-        target: redis.conf
-      - source: redis_ca
-        target: redis-tls/ca.crt
-      - source: redis_server_cert
-        target: redis-tls/server.crt
-      - source: redis_server_key
-        target: redis-tls/server.key
-      - source: redis_client_cert
-        target: redis-tls/client.crt
-      - source: redis_client_key
-        target: redis-tls/client.key
     volumes:
       - redis-data:/data
+      - redis-tls:/run/secrets/redis-tls:ro
     networks: [backend]
+    depends_on:
+      redis-tls-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$CAMPUS_REDIS_PASSWORD\" redis-cli --tls --cacert /run/secrets/redis-tls/ca.crt --cert /run/secrets/redis-tls/client.crt --key /run/secrets/redis-tls/client.key ping | grep -q PONG"]
       interval: 5s
@@ -102,17 +122,20 @@ services:
   migrate:
     <<: *app
     restart: "no"
+    environment: *database-environment
     entrypoint: ["/app/campusctl"]
     command: ["migration", "up"]
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
-        condition: service_healthy
 
   bootstrap:
     <<: *app
     restart: "no"
+    environment:
+      <<: *database-environment
+      CAMPUS_ADMIN_USERNAME: "${CAMPUS_ADMIN_USERNAME:?set CAMPUS_ADMIN_USERNAME}"
+      CAMPUS_ADMIN_PASSWORD: "${CAMPUS_ADMIN_PASSWORD:?set CAMPUS_ADMIN_PASSWORD}"
     entrypoint: ["/app/campusctl"]
     command: ["admin", "bootstrap"]
     depends_on:
@@ -121,9 +144,20 @@ services:
 
   api:
     <<: *app
+    environment:
+      <<: *runtime-environment
+      CAMPUS_SERVER_ADDRESS: ":8080"
+      CAMPUS_TRUSTED_PROXY_CIDRS: "127.0.0.1/32,172.30.0.0/24"
+      CAMPUS_REQUIRE_PROXY_HTTPS: "true"
+      CAMPUS_JWT_SECRET: "${CAMPUS_JWT_SECRET:?set CAMPUS_JWT_SECRET}"
+      CAMPUS_CONFIG_MASTER_KEY: "${CAMPUS_CONFIG_MASTER_KEY:?set CAMPUS_CONFIG_MASTER_KEY}"
+    volumes:
+      - app-redis-tls:/run/secrets/redis-tls:ro
     depends_on:
       bootstrap:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "--header=X-Forwarded-Proto: https", "http://127.0.0.1:8080/health/ready"]
       interval: 10s
@@ -133,9 +167,19 @@ services:
   worker:
     <<: *app
     entrypoint: ["/app/worker"]
+    environment:
+      <<: *runtime-environment
+      CAMPUS_CONFIG_MASTER_KEY: "${CAMPUS_CONFIG_MASTER_KEY:?set CAMPUS_CONFIG_MASTER_KEY}"
+      CAMPUS_WORKER_REDIS_DB: "${CAMPUS_WORKER_REDIS_DB:-1}"
+      CAMPUS_WORKER_CONCURRENCY: "${CAMPUS_WORKER_CONCURRENCY:-10}"
+      CAMPUS_WORKER_POLL_INTERVAL: "${CAMPUS_WORKER_POLL_INTERVAL:-1s}"
+    volumes:
+      - app-redis-tls:/run/secrets/redis-tls:ro
     depends_on:
       bootstrap:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
 networks:
   edge: {}
@@ -148,6 +192,8 @@ networks:
 volumes:
   mysql-data: {}
   redis-data: {}
+  redis-tls: {}
+  app-redis-tls: {}
   caddy-data: {}
   caddy-config: {}
 

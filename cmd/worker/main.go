@@ -35,7 +35,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := bootstrap.Load(configPath())
+	cfg, err := bootstrap.LoadWorker(configPath())
 	if err != nil {
 		return err
 	}

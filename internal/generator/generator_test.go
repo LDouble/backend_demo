@@ -93,6 +93,69 @@ func TestGeneratedArtifacts(t *testing.T) {
 	}
 }
 
+func TestGeneratedOpenAPIGroupsMethodsAndPreservesQueryConstraints(t *testing.T) {
+	minimum, maximum, maxLength := int64(1), int64(100), int64(32)
+	schema := validSchema()
+	schema.Operations = []APIOperation{
+		{
+			OperationID: "ListActivities", Method: "GET", Path: "/api/v1/activities",
+			Permission: "activity:list", Summary: "List activities",
+			Query: []APIParameter{
+				{Name: "page", Type: "integer", Format: "int64", Minimum: &minimum, Maximum: &maximum},
+				{Name: "keyword", Type: "string", MaxLength: &maxLength},
+			},
+		},
+		{
+			OperationID: "CreateActivity", Method: "POST", Path: "/api/v1/activities",
+			Permission: "activity:create", Idempotency: "inherent", Summary: "Create activity",
+		},
+	}
+	root := t.TempDir()
+	if _, err := Generate(context.Background(), schema, Options{Root: root, Source: "schemas/activity.yaml"}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "api/modules/activity.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type parameterSchema struct {
+		Minimum   *int64 `yaml:"minimum"`
+		Maximum   *int64 `yaml:"maximum"`
+		MaxLength *int64 `yaml:"maxLength"`
+	}
+	type operation struct {
+		Parameters []struct {
+			Schema parameterSchema `yaml:"schema"`
+		} `yaml:"parameters"`
+	}
+	type pathItem struct {
+		Get  *operation `yaml:"get"`
+		Post *operation `yaml:"post"`
+	}
+	var document struct {
+		Paths map[string]pathItem `yaml:"paths"`
+	}
+	if err = yaml.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	item, ok := document.Paths["/api/v1/activities"]
+	if !ok || item.Get == nil || item.Post == nil {
+		t.Fatalf("generated path item = %#v", item)
+	}
+	parameters := item.Get.Parameters
+	if len(parameters) != 2 {
+		t.Fatalf("query parameters = %#v", parameters)
+	}
+	page := parameters[0].Schema
+	if page.Minimum == nil || *page.Minimum != 1 || page.Maximum == nil || *page.Maximum != 100 {
+		t.Fatalf("page schema = %#v", page)
+	}
+	keyword := parameters[1].Schema
+	if keyword.MaxLength == nil || *keyword.MaxLength != 32 {
+		t.Fatalf("keyword schema = %#v", keyword)
+	}
+}
+
 func TestGenerateV2MultipleEntitiesAndDependencies(t *testing.T) {
 	root := t.TempDir()
 	schema := Schema{Version: 2, Module: "notice", CRUD: []string{"create", "get"}, Entities: []Entity{

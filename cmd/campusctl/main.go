@@ -39,7 +39,7 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 		if len(args) != 2 || args[1] != "bootstrap" {
 			return usage()
 		}
-		cfg, err := bootstrap.Load(configPath())
+		cfg, err := bootstrap.LoadAdminBootstrap(configPath())
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func runMigration(ctx context.Context, args []string, output io.Writer) error {
 		return usage()
 	}
 	if args[0] == "up" || args[0] == "down" {
-		cfg, err := bootstrap.Load(configPath())
+		cfg, err := bootstrap.LoadMigration(configPath())
 		if err != nil {
 			return err
 		}

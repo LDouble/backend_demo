@@ -1,9 +1,9 @@
 # 阶段 3：二手市场交易闭环与 Staging 上线模板
 
-**Priority:** High  
-**Status:** Done  
-**Type:** Feature  
-**Created:** 2026-07-22  
+**Priority:** High
+**Status:** Done
+**Type:** Feature
+**Created:** 2026-07-22
 **Last Updated:** 2026-07-22
 
 ## Problem

@@ -62,11 +62,17 @@ type ModuleInfo struct {
 
 type templateData struct {
 	Schema
-	Header     string
-	ModulePath string
-	Source     string
-	Routes     []apiRoute
-	Modules    []ModuleInfo
+	Header          string
+	ModulePath      string
+	Source          string
+	OperationRoutes []operationRoute
+	Routes          []apiRoute
+	Modules         []ModuleInfo
+}
+
+type operationRoute struct {
+	Path    string
+	Methods []APIOperation
 }
 
 type apiRoute struct {
@@ -255,7 +261,8 @@ func plan(root string, schema Schema, options Options) ([]outputFile, error) {
 	}
 	data := templateData{
 		Schema: schema, Header: generatedHeader, ModulePath: options.ModulePath,
-		Source: filepath.ToSlash(options.Source), Routes: routes(schema.Permissions), Modules: registryValue.Modules,
+		Source: filepath.ToSlash(options.Source), OperationRoutes: operationRoutes(schema.Operations),
+		Routes: routes(schema.Permissions), Modules: registryValue.Modules,
 	}
 	specs := []struct {
 		template string
@@ -332,6 +339,18 @@ func plan(root string, schema Schema, options Options) ([]outputFile, error) {
 	outputs = append(outputs, outputFile{path: permissionPath, content: permissionData})
 	outputs = append(outputs, registryFile)
 	return outputs, nil
+}
+
+func operationRoutes(operations []APIOperation) []operationRoute {
+	result := make([]operationRoute, 0)
+	for _, operation := range operations {
+		if len(result) == 0 || result[len(result)-1].Path != operation.Path {
+			result = append(result, operationRoute{Path: operation.Path})
+		}
+		last := len(result) - 1
+		result[last].Methods = append(result[last].Methods, operation)
+	}
+	return result
 }
 
 func planRegistry(root string, schema Schema, source string) (registry, outputFile, error) {

@@ -4,10 +4,12 @@ openapi: 3.0.3
 info:
   title: {{.Module}} module
   version: 1.0.0
-paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
-{{- if .Operations}}
-{{- range .Operations}}
+paths:{{if and (not .OperationRoutes) (not .Routes)}} {}{{end}}
+{{- if .OperationRoutes}}
+{{- range .OperationRoutes}}
+{{- $path := .Path}}
   {{.Path}}:
+{{- range .Methods}}
     {{lower .Method}}:
       operationId: {{.OperationID}}
       tags: [{{$.Module}}]
@@ -15,7 +17,7 @@ paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
       x-generated-module: {{$.Module}}
       x-permission: {{.Permission}}
       security: [{bearerAuth: []}]
-{{- $pathParams := pathParams .Path}}
+{{- $pathParams := pathParams $path}}
 {{- if or $pathParams .Headers .Query}}
       parameters:
 {{- range $pathParams}}
@@ -44,7 +46,20 @@ paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
         - name: {{.Name}}
           in: query
           required: {{.Required}}
-          schema: {type: {{.Type}}{{if .Format}}, format: {{.Format}}{{end}}}
+          schema:
+            type: {{.Type}}
+{{- if .Format}}
+            format: {{.Format}}
+{{- end}}
+{{- if .Minimum}}
+            minimum: {{.Minimum}}
+{{- end}}
+{{- if .Maximum}}
+            maximum: {{.Maximum}}
+{{- end}}
+{{- if .MaxLength}}
+            maxLength: {{.MaxLength}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- if .Body}}
@@ -91,6 +106,7 @@ paths:{{if and (not .Operations) (not .Routes)}} {}{{end}}
 {{- range .Responses}}
         "{{.Status}}":
           $ref: "#/components/responses/{{if eq .Kind "success"}}Success{{else}}Error{{end}}"
+{{- end}}
 {{- end}}
 {{- end}}
 {{- else}}

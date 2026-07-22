@@ -5,7 +5,7 @@
 ## 准备与部署
 
 1. 将 `.env.example` 复制到宿主机受控目录，填入不可变应用镜像摘要、域名和独立 staging 凭据；文件权限设为 `0600`，不要提交。
-2. 从 `redis.conf.example` 创建受控的 Redis 配置 Secret，将 `requirepass` 改为与环境文件一致的随机值；生成独立 CA、服务端证书（SAN 含 `redis`）和客户端证书，私钥权限设为 `0600`。
+2. 从 `redis.conf.example` 创建受控的 Redis 配置 Secret，将 `requirepass` 改为与环境文件一致的随机值；生成独立 CA、服务端证书（SAN 含 `redis`）和客户端证书，宿主机私钥权限设为 `0600`。一次性 `redis-tls-init` 服务会把这些文件复制到隔离卷，为 UID `65532` 的应用和 Redis 用户分别设置所有权，并把私钥权限收紧为 `0400`。
 3. 在任何变更前校验配置并备份数据库：
 
    ```bash
@@ -21,6 +21,8 @@
    docker compose --env-file /secure/staging.env -f deploy/staging/compose.yaml pull
    docker compose --env-file /secure/staging.env -f deploy/staging/compose.yaml up -d
    ```
+
+   证书轮换后重新创建 `redis-tls-init`，再重启 Redis、API 和 Worker，使隔离卷中的副本同步更新。
 
 5. 验证 HTTPS、就绪状态与 Redis mTLS：
 

@@ -17,19 +17,28 @@ paths:
         - name: status
           in: query
           required: false
-          schema: {type: string}
+          schema:
+            type: string
         - name: keyword
           in: query
           required: false
-          schema: {type: string}
+          schema:
+            type: string
         - name: page
           in: query
           required: false
-          schema: {type: integer, format: int32}
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
         - name: page_size
           in: query
           required: false
-          schema: {type: integer, format: int32}
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
       responses:
         "200":
           $ref: "#/components/responses/Success"
@@ -52,7 +61,10 @@ paths:
         - name: expected_version
           in: query
           required: true
-          schema: {type: integer, format: uint64}
+          schema:
+            type: integer
+            format: uint64
+            minimum: 1
       responses:
         "200":
           $ref: "#/components/responses/Success"
@@ -110,27 +122,40 @@ paths:
         - name: keyword
           in: query
           required: false
-          schema: {type: string}
+          schema:
+            type: string
         - name: min_price_cents
           in: query
           required: false
-          schema: {type: integer, format: int64}
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
         - name: max_price_cents
           in: query
           required: false
-          schema: {type: integer, format: int64}
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
         - name: page
           in: query
           required: false
-          schema: {type: integer, format: int32}
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
         - name: page_size
           in: query
           required: false
-          schema: {type: integer, format: int32}
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
       responses:
         "200":
           $ref: "#/components/responses/Success"
-  /api/v1/marketplace/listings:
     post:
       operationId: CreateMarketplaceListing
       tags: [marketplace]
@@ -190,15 +215,23 @@ paths:
         - name: status
           in: query
           required: false
-          schema: {type: string}
+          schema:
+            type: string
         - name: page
           in: query
           required: false
-          schema: {type: integer, format: int32}
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
         - name: page_size
           in: query
           required: false
-          schema: {type: integer, format: int32}
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
       responses:
         "200":
           $ref: "#/components/responses/Success"
@@ -215,7 +248,6 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Success"
-  /api/v1/marketplace/listings/{id}:
     patch:
       operationId: UpdateMarketplaceListing
       tags: [marketplace]

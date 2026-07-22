@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	core "github.com/weouc-plus/campus-platform/internal/core/domainevent"
 	"github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
+	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -29,6 +31,7 @@ type noticeEventPayload struct {
 	OwnerID   uint64 `json:"owner_id"`
 	BuyerID   uint64 `json:"buyer_id"`
 	SellerID  uint64 `json:"seller_id"`
+	OrderType string `json:"order_type"`
 }
 
 // Publish idempotently persists a published in-app notice for supported events.
@@ -82,6 +85,9 @@ func noticeSpecFor(event core.Event) (eventNoticeSpec, bool, error) {
 	var payload noticeEventPayload
 	if err := json.Unmarshal(event.Payload, &payload); err != nil {
 		return eventNoticeSpec{}, false, fmt.Errorf("decode %s payload: %w", event.EventType, err)
+	}
+	if strings.HasPrefix(event.EventType, "order.") && payload.OrderType != tradedomain.OrderTypeMarketplace {
+		return eventNoticeSpec{}, false, nil
 	}
 	spec := eventNoticeSpec{}
 	switch event.EventType {

@@ -23,7 +23,7 @@ func TestNoticePublisherCreatesIdempotentMarketplaceNotice(t *testing.T) {
 	publisher.now = func() time.Time { return time.Date(2026, 7, 22, 10, 0, 0, 0, time.UTC) }
 	event := core.Event{
 		ID: 42, AggregateType: "order", AggregateID: 9, EventType: "order.created",
-		Payload: []byte(`{"buyer_id":12,"seller_id":8,"contact":"must-not-leak"}`),
+		Payload: []byte(`{"order_type":"marketplace","buyer_id":12,"seller_id":8,"contact":"must-not-leak"}`),
 	}
 	for range 2 {
 		if err = publisher.Publish(context.Background(), event); err != nil {
@@ -58,8 +58,8 @@ func TestNoticeSpecRecipientsAndPaths(t *testing.T) {
 	}{
 		{name: "review", event: core.Event{EventType: "listing.reviewed", Payload: []byte(`{"listing_id":3,"owner_id":7}`)}, wantUsers: 1, wantAction: "/api/v1/marketplace/listings/3"},
 		{name: "removed", event: core.Event{EventType: "listing.removed", Payload: []byte(`{"listing_id":4,"owner_id":7}`)}, wantUsers: 1, wantAction: "/api/v1/marketplace/listings/4"},
-		{name: "completed", event: core.Event{AggregateID: 11, EventType: "order.completed", Payload: []byte(`{"buyer_id":7,"seller_id":8}`)}, wantUsers: 2, wantAction: "/api/v1/orders/11"},
-		{name: "deduplicates party", event: core.Event{AggregateID: 12, EventType: "order.expired", Payload: []byte(`{"buyer_id":7,"seller_id":7}`)}, wantUsers: 1, wantAction: "/api/v1/orders/12"},
+		{name: "completed", event: core.Event{AggregateID: 11, EventType: "order.completed", Payload: []byte(`{"order_type":"marketplace","buyer_id":7,"seller_id":8}`)}, wantUsers: 2, wantAction: "/api/v1/orders/11"},
+		{name: "deduplicates party", event: core.Event{AggregateID: 12, EventType: "order.expired", Payload: []byte(`{"order_type":"marketplace","buyer_id":7,"seller_id":7}`)}, wantUsers: 1, wantAction: "/api/v1/orders/12"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -71,5 +71,16 @@ func TestNoticeSpecRecipientsAndPaths(t *testing.T) {
 				t.Fatalf("spec = %#v", spec)
 			}
 		})
+	}
+}
+
+func TestNoticeSpecIgnoresNonMarketplaceOrders(t *testing.T) {
+	event := core.Event{
+		AggregateID: 13,
+		EventType:   "order.completed",
+		Payload:     []byte(`{"order_type":"errand","buyer_id":7,"seller_id":8}`),
+	}
+	if spec, ok, err := noticeSpecFor(event); err != nil || ok {
+		t.Fatalf("spec=%#v ok=%v err=%v", spec, ok, err)
 	}
 }
