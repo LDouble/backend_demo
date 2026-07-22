@@ -660,14 +660,19 @@ func permissionsFromOperations(operations []APIOperation) []Permission {
 	byKey := map[string]*Permission{}
 	for _, operation := range operations {
 		permissionPath := openAPIPathToCasbin(operation.Path)
-		key := operation.Permission + "\x00" + permissionPath
+		roles := uniqueStrings(operation.DefaultRoles)
+		key := operation.Permission + "\x00" + permissionPath + "\x00" + strings.Join(roles, "\x00")
 		permission, ok := byKey[key]
 		if !ok {
-			permission = &Permission{Name: operation.Permission, Path: permissionPath, Methods: []string{}, DefaultRoles: []string{}}
+			permission = &Permission{
+				Name:         operation.Permission,
+				Path:         permissionPath,
+				Methods:      []string{},
+				DefaultRoles: roles,
+			}
 			byKey[key] = permission
 		}
 		permission.Methods = append(permission.Methods, operation.Method)
-		permission.DefaultRoles = append(permission.DefaultRoles, operation.DefaultRoles...)
 	}
 	result := make([]Permission, 0, len(byKey))
 	for _, permission := range byKey {
@@ -677,6 +682,9 @@ func permissionsFromOperations(operations []APIOperation) []Permission {
 	}
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].Name == result[j].Name {
+			if result[i].Path == result[j].Path {
+				return strings.Join(result[i].DefaultRoles, "\x00") < strings.Join(result[j].DefaultRoles, "\x00")
+			}
 			return result[i].Path < result[j].Path
 		}
 		return result[i].Name < result[j].Name

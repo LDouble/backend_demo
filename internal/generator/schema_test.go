@@ -191,6 +191,38 @@ func TestOperationsDerivePermissions(t *testing.T) {
 	}
 }
 
+func TestOperationsKeepDefaultRolesMethodSpecific(t *testing.T) {
+	schema := validSchema()
+	schema.Permissions = nil
+	schema.Operations = []APIOperation{
+		{
+			OperationID: "ListActivities", Method: "GET", Path: "/api/v1/activities",
+			Permission: "activity:manage", DefaultRoles: []string{"member"},
+		},
+		{
+			OperationID: "CreateActivity", Method: "POST", Path: "/api/v1/activities",
+			Permission: "activity:manage", Idempotency: "inherent",
+		},
+	}
+	if err := schema.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if len(schema.Permissions) != 2 {
+		t.Fatalf("derived permissions = %#v", schema.Permissions)
+	}
+	memberRule := schema.Permissions[1]
+	memberHasRole := len(memberRule.DefaultRoles) == 1 && memberRule.DefaultRoles[0] == "member"
+	memberHasMethod := len(memberRule.Methods) == 1 && memberRule.Methods[0] == "GET"
+	if !memberHasRole || !memberHasMethod {
+		t.Fatalf("member rule = %#v", memberRule)
+	}
+	adminRule := schema.Permissions[0]
+	adminHasMethod := len(adminRule.Methods) == 1 && adminRule.Methods[0] == "POST"
+	if len(adminRule.DefaultRoles) != 0 || !adminHasMethod {
+		t.Fatalf("admin rule = %#v", adminRule)
+	}
+}
+
 func TestOperationBodyStringMaxLength(t *testing.T) {
 	maxLength := int64(500)
 	schema := validSchema()

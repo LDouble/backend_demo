@@ -9,6 +9,7 @@ import (
 	"time"
 
 	core "github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	platformquery "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
 	"github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 	"gorm.io/gorm"
@@ -36,6 +37,11 @@ type noticeEventPayload struct {
 
 // Publish idempotently persists a published in-app notice for supported events.
 func (p *NoticePublisher) Publish(ctx context.Context, event core.Event) error {
+	var err error
+	event, err = p.enrichLegacyListingOwner(ctx, event)
+	if err != nil {
+		return err
+	}
 	spec, ok, err := noticeSpecFor(event)
 	if err != nil || !ok {
 		return err
@@ -65,6 +71,35 @@ func (p *NoticePublisher) Publish(ctx context.Context, event core.Event) error {
 		}
 		return nil
 	})
+}
+
+func (p *NoticePublisher) enrichLegacyListingOwner(ctx context.Context, event core.Event) (core.Event, error) {
+	switch event.EventType {
+	case "listing.reviewed", "listing.removed":
+	default:
+		return event, nil
+	}
+	var payload noticeEventPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return core.Event{}, fmt.Errorf("decode %s payload: %w", event.EventType, err)
+	}
+	if payload.OwnerID != 0 || payload.ListingID == 0 {
+		return event, nil
+	}
+	listing := platformquery.Use(p.db).Listing
+	row, err := listing.WithContext(ctx).
+		Select(listing.OwnerId).
+		Where(listing.ID.Eq(payload.ListingID)).
+		First()
+	if err != nil {
+		return core.Event{}, fmt.Errorf("resolve listing %d event owner: %w", payload.ListingID, err)
+	}
+	payload.OwnerID = row.OwnerId
+	event.Payload, err = json.Marshal(payload)
+	if err != nil {
+		return core.Event{}, fmt.Errorf("encode %s payload: %w", event.EventType, err)
+	}
+	return event, nil
 }
 
 type eventNoticeSpec struct {

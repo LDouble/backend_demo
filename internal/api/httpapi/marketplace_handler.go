@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,27 +22,33 @@ type marketplaceListingRequest struct {
 }
 
 func (h *Handler) listMarketplaceListings(c *gin.Context) {
-	h.listMarketplace(c, "published")
+	params, ok := generatedParams[generated.ListMarketplaceListingsParams](c, "ListMarketplaceListings")
+	if !ok {
+		missingMarketplaceListParams(c)
+		return
+	}
+	h.listMarketplace(c, "published", marketplaceSearchFromPublicParams(params))
 }
 
 func (h *Handler) listMyMarketplaceListings(c *gin.Context) {
-	h.listMarketplace(c, "mine")
+	params, ok := generatedParams[generated.ListMyMarketplaceListingsParams](c, "ListMyMarketplaceListings")
+	if !ok {
+		missingMarketplaceListParams(c)
+		return
+	}
+	h.listMarketplace(c, "mine", marketplaceSearchFromMineParams(params))
 }
 
 func (h *Handler) listAdminMarketplaceListings(c *gin.Context) {
-	h.listMarketplace(c, "admin")
+	params, ok := generatedParams[generated.ListAdminMarketplaceListingsParams](c, "ListAdminMarketplaceListings")
+	if !ok {
+		missingMarketplaceListParams(c)
+		return
+	}
+	h.listMarketplace(c, "admin", marketplaceSearchFromAdminParams(params))
 }
 
-func (h *Handler) listMarketplace(c *gin.Context, scope string) {
-	page, size := paging(c)
-	search := marketplacedomain.ListingSearch{
-		Keyword:  strings.TrimSpace(c.Query("keyword")),
-		Status:   strings.TrimSpace(c.Query("status")),
-		Page:     page,
-		PageSize: size,
-	}
-	search.MinPriceCents = optionalInt64Query(c, "min_price_cents")
-	search.MaxPriceCents = optionalInt64Query(c, "max_price_cents")
+func (h *Handler) listMarketplace(c *gin.Context, scope string, search marketplacedomain.ListingSearch) {
 	var rows []marketplacedomain.ListingDetails
 	var total int64
 	var err error
@@ -64,7 +69,59 @@ func (h *Handler) listMarketplace(c *gin.Context, scope string) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, page, size, total))
+	success(c, http.StatusOK, pageData(views, search.Page, search.PageSize, total))
+}
+
+func marketplacePaging(page, pageSize *int32) (int, int) {
+	resultPage, resultSize := 1, 20
+	if page != nil {
+		resultPage = int(*page)
+	}
+	if pageSize != nil {
+		resultSize = int(*pageSize)
+	}
+	return resultPage, resultSize
+}
+
+func marketplaceSearchFromPublicParams(params generated.ListMarketplaceListingsParams) marketplacedomain.ListingSearch {
+	page, size := marketplacePaging(params.Page, params.PageSize)
+	return marketplacedomain.ListingSearch{
+		Keyword:       trimmedMarketplaceFilter(params.Keyword),
+		MinPriceCents: params.MinPriceCents,
+		MaxPriceCents: params.MaxPriceCents,
+		Page:          page,
+		PageSize:      size,
+	}
+}
+
+func marketplaceSearchFromMineParams(params generated.ListMyMarketplaceListingsParams) marketplacedomain.ListingSearch {
+	page, size := marketplacePaging(params.Page, params.PageSize)
+	return marketplacedomain.ListingSearch{
+		Status:   trimmedMarketplaceFilter(params.Status),
+		Page:     page,
+		PageSize: size,
+	}
+}
+
+func marketplaceSearchFromAdminParams(params generated.ListAdminMarketplaceListingsParams) marketplacedomain.ListingSearch {
+	page, size := marketplacePaging(params.Page, params.PageSize)
+	return marketplacedomain.ListingSearch{
+		Keyword:  trimmedMarketplaceFilter(params.Keyword),
+		Status:   trimmedMarketplaceFilter(params.Status),
+		Page:     page,
+		PageSize: size,
+	}
+}
+
+func trimmedMarketplaceFilter(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
+}
+
+func missingMarketplaceListParams(c *gin.Context) {
+	failure(c, apperror.New(http.StatusBadRequest, "invalid_parameter", "缺少已校验的商品列表参数"))
 }
 
 func (h *Handler) getMarketplaceListing(c *gin.Context) {
@@ -319,16 +376,4 @@ func marketplaceListingViewOf(
 		ContactType: contact.Type, Contact: contact.Value, Version: details.Version,
 		CreatedAt: details.CreatedAt, UpdatedAt: details.UpdatedAt,
 	}
-}
-
-func optionalInt64Query(c *gin.Context, name string) *int64 {
-	value := strings.TrimSpace(c.Query(name))
-	if value == "" {
-		return nil
-	}
-	parsed, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return nil
-	}
-	return &parsed
 }

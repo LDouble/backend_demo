@@ -7,6 +7,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	core "github.com/weouc-plus/campus-platform/internal/core/domainevent"
+	marketplacedomain "github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	"github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
 	"gorm.io/gorm"
 )
@@ -82,5 +83,34 @@ func TestNoticeSpecIgnoresNonMarketplaceOrders(t *testing.T) {
 	}
 	if spec, ok, err := noticeSpecFor(event); err != nil || ok {
 		t.Fatalf("spec=%#v ok=%v err=%v", spec, ok, err)
+	}
+}
+
+func TestNoticePublisherResolvesLegacyListingOwner(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = db.AutoMigrate(&domain.Notice{}, &domain.NoticeRecipient{}, &marketplacedomain.Listing{}); err != nil {
+		t.Fatal(err)
+	}
+	listing := marketplacedomain.Listing{ID: 5, OwnerId: 17, Version: 1}
+	if err = db.Create(&listing).Error; err != nil {
+		t.Fatal(err)
+	}
+	publisher := NewNoticePublisher(db)
+	event := core.Event{
+		ID: 43, AggregateType: "listing", AggregateID: listing.ID,
+		EventType: "listing.reviewed", Payload: []byte(`{"listing_id":5}`),
+	}
+	if err = publisher.Publish(context.Background(), event); err != nil {
+		t.Fatal(err)
+	}
+	var recipient domain.NoticeRecipient
+	if err = db.First(&recipient).Error; err != nil {
+		t.Fatal(err)
+	}
+	if recipient.UserId != listing.OwnerId {
+		t.Fatalf("recipient = %#v", recipient)
 	}
 }
