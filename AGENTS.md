@@ -52,4 +52,6 @@ make env && make compose-up
 
 禁止提交 `.env`、真实密钥或生产地址。提交建议遵循 Conventional Commits，例如 `feat(db): add activity repository`。PR 必须说明迁移、生成文件、配置影响和实际执行的验证命令。
 
+创建或更新 PR 后，必须持续检查当前 head commit 对应的全部 CI jobs，确认每个 job 均以 `success` 结束。若任一 job 失败、超时或被取消，必须查看日志定位原因，完成修复并推送后重新检查；在全部 jobs 成功前禁止合并 PR。
+
 请求链路顺序为 Request ID → Body/Header 限制 → 认证 → 权限 → OpenAPI 校验 → Typed Params → 幂等控制 → 业务事务 → Domain Event/Outbox。production 必须启用 Redis TLS；运维证书文件读取必须保持明确路径边界和审计说明。
