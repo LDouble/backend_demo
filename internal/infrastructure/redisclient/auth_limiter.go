@@ -35,6 +35,22 @@ func (l *AuthLimiter) AllowLoginIP(ctx context.Context, ip string) (bool, error)
 	}})
 }
 
+// AllowWeChatLogin limits WeChat Mini Program login traffic by source IP.
+//
+// The shared AllowLoginIP scope counts every attempt (success or failure)
+// against 30 requests per 15 minutes, which is too tight for shared egress
+// (campus NAT, carrier-grade NAT) where many distinct end users share one
+// public IP. WeChat logins are additionally gated upstream by the
+// authoritative jscode2session, so the local limiter is a coarse
+// anti-abuse signal rather than a brute-force defense; a much larger window
+// and per-attempt ceiling keeps a single NAT pool from locking out valid
+// users while still shedding obviously broken callers.
+func (l *AuthLimiter) AllowWeChatLogin(ctx context.Context, ip string) (bool, error) {
+	return l.allow(ctx, []limitScope{{
+		key: "auth:wechat:ip:" + limiterHash(ip), limit: 600, window: 15 * time.Minute,
+	}})
+}
+
 // RecordLoginFailure tracks a username only after constant-time credential
 // verification. It never prevents a later correct password from being checked.
 func (l *AuthLimiter) RecordLoginFailure(ctx context.Context, username string) (bool, error) {

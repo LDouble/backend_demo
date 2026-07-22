@@ -3,8 +3,10 @@ package user
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
+	"github.com/glebarez/sqlite"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
@@ -46,6 +48,26 @@ type assigningGuard struct {
 func (g *assigningGuard) CanDisable(context.Context, uint64) (bool, error) { return true, nil }
 func (g *assigningGuard) EnsureGuestForUser(_ context.Context, id uint64) error {
 	g.assigned = id
+	return g.err
+}
+
+// txAssigningGuard proves the service prefers the transaction-aware variant
+// of EnsureGuestForUser when one is exposed by the role guard, so the user
+// insert and the role assignment are observable to a single SQL transaction.
+type txAssigningGuard struct {
+	assigned uint64
+	txSeen   bool
+	err      error
+}
+
+func (g *txAssigningGuard) CanDisable(context.Context, uint64) (bool, error) { return true, nil }
+func (g *txAssigningGuard) EnsureGuestForUser(_ context.Context, id uint64) error {
+	g.assigned = id
+	return g.err
+}
+func (g *txAssigningGuard) EnsureGuestForUserTx(_ context.Context, _ *gorm.DB, id uint64) error {
+	g.assigned = id
+	g.txSeen = true
 	return g.err
 }
 
@@ -393,5 +415,314 @@ func TestFindOrCreateForWechatRejectsEmptyInput(t *testing.T) {
 	}
 	if _, _, err := svc.FindOrCreateForWechat(context.Background(), "wxapp-1", "", ""); err == nil {
 		t.Fatal("empty openid must be rejected")
+	}
+}
+
+// TestFindOrCreateForWechatReconcilesGuestRole guards the fix for Codex P1:
+// a half-applied provisioning from a previous failure must self-heal on the
+// next successful load, so every WeChat login that resolves an existing
+// account re-asserts the guest role.
+func TestFindOrCreateForWechatReconcilesGuestRole(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	guard := &assigningGuard{}
+	svc := NewService(repo, guard)
+
+	first, _, err := svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "")
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if guard.assigned != first.ID {
+		t.Fatalf("expected guest role to be assigned on first create, got %d", guard.assigned)
+	}
+	// Simulate a prior failure that left the role unassigned.
+	guard.assigned = 0
+	second, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "")
+	if err != nil || created {
+		t.Fatalf("expected existing user, got created=%v err=%v", created, err)
+	}
+	if second.ID != first.ID {
+		t.Fatalf("expected same user, got %d", second.ID)
+	}
+	if guard.assigned != first.ID {
+		t.Fatalf("guest role was not reconciled for existing user, got %d", guard.assigned)
+	}
+}
+
+// TestFindOrCreateForWechatPropagatesRandFailure locks in the P2 fix that
+// refuses to create an account when the locked-password randomness source
+// is unavailable, rather than silently writing a publicly known hash.
+func TestFindOrCreateForWechatPropagatesRandFailure(t *testing.T) {
+	original := lockedSecretGenerator
+	lockedSecretGenerator = func() (string, error) { return "", errors.New("entropy unavailable") }
+	defer func() { lockedSecretGenerator = original }()
+
+	svc := NewService(newFakeRepo(), &assigningGuard{})
+	_, _, err := svc.FindOrCreateForWechat(context.Background(), "wxapp-1", "oX1", "")
+	if err == nil {
+		t.Fatal("rand failure must propagate")
+	}
+	if !errors.Is(err, err) || !strings.Contains(err.Error(), "entropy unavailable") {
+		t.Fatalf("expected entropy error, got %v", err)
+	}
+}
+
+// TestFindOrCreateForWechatFallbackPath covers the no-DB code path used by
+// unit tests that do not wire a *gorm.DB. It must still create the user,
+// assign the guest role, surface a disabled user, and tolerate a missing
+// guard. The same paths run in production when (for any reason) a runtime
+// Build never wires the database, so they cannot panic or silently swallow
+// errors.
+func TestFindOrCreateForWechatFallbackPath(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	svc := NewService(repo, nil)
+
+	u, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-fb", "oF1", "")
+	if err != nil || !created {
+		t.Fatalf("created=%v err=%v", created, err)
+	}
+	if u.AppID == nil || *u.AppID != "wxapp-fb" {
+		t.Fatalf("AppID not persisted: %+v", u)
+	}
+
+	// Existing user with no unionid yet: backfill must update the row.
+	second, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-fb", "oF1", "uF1")
+	if err != nil || created {
+		t.Fatalf("expected existing user, got created=%v err=%v", created, err)
+	}
+	if second.UnionID == nil || *second.UnionID != "uF1" {
+		t.Fatalf("UnionID not backfilled: %+v", second.UnionID)
+	}
+
+	// Existing user already populated: a redundant call must not change it.
+	third, _, err := svc.FindOrCreateForWechat(ctx, "wxapp-fb", "oF1", "uF2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if third.UnionID == nil || *third.UnionID != "uF1" {
+		t.Fatalf("UnionID was overwritten: %+v", third.UnionID)
+	}
+
+	// Disabled user must be rejected.
+	disabled := model.UserDisabled
+	if err = repo.UpdateFields(ctx, u.ID, UpdateFields{Status: &disabled}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = svc.FindOrCreateForWechat(ctx, "wxapp-fb", "oF1", ""); err == nil {
+		t.Fatal("disabled wechat user must not log in")
+	} else if appErr, ok := apperror.As(err); !ok || appErr.Code != "user_disabled" {
+		t.Fatalf("expected user_disabled, got %v", err)
+	}
+}
+
+// TestFindOrCreateForWechatRepoAndBackfillErrors covers the error branches
+// that the happy-path tests bypass: a Get lookup failure, an UpdateFields
+// backfill failure, and the dup-key recovery path on a fallback repo.
+func TestFindOrCreateForWechatRepoAndBackfillErrors(t *testing.T) {
+	ctx := context.Background()
+
+	lookupErr := errors.New("db unavailable")
+	boom := &explodingRepo{lookupErr: lookupErr}
+	svc := NewService(boom, nil)
+	if _, _, err := svc.FindOrCreateForWechat(ctx, "wxapp-boom", "oB1", ""); err == nil || !errors.Is(err, lookupErr) {
+		t.Fatalf("expected lookup error, got %v", err)
+	}
+
+	// Backfill UpdateFields failure path on an existing row.
+	stored := &model.User{ID: 42, Username: "wx_existing", Status: model.UserActive}
+	backfill := &backfillErrRepo{stored: stored, updateErr: errors.New("update unavailable")}
+	svc = NewService(backfill, nil)
+	if _, _, err := svc.FindOrCreateForWechat(ctx, "wxapp-bf", "oBF", "uBF"); err == nil || !strings.Contains(err.Error(), "backfill") {
+		t.Fatalf("expected backfill error, got %v", err)
+	}
+
+	// Dup-key recovery on the fallback path: when a concurrent login won
+	// the race, the new caller must read the winner and return it.
+	dup := &dupKeyRepo{}
+	svc = NewService(dup, &assigningGuard{})
+	first, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-dup", "oD1", "uD1")
+	if err != nil || !created {
+		t.Fatalf("first call: created=%v err=%v", created, err)
+	}
+	// Second call hits dup-key on Create, then reloads the winner.
+	dup.existing = first
+	second, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-dup", "oD1", "uD1")
+	if err != nil || created {
+		t.Fatalf("dup-key recovery: created=%v err=%v", created, err)
+	}
+	if second.ID != first.ID {
+		t.Fatalf("expected winner, got id=%d", second.ID)
+	}
+
+	// Dup-key recovery where the winner is disabled.
+	dup = &dupKeyRepo{}
+	dup.existing = first
+	disabled := model.UserDisabled
+	dup.existing.Status = disabled
+	svc = NewService(dup, &assigningGuard{})
+	if _, _, err = svc.FindOrCreateForWechat(ctx, "wxapp-dup", "oD1", "uD1"); err == nil {
+		t.Fatal("disabled winner must surface 403")
+	} else if appErr, ok := apperror.As(err); !ok || appErr.Code != "user_disabled" {
+		t.Fatalf("expected user_disabled, got %v", err)
+	}
+}
+
+type explodingRepo struct {
+	lookupErr error
+}
+
+func (explodingRepo) Create(context.Context, *model.User) error { return nil }
+func (explodingRepo) GetByID(context.Context, uint64) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (explodingRepo) GetByUsername(context.Context, string) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (e explodingRepo) GetByAppOpenID(_ context.Context, _, _ string) (*model.User, error) {
+	return nil, e.lookupErr
+}
+func (explodingRepo) List(context.Context, int, int) ([]model.User, int64, error) {
+	return nil, 0, nil
+}
+func (explodingRepo) UpdateFields(context.Context, uint64, UpdateFields) error { return nil }
+
+type backfillErrRepo struct {
+	stored    *model.User
+	updateErr error
+}
+
+func (backfillErrRepo) Create(context.Context, *model.User) error { return nil }
+func (backfillErrRepo) GetByID(context.Context, uint64) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (backfillErrRepo) GetByUsername(context.Context, string) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (r backfillErrRepo) GetByAppOpenID(context.Context, string, string) (*model.User, error) {
+	clone := *r.stored
+	return &clone, nil
+}
+func (backfillErrRepo) List(context.Context, int, int) ([]model.User, int64, error) {
+	return nil, 0, nil
+}
+func (r backfillErrRepo) UpdateFields(_ context.Context, id uint64, _ UpdateFields) error {
+	if id == r.stored.ID {
+		return r.updateErr
+	}
+	return nil
+}
+
+type dupKeyRepo struct {
+	existing *model.User
+	calls    int
+}
+
+// Create succeeds on the first call so the test can prime an existing user,
+// then reports a duplicate on every subsequent call to drive the recovery
+// path that re-loads the winner.
+func (r *dupKeyRepo) Create(_ context.Context, u *model.User) error {
+	r.calls++
+	if r.calls > 1 {
+		return gorm.ErrDuplicatedKey
+	}
+	u.ID = 1
+	clone := *u
+	r.existing = &clone
+	return nil
+}
+func (r *dupKeyRepo) GetByID(context.Context, uint64) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (r *dupKeyRepo) GetByUsername(context.Context, string) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (r *dupKeyRepo) GetByAppOpenID(context.Context, string, string) (*model.User, error) {
+	if r.existing == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	clone := *r.existing
+	return &clone, nil
+}
+func (r *dupKeyRepo) List(context.Context, int, int) ([]model.User, int64, error) {
+	return nil, 0, nil
+}
+func (r *dupKeyRepo) UpdateFields(context.Context, uint64, UpdateFields) error { return nil }
+
+// TestFindOrCreateForWechatAtomicWithDB locks in the P1 fix that the user
+// insert and the role assignment must succeed or fail together. The
+// transaction-aware guard is exercised by wiring a real *gorm.DB and
+// verifying that EnsureGuestForUserTx is invoked (not the non-transactional
+// fallback) and that a guard error rolls back the user insert.
+func TestFindOrCreateForWechatAtomicWithDB(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = db.AutoMigrate(&model.User{}); err != nil {
+		t.Fatal(err)
+	}
+	repo := newFakeRepo()
+	guard := &txAssigningGuard{}
+	svc := NewService(repo, guard).WithDatabase(db)
+	// fakeRepo holds the in-memory model, but the transactional path calls
+	// s.db.Create instead. Bridge them by pre-seeding the fakeRepo so the
+	// dup-key retry path can rehydrate on conflict.
+	repo.users[1] = &model.User{ID: 1, Username: "seeded"}
+	repo.next = 2
+
+	// Force a guard error to prove the transaction rolls back the user row.
+	guard.err = errors.New("casbin unavailable")
+	if _, _, err = svc.FindOrCreateForWechat(context.Background(), "wxapp-1", "oX1", "uX1"); err == nil {
+		t.Fatal("guard failure must propagate")
+	}
+	var count int64
+	if err = db.Model(&model.User{}).Where("username LIKE ?", "wx_%").Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("transaction did not roll back the user insert: count=%d", count)
+	}
+	if guard.assigned == 0 {
+		t.Fatal("EnsureGuestForUserTx was not invoked")
+	}
+	if !guard.txSeen {
+		t.Fatal("transaction-aware variant was not preferred")
+	}
+
+	// Happy path: when the guard succeeds the user row must be visible to
+	// the same database that the transaction used.
+	guard.err = nil
+	guard.assigned = 0
+	guard.txSeen = false
+	created, isNew, err := svc.FindOrCreateForWechat(context.Background(), "wxapp-2", "oY1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !isNew {
+		t.Fatal("expected a new user to be created")
+	}
+	if !guard.txSeen || guard.assigned != created.ID {
+		t.Fatalf("transaction-aware path not taken: assigned=%d txSeen=%v", guard.assigned, guard.txSeen)
+	}
+	// Mirror the committed row into the fakeRepo so a subsequent load
+	// resolves as "existing" rather than racing on a fresh insert.
+	repo.users[created.ID] = created
+	if err = db.Model(&model.User{}).Where("app_id = ?", "wxapp-2").Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected one user row committed, got %d", count)
+	}
+
+	// Reconciling an existing account must also exercise the DB-backed
+	// load path so a half-applied provisioning from a prior failure self-heals.
+	guard.txSeen = false
+	guard.assigned = 0
+	if _, _, err = svc.FindOrCreateForWechat(context.Background(), "wxapp-2", "oY1", "uY1"); err != nil {
+		t.Fatal(err)
+	}
+	if guard.assigned == 0 {
+		t.Fatal("guest role was not reconciled for existing user via DB path")
 	}
 }

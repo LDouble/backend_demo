@@ -249,8 +249,15 @@ func load(path string, requirements loadRequirements) (Config, error) {
 		if strings.TrimSpace(cfg.WeChat.Endpoint) == "" {
 			return Config{}, fmt.Errorf("wechat.endpoint must be a non-empty URL")
 		}
-		if u, err := url.Parse(cfg.WeChat.Endpoint); err != nil || u.Scheme == "" || u.Host == "" {
+		u, err := url.Parse(cfg.WeChat.Endpoint)
+		if err != nil || u.Scheme == "" || u.Host == "" {
 			return Config{}, fmt.Errorf("wechat.endpoint must be a valid absolute URL")
+		}
+		// Code2Session sends appid+secret+code in the URL query, so plaintext
+		// HTTP would expose the application secret on the wire. Production
+		// must use HTTPS; loopback and test mocks can still use http://.
+		if cfg.IsProduction() && !strings.EqualFold(u.Scheme, "https") {
+			return Config{}, fmt.Errorf("wechat.endpoint must use https in production (got scheme %q)", u.Scheme)
 		}
 	}
 	return cfg, nil

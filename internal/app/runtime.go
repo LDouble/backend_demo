@@ -90,7 +90,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		return nil, err
 	}
 	configService := configcenter.NewService(mysql.NewConfigRepository(db), cipher)
-	userService := user.NewService(userRepo, permissionService)
+	userService := user.NewService(userRepo, permissionService).WithDatabase(db)
 	wechatResolver, err := wechat.NewCachingResolver(ctx, configService, "wechat", 5*time.Minute, log)
 	if err != nil {
 		return nil, fmt.Errorf("init wechat resolver: %w", err)

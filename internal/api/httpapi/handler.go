@@ -63,6 +63,7 @@ type Handler struct {
 // AuthLimiter is the distributed brute-force boundary used by auth endpoints.
 type AuthLimiter interface {
 	AllowLoginIP(context.Context, string) (bool, error)
+	AllowWeChatLogin(context.Context, string) (bool, error)
 	RecordLoginFailure(context.Context, string) (bool, error)
 	ClearLoginFailures(context.Context, string) error
 	AllowRefresh(context.Context, string, string) (bool, error)
@@ -327,7 +328,7 @@ func (h *Handler) wechatLogin(c *gin.Context) {
 	if !bind(c, &req) {
 		return
 	}
-	if !h.allowLogin(c) {
+	if !h.allowWeChatLogin(c) {
 		return
 	}
 	pair, err := h.auth.LoginByWeChat(c.Request.Context(), req.AppID, req.Code)
@@ -350,6 +351,14 @@ func (h *Handler) allowLogin(c *gin.Context) bool {
 		return true
 	}
 	allowed, err := h.authLimiter.AllowLoginIP(c.Request.Context(), h.clientIP(c.Request))
+	return h.handleRateLimit(c, allowed, err)
+}
+
+func (h *Handler) allowWeChatLogin(c *gin.Context) bool {
+	if h.authLimiter == nil {
+		return true
+	}
+	allowed, err := h.authLimiter.AllowWeChatLogin(c.Request.Context(), h.clientIP(c.Request))
 	return h.handleRateLimit(c, allowed, err)
 }
 

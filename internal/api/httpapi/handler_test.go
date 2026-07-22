@@ -61,6 +61,10 @@ func (l *accountFailureLimiter) AllowLoginIP(_ context.Context, ip string) (bool
 	return true, nil
 }
 
+func (*accountFailureLimiter) AllowWeChatLogin(context.Context, string) (bool, error) {
+	return true, nil
+}
+
 func (l *accountFailureLimiter) RecordLoginFailure(context.Context, string) (bool, error) {
 	l.failures++
 	return l.failures <= 5, nil
