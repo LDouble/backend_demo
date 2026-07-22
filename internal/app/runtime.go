@@ -4,11 +4,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/weouc-plus/campus-platform/internal/api/httpapi"
 	"github.com/weouc-plus/campus-platform/internal/core/auth"
+	"github.com/weouc-plus/campus-platform/internal/core/auth/wechat"
 	"github.com/weouc-plus/campus-platform/internal/core/bootstrap"
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
@@ -50,6 +52,7 @@ type Runtime struct {
 	Carpools    *carpoolapp.Manager
 	Trades      *tradeapp.Manager
 	Academic    *academicapp.Manager
+	WeChat      *wechat.CachingResolver
 }
 
 // Build initializes all runtime dependencies.
@@ -87,8 +90,15 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		return nil, err
 	}
 	configService := configcenter.NewService(mysql.NewConfigRepository(db), cipher)
-	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
-	userService := user.NewService(userRepo, permissionService).WithSessionRevoker(authService)
+	userService := user.NewService(userRepo, permissionService)
+	wechatResolver, err := wechat.NewCachingResolver(ctx, configService, "wechat", 5*time.Minute, log)
+	if err != nil {
+		return nil, fmt.Errorf("init wechat resolver: %w", err)
+	}
+	wechatResolver.Start(ctx)
+	wechatClient := wechat.NewHTTPClient(cfg.WeChat.Endpoint, cfg.WeChat.HTTPTimeout, wechatResolver)
+	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL, userService, wechatClient)
+	userService = userService.WithSessionRevoker(authService)
 	materialStore, err := academicinfra.NewEncryptedMaterialStore(
 		cfg.Academic.MaterialRoot,
 		cfg.Secret.AcademicMaterialKey,
@@ -143,6 +153,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	runtime.Carpools = carpoolService
 	runtime.Trades = tradeService
 	runtime.Academic = academicService
+	runtime.WeChat = wechatResolver
 	initialized = true
 	return runtime, nil
 }
@@ -152,6 +163,9 @@ func (r *Runtime) Close() error {
 	var first error
 	if r.Permissions != nil {
 		r.Permissions.StopSync()
+	}
+	if r.WeChat != nil {
+		r.WeChat.Stop()
 	}
 	if r.Redis != nil {
 		if err := r.Redis.Close(); err != nil {

@@ -52,7 +52,7 @@ func (h *Handler) submitStudentCardVerification(c *gin.Context) {
 		c.GetUint64(userIDKey),
 		request.RealName,
 		request.StudentNo,
-		request.MaterialId,
+		request.MaterialID,
 	)
 	if err != nil {
 		failure(c, err)

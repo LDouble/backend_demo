@@ -25,6 +25,11 @@ paths:
       operationId: Refresh
       requestBody: {$ref: "#/components/requestBodies/Refresh"}
       responses: {"200": {$ref: "#/components/responses/TokenPairResponse"}, "401": {$ref: "#/components/responses/Error"}}
+  /api/v1/auth/wechat/login:
+    post:
+      operationId: WechatLogin
+      requestBody: {$ref: "#/components/requestBodies/WechatLogin"}
+      responses: {"200": {$ref: "#/components/responses/TokenPairResponse"}, "401": {$ref: "#/components/responses/Error"}, "503": {$ref: "#/components/responses/Error"}}
   /api/v1/auth/logout:
     post:
       operationId: Logout
@@ -2454,6 +2459,7 @@ components:
     Refresh: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RefreshRequest"}}}}
     CreateUser: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateUserRequest"}}}}
     UpdateUser: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateUserRequest"}}}}
+    WechatLogin: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/WechatLoginRequest"}}}}
   responses:
     Success:
       description: Successful response
@@ -2612,6 +2618,12 @@ components:
       type: object
       required: [username, password]
       properties: {username: {type: string, minLength: 3, maxLength: 32}, password: {type: string, minLength: 12}}
+    WechatLoginRequest:
+      type: object
+      required: [app_id, code]
+      properties:
+        app_id: {type: string, minLength: 1, maxLength: 64}
+        code: {type: string, minLength: 1, maxLength: 256}
     RefreshRequest:
       type: object
       required: [refresh_token]

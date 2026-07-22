@@ -16,6 +16,9 @@ const (
 type User struct {
 	ID             uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
 	Username       string    `gorm:"size:32;uniqueIndex;not null" json:"username"`
+	AppID          *string   `gorm:"size:64;uniqueIndex:uk_users_app_open" json:"app_id,omitempty"`
+	OpenID         *string   `gorm:"size:64;uniqueIndex:uk_users_app_open" json:"open_id,omitempty"`
+	UnionID        *string   `gorm:"size:64;index" json:"union_id,omitempty"`
 	PasswordHash   string    `gorm:"size:255;not null" json:"-"`
 	Status         string    `gorm:"size:16;not null;index" json:"status"`
 	SessionVersion uint64    `gorm:"not null;default:1" json:"-"`

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/weouc-plus/campus-platform/internal/core/apperror"
+	"github.com/weouc-plus/campus-platform/internal/core/auth/wechat"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
 	"gorm.io/gorm"
@@ -97,6 +99,32 @@ func (m *memorySession) DeleteUser(_ context.Context, uid uint64) error {
 	}
 	return nil
 }
+
+// fakeWeChatUsers is a minimal WeChatUserFinder used by WeChat login tests.
+type fakeWeChatUsers struct{ u *model.User }
+
+func (f fakeWeChatUsers) FindOrCreateForWechat(_ context.Context, _, _, _ string) (*model.User, bool, error) {
+	return f.u, false, nil
+}
+
+// fakeWeChatClient is a minimal WeChatClient used by WeChat login tests.
+type fakeWeChatClient struct {
+	session wechat.Session
+	err     error
+}
+
+func (f fakeWeChatClient) Code2Session(_ context.Context, _, _ string) (wechat.Session, error) {
+	if f.err != nil {
+		return wechat.Session{}, f.err
+	}
+	return f.session, nil
+}
+
+// newTestService builds a Service with the legacy defaults (no WeChat wiring).
+// WeChat-specific tests construct their own Service directly.
+func newTestService(users UserRepository, sessions SessionStore) *Service {
+	return NewService(users, sessions, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour, nil, nil)
+}
 func TestSessionLifecycle(t *testing.T) {
 	hash, err := user.HashPassword("long-enough-password")
 	if err != nil {
@@ -104,7 +132,7 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 	repo := authUsers{u: &model.User{ID: 7, Username: "admin", PasswordHash: hash, Status: model.UserActive}}
 	store := &memorySession{}
-	svc := NewService(repo, store, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	svc := newTestService(repo, store)
 	pair, err := svc.Login(context.Background(), "admin", "long-enough-password")
 	if err != nil {
 		t.Fatal(err)
@@ -134,7 +162,7 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 }
 func TestLoginRejectsInvalidUser(t *testing.T) {
-	svc := NewService(authUsers{u: &model.User{ID: 1, Username: "admin", PasswordHash: "bad", Status: model.UserActive}}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	svc := newTestService(authUsers{u: &model.User{ID: 1, Username: "admin", PasswordHash: "bad", Status: model.UserActive}}, &memorySession{})
 	if _, err := svc.Login(context.Background(), "admin", "wrong"); err == nil {
 		t.Fatal("expected invalid credentials")
 	}
@@ -142,14 +170,7 @@ func TestLoginRejectsInvalidUser(t *testing.T) {
 
 func TestLoginPropagatesRepositoryFailure(t *testing.T) {
 	repositoryErr := errors.New("database unavailable")
-	service := NewService(
-		failingAuthUsers{err: repositoryErr},
-		&memorySession{},
-		"issuer",
-		[]byte("0123456789abcdef0123456789abcdef"),
-		time.Minute,
-		time.Hour,
-	)
+	service := newTestService(failingAuthUsers{err: repositoryErr}, &memorySession{})
 	if _, err := service.Login(context.Background(), "admin", "password"); !errors.Is(err, repositoryErr) {
 		t.Fatalf("Login error=%v", err)
 	}
@@ -158,7 +179,7 @@ func TestLoginPropagatesRepositoryFailure(t *testing.T) {
 func TestDisabledAndInvalidTokens(t *testing.T) {
 	hash, _ := user.HashPassword("long-enough-password")
 	u := &model.User{ID: 1, Username: "admin", PasswordHash: hash, Status: model.UserDisabled}
-	svc := NewService(authUsers{u: u}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	svc := newTestService(authUsers{u: u}, &memorySession{})
 	if _, err := svc.Login(context.Background(), "admin", "long-enough-password"); err == nil {
 		t.Fatal("disabled login must fail")
 	}
@@ -176,7 +197,7 @@ func TestSessionStoreErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	repository := authUsers{u: &model.User{ID: 1, Username: "admin", PasswordHash: hash, Status: model.UserActive}}
-	service := NewService(repository, failingSession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	service := newTestService(repository, failingSession{})
 	if _, err = service.Login(context.Background(), "admin", "long-enough-password"); err == nil {
 		t.Fatal("session create error must propagate")
 	}
@@ -195,14 +216,7 @@ func TestRefreshFamilyAndUserRevocation(t *testing.T) {
 	}
 	repository := authUsers{u: &model.User{ID: 8, Username: "member", PasswordHash: hash, Status: model.UserActive}}
 	store := &memorySession{}
-	service := NewService(
-		repository,
-		store,
-		"issuer",
-		[]byte("0123456789abcdef0123456789abcdef"),
-		time.Minute,
-		time.Hour,
-	)
+	service := newTestService(repository, store)
 	pair, err := service.Login(context.Background(), "member", "long-enough-password")
 	if err != nil {
 		t.Fatal(err)
@@ -229,7 +243,7 @@ func TestSessionVersionInvalidatesTokensWithoutRedisDeletion(t *testing.T) {
 	}
 	repository := authUsers{u: &model.User{ID: 9, Username: "member", PasswordHash: hash, Status: model.UserActive, SessionVersion: 1}}
 	store := &memorySession{}
-	service := NewService(repository, store, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	service := newTestService(repository, store)
 	pair, err := service.Login(context.Background(), "member", "long-enough-password")
 	if err != nil {
 		t.Fatal(err)
@@ -248,7 +262,7 @@ func TestSessionVersionInvalidatesTokensWithoutRedisDeletion(t *testing.T) {
 
 func TestAuthenticateAndRefreshRejectNilRepositoryResults(t *testing.T) {
 	store := &memorySession{sid: "session", exists: true}
-	service := NewService(nilAuthUsers{}, store, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	service := newTestService(nilAuthUsers{}, store)
 	pair, refreshHash, err := service.issue(1, store.sid, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -263,7 +277,7 @@ func TestAuthenticateAndRefreshRejectNilRepositoryResults(t *testing.T) {
 }
 
 func TestParseRequiresExpiration(t *testing.T) {
-	service := NewService(authUsers{}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	service := newTestService(authUsers{}, &memorySession{})
 	now := time.Now().UTC()
 	claims := Claims{
 		Type:           accessType,
@@ -282,5 +296,59 @@ func TestParseRequiresExpiration(t *testing.T) {
 	}
 	if _, err = service.parse(raw, accessType); err == nil {
 		t.Fatal("token without expiration was accepted")
+	}
+}
+
+func TestLoginByWeChatSuccess(t *testing.T) {
+	u := &model.User{ID: 17, Username: "wx_member", Status: model.UserActive}
+	users := fakeWeChatUsers{u: u}
+	client := fakeWeChatClient{session: wechat.Session{OpenID: "oX1", UnionID: "uX1"}}
+	store := &memorySession{}
+	svc := NewService(nilAuthUsers{}, store, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour, users, client)
+	pair, err := svc.LoginByWeChat(context.Background(), "wxapp-1", "code-1")
+	if err != nil {
+		t.Fatalf("LoginByWeChat: %v", err)
+	}
+	if pair.AccessToken == "" || pair.RefreshToken == "" {
+		t.Fatalf("expected non-empty token pair, got %+v", pair)
+	}
+	if store.uid != u.ID {
+		t.Fatalf("session was not bound to the wechat user, got uid=%d", store.uid)
+	}
+}
+
+func TestLoginByWeChatDisabled(t *testing.T) {
+	users := fakeWeChatUsers{u: &model.User{ID: 1, Username: "wx_disabled", Status: model.UserDisabled}}
+	client := fakeWeChatClient{session: wechat.Session{OpenID: "oX1"}}
+	svc := NewService(nilAuthUsers{}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour, users, client)
+	_, err := svc.LoginByWeChat(context.Background(), "wxapp-1", "code-1")
+	if err == nil {
+		t.Fatal("disabled WeChat user must not log in")
+	}
+	if appErr, ok := apperror.As(err); !ok || appErr.Code != "user_disabled" {
+		t.Fatalf("expected user_disabled error, got %v", err)
+	}
+}
+
+func TestLoginByWeChatInvalidCode(t *testing.T) {
+	client := fakeWeChatClient{err: apperror.New(401, "invalid_wechat_code", "微信登录失败")}
+	svc := NewService(nilAuthUsers{}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour, fakeWeChatUsers{}, client)
+	_, err := svc.LoginByWeChat(context.Background(), "wxapp-1", "bad")
+	if err == nil {
+		t.Fatal("invalid code must surface an error")
+	}
+	if appErr, ok := apperror.As(err); !ok || appErr.Code != "invalid_wechat_code" {
+		t.Fatalf("expected invalid_wechat_code error, got %v", err)
+	}
+}
+
+func TestLoginByWeChatMissingWiring(t *testing.T) {
+	svc := NewService(nilAuthUsers{}, &memorySession{}, "issuer", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour, nil, nil)
+	_, err := svc.LoginByWeChat(context.Background(), "wxapp-1", "code")
+	if err == nil {
+		t.Fatal("LoginByWeChat without wiring must fail")
+	}
+	if appErr, ok := apperror.As(err); !ok || appErr.Code != "wechat_disabled" {
+		t.Fatalf("expected wechat_disabled error, got %v", err)
 	}
 }

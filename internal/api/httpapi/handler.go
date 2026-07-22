@@ -322,6 +322,29 @@ func (h *Handler) refresh(c *gin.Context) {
 	success(c, 200, pair)
 }
 
+func (h *Handler) wechatLogin(c *gin.Context) {
+	var req generated.WechatLoginRequest
+	if !bind(c, &req) {
+		return
+	}
+	if !h.allowLogin(c) {
+		return
+	}
+	pair, err := h.auth.LoginByWeChat(c.Request.Context(), req.AppID, req.Code)
+	if err != nil {
+		if appErr, ok := apperror.As(err); ok && appErr.Code == "invalid_wechat_code" {
+			if !h.recordLoginFailure(c, "wechat:"+req.AppID) {
+				return
+			}
+		}
+		failure(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store, private")
+	c.Header("Pragma", "no-cache")
+	success(c, 200, pair)
+}
+
 func (h *Handler) allowLogin(c *gin.Context) bool {
 	if h.authLimiter == nil {
 		return true

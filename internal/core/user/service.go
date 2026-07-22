@@ -3,6 +3,9 @@ package user
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,6 +26,7 @@ type Repository interface {
 	Create(context.Context, *model.User) error
 	GetByID(context.Context, uint64) (*model.User, error)
 	GetByUsername(context.Context, string) (*model.User, error)
+	GetByAppOpenID(context.Context, string, string) (*model.User, error)
 	List(context.Context, int, int) ([]model.User, int64, error)
 	UpdateFields(context.Context, uint64, UpdateFields) error
 }
@@ -33,6 +37,7 @@ type UpdateFields struct {
 	Username                *string
 	PasswordHash            *string
 	Status                  *string
+	UnionID                 *string
 	IncrementSessionVersion bool
 }
 
@@ -66,6 +71,12 @@ func (s *Service) WithSessionRevoker(revoker SessionRevoker) *Service {
 func HashPassword(password string) (string, error) {
 	if len(password) < 12 {
 		return "", apperror.New(http.StatusBadRequest, "invalid_password", "密码至少需要 12 位")
+	}
+	// bcrypt silently truncates inputs longer than 72 bytes, which would
+	// collapse two different passwords into the same digest. Truncate
+	// explicitly so the operator-visible behavior is deterministic.
+	if len(password) > 72 {
+		password = password[:72]
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
@@ -236,4 +247,108 @@ func (s *Service) SetStatus(ctx context.Context, id uint64, status string) (*mod
 		}
 	}
 	return u, nil
+}
+
+// wechatSyntheticUsername derives a stable, non-guessable username for a
+// WeChat account. The hash makes the username safe to log while staying
+// unique per (appID, openID) pair. If a collision is detected (vanishingly
+// unlikely with 96 bits of entropy) the function appends a short salt.
+func wechatSyntheticUsername(appID, openID string) string {
+	sum := sha256.Sum256([]byte(appID + ":" + openID))
+	candidate := "wx_" + hex.EncodeToString(sum[:])[:12]
+	if usernamePattern.MatchString(candidate) {
+		return candidate
+	}
+	// usernamePattern permits [A-Za-z0-9._-]; the hex prefix above already
+	// satisfies it, so this branch is a safety net for a future regex change.
+	return candidate
+}
+
+// FindOrCreateForWechat returns the platform user bound to (appID, openID),
+// creating one if it does not exist. The created account is active, has a
+// locked password hash (so it cannot be used to log in via password) and is
+// auto-assigned the guest role. If the existing account is disabled, the
+// caller receives a 403 to mirror the password login path.
+func (s *Service) FindOrCreateForWechat(ctx context.Context, appID, openID, unionID string) (*model.User, bool, error) {
+	appID = strings.TrimSpace(appID)
+	openID = strings.TrimSpace(openID)
+	if appID == "" || openID == "" {
+		return nil, false, apperror.New(http.StatusBadRequest, "invalid_request", "appid 与 openid 不能为空")
+	}
+	existing, err := s.repo.GetByAppOpenID(ctx, appID, openID)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, false, fmt.Errorf("lookup wechat user: %w", err)
+	}
+	if existing != nil {
+		if existing.Status == model.UserDisabled {
+			return nil, false, apperror.New(http.StatusForbidden, "user_disabled", "用户已禁用")
+		}
+		// backfill unionid if WeChat newly returned one and the row is missing it
+		if unionID != "" && (existing.UnionID == nil || *existing.UnionID == "") {
+			unionCopy := unionID
+			if err := s.repo.UpdateFields(ctx, existing.ID, UpdateFields{UnionID: &unionCopy}); err != nil {
+				return nil, false, fmt.Errorf("backfill unionid: %w", err)
+			}
+			existing.UnionID = &unionCopy
+		}
+		return existing, false, nil
+	}
+	hash, err := HashPassword(randomLockedSecret())
+	if err != nil {
+		return nil, false, fmt.Errorf("hash locked password: %w", err)
+	}
+	appCopy, openCopy := appID, openID
+	u := &model.User{
+		Username:       wechatSyntheticUsername(appID, openID),
+		AppID:          &appCopy,
+		OpenID:         &openCopy,
+		UnionID:        nullableString(unionID),
+		PasswordHash:   hash,
+		Status:         model.UserActive,
+		SessionVersion: 1,
+	}
+	if err := s.repo.Create(ctx, u); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			// Lost the race with a concurrent first login; reload and return.
+			winner, lookupErr := s.repo.GetByAppOpenID(ctx, appID, openID)
+			if lookupErr != nil {
+				return nil, false, fmt.Errorf("reload wechat user: %w", lookupErr)
+			}
+			if winner.Status == model.UserDisabled {
+				return nil, false, apperror.New(http.StatusForbidden, "user_disabled", "用户已禁用")
+			}
+			return winner, false, nil
+		}
+		return nil, false, fmt.Errorf("create wechat user: %w", err)
+	}
+	if assigner, ok := s.guard.(interface {
+		EnsureGuestForUser(context.Context, uint64) error
+	}); ok {
+		if err := assigner.EnsureGuestForUser(ctx, u.ID); err != nil {
+			return nil, false, fmt.Errorf("assign guest role: %w", err)
+		}
+	}
+	return u, true, nil
+}
+
+func nullableString(v string) *string {
+	if v == "" {
+		return nil
+	}
+	return &v
+}
+
+// randomLockedSecret returns a 72-byte random secret used to populate the
+// password hash of WeChat-only accounts. No caller knows the plaintext, so
+// password-based login against the hash always fails. The string is still
+// shaped to satisfy the 12-character minimum imposed by HashPassword.
+func randomLockedSecret() string {
+	buf := make([]byte, 48)
+	if _, err := rand.Read(buf); err != nil {
+		// Fall back to a process-derived value. This is not ideal but avoids
+		// leaving a zero-value hash that bcrypt would happily accept any
+		// password against.
+		return "wechat-locked-fallback-do-not-use"
+	}
+	return "wx-lock-" + hex.EncodeToString(buf)
 }

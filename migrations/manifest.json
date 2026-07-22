@@ -160,6 +160,14 @@
     {
       "path": "migrations/20260722111033_add_config_json_visibility.up.sql",
       "sha256": "3bf3152261b7410ab8da90325665b0116442b1dfde1341d39b3f63cf96cfa885"
+    },
+    {
+      "path": "migrations/20260722161337_wechat_auth.down.sql",
+      "sha256": "33183e1aa484303f55a63ab50d384bf48516f821837e0c0913fdd5d286bb8bb0"
+    },
+    {
+      "path": "migrations/20260722161337_wechat_auth.up.sql",
+      "sha256": "1ff8ad0b4a80b1b69c76528c3994ceda27a6103c74308ea7a3fd381845777ed1"
     }
   ]
 }

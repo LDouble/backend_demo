@@ -22,3 +22,7 @@ worker:
   redis_db: 1
   concurrency: 10
   poll_interval: 1s
+wechat:
+  # appid / secret 由配置中心管理（group=wechat, key=<appid>, encrypted=true）
+  endpoint: https://api.weixin.qq.com
+  http_timeout: 3s

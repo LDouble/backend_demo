@@ -4,5 +4,6 @@
 /.env
 /.codegraph/
 /mise.toml
+/.trae/
 *.log
 .DS_Store

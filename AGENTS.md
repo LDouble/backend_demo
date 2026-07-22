@@ -38,7 +38,7 @@ make env && make compose-up
 
 ## 模块生成规范
 
-新增业务模块先定义 `schemas/<module>.yaml`，再执行 `campusctl module validate` 和 `campusctl generate module`。v1 仅用于单实体兼容，新增模块使用 v2，并声明联合索引、主实体、外键依赖和 `operations`。HTTP operation 是模块 API 的单一事实来源；模块 OpenAPI、Casbin 权限、全局 HTTP 适配器及最终 `api/openapi.yaml` 均由它派生，禁止重复手写路由或权限配置，也禁止绕过 OpenAPI 校验或 Casbin 入口鉴权。
+新增模块使用 v2，并声明联合索引、主实体、外键依赖和 `operations`。HTTP operation 是模块 API 的单一事实来源；模块 OpenAPI、Casbin 权限、全局 HTTP 适配器及最终 `api/openapi.yaml` 均由它派生，禁止重复手写路由或权限配置，也禁止绕过 OpenAPI 校验或 Casbin 入口鉴权。
 
 首次生成后，日常修改执行 `make generate`，提交前执行 `make generate-check` 和 `make migration-check`。允许重新生成 `.gen.go`、`api/modules/*.yaml`、`permissions/modules/*.json`、HTTP adapter 和全局 OpenAPI；禁止手工修改生成文件或覆盖 `domain/rule.go` 等人工扩展点。业务 Handler、领域规则和复杂事务仍须手写。普通生成不得创建正式迁移，迁移只能通过 lifecycle 命令创建草案并 promote。
 

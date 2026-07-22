@@ -829,7 +829,7 @@ func newHandlerFixtureWithLimiter(t *testing.T, limiter httpapi.AuthLimiter) *ha
 		t.Fatal(err)
 	}
 	sessions := &memorySessionStore{session: make(map[string]string)}
-	authService := auth.NewService(platformmysql.NewUserRepository(db), sessions, "test", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour)
+	authService := auth.NewService(platformmysql.NewUserRepository(db), sessions, "test", []byte("0123456789abcdef0123456789abcdef"), time.Minute, time.Hour, nil, nil)
 	users.WithSessionRevoker(authService)
 	activities := activityapp.NewManager(activityinfra.NewStore(db, cipher))
 	handler := httpapi.New(authService, users, permissions, configcenter.NewService(platformmysql.NewConfigRepository(db), cipher), func(context.Context) error { return nil }, func(context.Context) error { return nil }, zap.NewNop()).

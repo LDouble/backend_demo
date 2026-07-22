@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"gorm.io/gorm"
@@ -80,6 +81,18 @@ func (f *fakeRepo) GetByUsername(_ context.Context, name string) (*model.User, e
 	}
 	return nil, gorm.ErrRecordNotFound
 }
+func (f *fakeRepo) GetByAppOpenID(_ context.Context, appID, openID string) (*model.User, error) {
+	for _, u := range f.users {
+		if u.AppID == nil || u.OpenID == nil {
+			continue
+		}
+		if *u.AppID == appID && *u.OpenID == openID {
+			clone := *u
+			return &clone, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
 func (f *fakeRepo) List(_ context.Context, _, _ int) ([]model.User, int64, error) {
 	return nil, int64(len(f.users)), nil
 }
@@ -93,6 +106,10 @@ func (f *fakeRepo) UpdateFields(_ context.Context, id uint64, changes UpdateFiel
 	}
 	if changes.Status != nil {
 		u.Status = *changes.Status
+	}
+	if changes.UnionID != nil {
+		value := *changes.UnionID
+		u.UnionID = &value
 	}
 	if changes.IncrementSessionVersion {
 		u.SessionVersion++
@@ -288,5 +305,93 @@ func TestSessionRevocationIsDeferredUntilCommit(t *testing.T) {
 	}
 	if len(revoker.users) != 1 || revoker.users[0] != created.ID {
 		t.Fatalf("sessions not revoked after commit: %v", revoker.users)
+	}
+}
+
+func TestFindOrCreateForWechatCreatesNewUser(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	guard := &assigningGuard{}
+	svc := NewService(repo, guard)
+
+	u, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "uX1")
+	if err != nil {
+		t.Fatalf("FindOrCreateForWechat: %v", err)
+	}
+	if !created {
+		t.Fatal("expected a new user to be created")
+	}
+	if u.AppID == nil || *u.AppID != "wxapp-1" {
+		t.Fatalf("AppID not persisted: %+v", u.AppID)
+	}
+	if u.OpenID == nil || *u.OpenID != "oX1" {
+		t.Fatalf("OpenID not persisted: %+v", u.OpenID)
+	}
+	if u.UnionID == nil || *u.UnionID != "uX1" {
+		t.Fatalf("UnionID not persisted: %+v", u.UnionID)
+	}
+	if u.Status != model.UserActive {
+		t.Fatalf("status=%q", u.Status)
+	}
+	if u.PasswordHash == "" || CheckPassword(u.PasswordHash, "anything") {
+		t.Fatal("locked password must reject any candidate")
+	}
+	if guard.assigned != u.ID {
+		t.Fatalf("guest role not assigned, got %d", guard.assigned)
+	}
+	if _, _, err = svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "uX1"); err != nil {
+		t.Fatalf("second lookup: %v", err)
+	} else if len(repo.users) != 1 {
+		t.Fatalf("expected single account, got %d", len(repo.users))
+	}
+}
+
+func TestFindOrCreateForWechatBackfillsUnionID(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	svc := NewService(repo, nil)
+
+	first, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "")
+	if err != nil || !created {
+		t.Fatalf("seed: created=%v err=%v", created, err)
+	}
+	if first.UnionID != nil {
+		t.Fatalf("expected nil unionid on first login, got %+v", first.UnionID)
+	}
+	second, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "uX1")
+	if err != nil || created {
+		t.Fatalf("expected existing user, got created=%v err=%v", created, err)
+	}
+	if second.UnionID == nil || *second.UnionID != "uX1" {
+		t.Fatalf("UnionID not backfilled: %+v", second.UnionID)
+	}
+}
+
+func TestFindOrCreateForWechatRejectsDisabled(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	svc := NewService(repo, nil)
+	u, _, err := svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "uX1")
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	disabled := model.UserDisabled
+	if err = repo.UpdateFields(ctx, u.ID, UpdateFields{Status: &disabled}); err != nil {
+		t.Fatalf("disable: %v", err)
+	}
+	if _, _, err = svc.FindOrCreateForWechat(ctx, "wxapp-1", "oX1", "uX1"); err == nil {
+		t.Fatal("disabled wechat user must not log in")
+	} else if appErr, ok := apperror.As(err); !ok || appErr.Code != "user_disabled" {
+		t.Fatalf("expected user_disabled, got %v", err)
+	}
+}
+
+func TestFindOrCreateForWechatRejectsEmptyInput(t *testing.T) {
+	svc := NewService(newFakeRepo(), nil)
+	if _, _, err := svc.FindOrCreateForWechat(context.Background(), "", "oX1", ""); err == nil {
+		t.Fatal("empty appid must be rejected")
+	}
+	if _, _, err := svc.FindOrCreateForWechat(context.Background(), "wxapp-1", "", ""); err == nil {
+		t.Fatal("empty openid must be rejected")
 	}
 }
