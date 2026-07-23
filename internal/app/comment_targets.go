@@ -7,6 +7,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
 	campuscircleapp "github.com/weouc-plus/campus-platform/internal/modules/campus_circle/application"
+	campuscircledomain "github.com/weouc-plus/campus-platform/internal/modules/campus_circle/domain"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	commentapp "github.com/weouc-plus/campus-platform/internal/modules/comment/application"
 	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
@@ -73,7 +74,7 @@ func (r commentTargetResolver) Resolve(
 		if err != nil {
 			return commentapp.Target{}, err
 		}
-		if target.Post.ID != targetID {
+		if target.Post.ID != targetID || target.Post.Status != campuscircledomain.PostStatusApproved {
 			return commentapp.Target{}, commentTargetNotFound()
 		}
 		return commentapp.Target{OwnerID: target.Post.AuthorId}, nil

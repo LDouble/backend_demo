@@ -43,7 +43,7 @@ func TestCommentTargetResolverCampusCirclePost(t *testing.T) {
 		{
 			name: "visible post",
 			item: campuscircleapp.Item{Post: campuscircledomain.CampusCirclePost{
-				ID: 7, AuthorId: 42,
+				ID: 7, AuthorId: 42, Status: campuscircledomain.PostStatusApproved,
 			}},
 			targetID:  7,
 			wantOwner: 42,
@@ -51,6 +51,14 @@ func TestCommentTargetResolverCampusCirclePost(t *testing.T) {
 		{
 			name:     "mismatched post",
 			item:     campuscircleapp.Item{Post: campuscircledomain.CampusCirclePost{ID: 8}},
+			targetID: 7,
+			wantCode: "comment_target_not_found",
+		},
+		{
+			name: "non-approved post",
+			item: campuscircleapp.Item{Post: campuscircledomain.CampusCirclePost{
+				ID: 7, AuthorId: 42, Status: campuscircledomain.PostStatusPendingReview,
+			}},
 			targetID: 7,
 			wantCode: "comment_target_not_found",
 		},
