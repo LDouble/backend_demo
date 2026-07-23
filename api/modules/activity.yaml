@@ -42,7 +42,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityPageResponse"
     post:
       operationId: CreateActivity
       tags: [activity]
@@ -184,7 +184,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityRegistrationPageResponse"
   /api/v1/activities/{id}:
     get:
       operationId: GetActivity
@@ -197,7 +197,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "404":
           $ref: "#/components/responses/Error"
     patch:
@@ -325,7 +325,7 @@ paths:
             maxLength: 128
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityRegistrationResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/activities/{id}/registrations/me:
@@ -360,7 +360,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityRegistrationResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/activities/{id}/submit-review:
@@ -596,7 +596,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/approve:
@@ -633,7 +633,7 @@ paths:
                   type: string
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/cancel:
@@ -668,7 +668,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/finish:
@@ -703,7 +703,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/publish:
@@ -738,7 +738,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/reject:
@@ -776,7 +776,7 @@ paths:
                   type: string
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/submit-review:
@@ -811,6 +811,281 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
+components:
+  responses:
+      ActivityPageResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ActivityPageResponseBody'
+          description: 活动分页
+      ActivityRegistrationPageResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ActivityRegistrationPageResponseBody'
+          description: 我的活动报名分页
+      ActivityRegistrationResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ActivityRegistrationResponseBody'
+          description: 活动报名操作结果
+      ActivityResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ActivityResponseBody'
+          description: 活动
+  schemas:
+      ActivityPageResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ActivityViewPage'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ActivityRegistration:
+          properties:
+              activity_id:
+                  format: uint64
+                  type: integer
+              cancelled_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              id:
+                  format: uint64
+                  type: integer
+              registered_at:
+                  format: date-time
+                  type: string
+              registration_version:
+                  format: uint64
+                  type: integer
+              status:
+                  type: string
+          required:
+              - id
+              - activity_id
+              - status
+              - registered_at
+              - cancelled_at
+              - registration_version
+          type: object
+      ActivityRegistrationPage:
+          properties:
+              items:
+                  items:
+                      $ref: '#/components/schemas/MyActivityRegistration'
+                  type: array
+              page:
+                  minimum: 1
+                  type: integer
+              page_size:
+                  maximum: 100
+                  minimum: 1
+                  type: integer
+              total:
+                  format: int64
+                  type: integer
+          required:
+              - items
+              - page
+              - page_size
+              - total
+          type: object
+      ActivityRegistrationPageResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ActivityRegistrationPage'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ActivityRegistrationResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ActivityRegistrationResult'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ActivityRegistrationResult:
+          properties:
+              activity:
+                  $ref: '#/components/schemas/ActivityView'
+              registration:
+                  $ref: '#/components/schemas/ActivityRegistration'
+          required:
+              - registration
+              - activity
+          type: object
+      ActivityResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ActivityView'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ActivityView:
+          properties:
+              available_actions:
+                  items:
+                      $ref: '#/components/schemas/ActivityViewerAction'
+                  type: array
+              body:
+                  type: string
+              capacity:
+                  format: int64
+                  type: integer
+              contact:
+                  type: string
+              contact_type:
+                  type: string
+              created_at:
+                  format: date-time
+                  type: string
+              created_by:
+                  format: uint64
+                  type: integer
+              end_at:
+                  format: date-time
+                  type: string
+              id:
+                  format: uint64
+                  type: integer
+              location:
+                  type: string
+              registered_count:
+                  format: int64
+                  type: integer
+              review_comment:
+                  nullable: true
+                  type: string
+              review_status:
+                  type: string
+              signup_end_at:
+                  format: date-time
+                  type: string
+              signup_start_at:
+                  format: date-time
+                  type: string
+              start_at:
+                  format: date-time
+                  type: string
+              status:
+                  type: string
+              summary:
+                  type: string
+              title:
+                  type: string
+              updated_at:
+                  format: date-time
+                  type: string
+              updated_by:
+                  format: uint64
+                  type: integer
+              version:
+                  format: uint64
+                  type: integer
+              viewer_relation:
+                  type: string
+          required:
+              - id
+              - title
+              - summary
+              - body
+              - location
+              - signup_start_at
+              - signup_end_at
+              - start_at
+              - end_at
+              - capacity
+              - registered_count
+              - status
+              - review_status
+              - created_by
+              - updated_by
+              - contact_type
+              - contact
+              - version
+              - created_at
+              - updated_at
+              - viewer_relation
+              - available_actions
+          type: object
+      ActivityViewPage:
+          properties:
+              items:
+                  items:
+                      $ref: '#/components/schemas/ActivityView'
+                  type: array
+              page:
+                  minimum: 1
+                  type: integer
+              page_size:
+                  maximum: 100
+                  minimum: 1
+                  type: integer
+              total:
+                  format: int64
+                  type: integer
+          required:
+              - items
+              - page
+              - page_size
+              - total
+          type: object
+      ActivityViewerAction:
+          enum:
+              - edit
+              - submit_review
+              - cancel
+              - register
+              - cancel_registration
+              - verify_academic
+          type: string
+      MyActivityRegistration:
+          properties:
+              activity:
+                  $ref: '#/components/schemas/ActivityView'
+              activity_id:
+                  format: uint64
+                  type: integer
+              cancelled_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              registered_at:
+                  format: date-time
+                  type: string
+              registration_id:
+                  format: uint64
+                  type: integer
+              registration_version:
+                  format: uint64
+                  type: integer
+              status:
+                  type: string
+          required:
+              - registration_id
+              - activity_id
+              - status
+              - registered_at
+              - registration_version
+              - activity
+          type: object

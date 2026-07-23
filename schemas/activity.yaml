@@ -43,6 +43,110 @@ entities:
     foreign_keys:
       - {field: activity_id, references: activities.id, on_delete: CASCADE}
 crud: [create, get, list, update]
+components:
+  responses:
+    ActivityResponse:
+      description: 活动
+      content: {application/json: {schema: {$ref: "#/components/schemas/ActivityResponseBody"}}}
+    ActivityPageResponse:
+      description: 活动分页
+      content: {application/json: {schema: {$ref: "#/components/schemas/ActivityPageResponseBody"}}}
+    ActivityRegistrationResponse:
+      description: 活动报名操作结果
+      content: {application/json: {schema: {$ref: "#/components/schemas/ActivityRegistrationResponseBody"}}}
+    ActivityRegistrationPageResponse:
+      description: 我的活动报名分页
+      content: {application/json: {schema: {$ref: "#/components/schemas/ActivityRegistrationPageResponseBody"}}}
+  schemas:
+    ActivityViewerAction:
+      type: string
+      enum: [edit, submit_review, cancel, register, cancel_registration, verify_academic]
+    ActivityView:
+      type: object
+      required: [id, title, summary, body, location, signup_start_at, signup_end_at, start_at, end_at, capacity, registered_count, status, review_status, created_by, updated_by, contact_type, contact, version, created_at, updated_at, viewer_relation, available_actions]
+      properties:
+        id: {type: integer, format: uint64}
+        title: {type: string}
+        summary: {type: string}
+        body: {type: string}
+        location: {type: string}
+        signup_start_at: {type: string, format: date-time}
+        signup_end_at: {type: string, format: date-time}
+        start_at: {type: string, format: date-time}
+        end_at: {type: string, format: date-time}
+        capacity: {type: integer, format: int64}
+        registered_count: {type: integer, format: int64}
+        status: {type: string}
+        review_status: {type: string}
+        review_comment: {type: string, nullable: true}
+        created_by: {type: integer, format: uint64}
+        updated_by: {type: integer, format: uint64}
+        contact_type: {type: string}
+        contact: {type: string}
+        version: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        viewer_relation: {type: string}
+        available_actions: {type: array, items: {$ref: "#/components/schemas/ActivityViewerAction"}}
+    ActivityViewPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/ActivityView"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    ActivityRegistration:
+      type: object
+      required: [id, activity_id, status, registered_at, cancelled_at, registration_version]
+      properties:
+        id: {type: integer, format: uint64}
+        activity_id: {type: integer, format: uint64}
+        status: {type: string}
+        registered_at: {type: string, format: date-time}
+        cancelled_at: {type: string, format: date-time, nullable: true}
+        registration_version: {type: integer, format: uint64}
+    ActivityRegistrationResult:
+      type: object
+      required: [registration, activity]
+      properties:
+        registration: {$ref: "#/components/schemas/ActivityRegistration"}
+        activity: {$ref: "#/components/schemas/ActivityView"}
+    MyActivityRegistration:
+      type: object
+      required: [registration_id, activity_id, status, registered_at, registration_version, activity]
+      properties:
+        registration_id: {type: integer, format: uint64}
+        activity_id: {type: integer, format: uint64}
+        status: {type: string}
+        registered_at: {type: string, format: date-time}
+        cancelled_at: {type: string, format: date-time, nullable: true}
+        registration_version: {type: integer, format: uint64}
+        activity: {$ref: "#/components/schemas/ActivityView"}
+    ActivityRegistrationPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/MyActivityRegistration"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    ActivityResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/ActivityView"}, request_id: {type: string}}
+    ActivityPageResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/ActivityViewPage"}, request_id: {type: string}}
+    ActivityRegistrationResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/ActivityRegistrationResult"}, request_id: {type: string}}
+    ActivityRegistrationPageResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/ActivityRegistrationPage"}, request_id: {type: string}}
 operations:
   - operation_id: CreateActivity
     default_roles: [member]
@@ -190,7 +294,7 @@ operations:
         - {name: contact_type, type: string}
         - {name: contact, type: string}
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 409, kind: error}]
   - operation_id: SubmitAdminActivityReview
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
@@ -200,7 +304,7 @@ operations:
     permission: activity:admin_submit_review
     summary: 提交活动审核
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 409, kind: error}]
   - operation_id: ApproveAdminActivity
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
@@ -213,7 +317,7 @@ operations:
       fields:
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
         - {name: review_comment, type: string}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 409, kind: error}]
   - operation_id: RejectAdminActivity
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
@@ -226,7 +330,7 @@ operations:
       fields:
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
         - {name: review_comment, type: string, required: true}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 409, kind: error}]
   - operation_id: PublishAdminActivity
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
@@ -236,7 +340,7 @@ operations:
     permission: activity:admin_publish
     summary: 发布活动
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 409, kind: error}]
   - operation_id: CancelAdminActivity
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
@@ -246,7 +350,7 @@ operations:
     permission: activity:admin_cancel
     summary: 取消活动
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 409, kind: error}]
   - operation_id: FinishAdminActivity
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
@@ -256,7 +360,7 @@ operations:
     permission: activity:admin_finish
     summary: 结束活动
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 409, kind: error}]
   - operation_id: ListActivities
     default_roles: [guest, member]
     method: GET
@@ -268,14 +372,14 @@ operations:
       - {name: start_date, type: string, format: date}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: ActivityPageResponse}]
   - operation_id: GetActivity
     default_roles: [guest, member]
     method: GET
     path: /api/v1/activities/{id}
     permission: activity:read
     summary: 用户侧查看活动详情
-    responses: [{status: 200, kind: success}, {status: 404, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityResponse}, {status: 404, kind: error}]
   - operation_id: CreateActivityRegistration
     default_roles: [member]
     method: POST
@@ -285,7 +389,7 @@ operations:
     permission: activity:register
     summary: 报名活动
     headers: [{name: Idempotency-Key, type: string, required: true}]
-    responses: [{status: 201, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 201, kind: success, ref: ActivityRegistrationResponse}, {status: 409, kind: error}]
   - operation_id: CancelMyActivityRegistration
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -296,7 +400,7 @@ operations:
     permission: activity:registration_cancel
     summary: 取消我的活动报名
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ActivityRegistrationResponse}, {status: 409, kind: error}]
   - operation_id: ListMyActivityRegistrations
     default_roles: [member]
     method: GET
@@ -306,4 +410,4 @@ operations:
     query:
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: ActivityRegistrationPageResponse}]

@@ -81,6 +81,9 @@ func GenerateOpenAPI(ctx context.Context, options GenerateOpenAPIOptions) (bool,
 		if mergeErr := mergeGeneratedPaths(paths, fragmentPaths, module.Name); mergeErr != nil {
 			return false, mergeErr
 		}
+		if mergeErr := mergeGeneratedComponents(contract, fragment, module.Name); mergeErr != nil {
+			return false, mergeErr
+		}
 	}
 	if err := validateOperationIDs(paths); err != nil {
 		return false, err
@@ -258,6 +261,54 @@ func mergeGeneratedPaths(target, source *yaml.Node, module string) error {
 		}
 		if mappingEntry(target, path) == nil && added {
 			target.Content = append(target.Content, cloneNode(source.Content[i]), targetItem)
+		}
+	}
+	return nil
+}
+
+func mergeGeneratedComponents(target, source *yaml.Node, module string) error {
+	sourceRoot := source.Content[0]
+	targetRoot := target.Content[0]
+	sourceComponents := mappingEntry(sourceRoot, "components")
+	if sourceComponents == nil {
+		return nil
+	}
+	targetComponents := mappingEntry(targetRoot, "components")
+	if targetComponents == nil {
+		targetComponents = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		targetRoot.Content = append(
+			targetRoot.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "components"},
+			targetComponents,
+		)
+	}
+	for i := 0; i < len(sourceComponents.Content); i += 2 {
+		groupName := sourceComponents.Content[i].Value
+		sourceGroup := sourceComponents.Content[i+1]
+		targetGroup := mappingEntry(targetComponents, groupName)
+		if targetGroup == nil {
+			targetGroup = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+			targetComponents.Content = append(
+				targetComponents.Content,
+				cloneNode(sourceComponents.Content[i]),
+				targetGroup,
+			)
+		}
+		for j := 0; j < len(sourceGroup.Content); j += 2 {
+			name := sourceGroup.Content[j].Value
+			if mappingEntry(targetGroup, name) != nil {
+				return fmt.Errorf(
+					"module %q conflicts with existing OpenAPI component %s.%s",
+					module,
+					groupName,
+					name,
+				)
+			}
+			targetGroup.Content = append(
+				targetGroup.Content,
+				cloneNode(sourceGroup.Content[j]),
+				cloneNode(sourceGroup.Content[j+1]),
+			)
 		}
 	}
 	return nil

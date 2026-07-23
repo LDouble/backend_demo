@@ -41,6 +41,109 @@ entities:
     foreign_keys:
       - {field: listing_id, references: marketplace_listings.id, on_delete: RESTRICT}
 crud: [create, get, list, update, delete]
+components:
+  responses:
+    MarketplaceListingResponse:
+      description: 二手商品
+      content: {application/json: {schema: {$ref: "#/components/schemas/MarketplaceListingResponseBody"}}}
+    MarketplaceListingPageResponse:
+      description: 二手商品分页
+      content: {application/json: {schema: {$ref: "#/components/schemas/MarketplaceListingPageResponseBody"}}}
+    MarketplaceUpdatedResponse:
+      description: 二手商品状态更新结果
+      content: {application/json: {schema: {$ref: "#/components/schemas/MarketplaceUpdatedResponseBody"}}}
+    MarketplaceRemovedResponse:
+      description: 二手商品下架结果
+      content: {application/json: {schema: {$ref: "#/components/schemas/MarketplaceRemovedResponseBody"}}}
+    MarketplaceOrderResponse:
+      description: 二手交易订单
+      content: {application/json: {schema: {$ref: "#/components/schemas/MarketplaceOrderResponseBody"}}}
+  schemas:
+    MarketplaceViewerAction:
+      type: string
+      enum: [edit, submit_review, withdraw, purchase, verify_academic]
+    MarketplaceListingView:
+      type: object
+      required: [id, title, description, price_cents, currency, status, owner_id, image_urls, contact_type, contact, version, created_at, updated_at, viewer_relation, available_actions]
+      properties:
+        id: {type: integer, format: uint64}
+        title: {type: string}
+        description: {type: string}
+        price_cents: {type: integer, format: int64}
+        currency: {type: string}
+        status: {type: string}
+        owner_id: {type: integer, format: uint64}
+        image_urls: {type: array, items: {type: string}}
+        rejection_reason: {type: string, nullable: true}
+        reviewed_by: {type: integer, format: uint64, nullable: true}
+        reviewed_at: {type: string, format: date-time, nullable: true}
+        contact_type: {type: string}
+        contact: {type: string}
+        version: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        viewer_relation: {type: string}
+        available_actions: {type: array, items: {$ref: "#/components/schemas/MarketplaceViewerAction"}}
+    MarketplaceListingViewPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/MarketplaceListingView"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    MarketplaceTradeOrder:
+      type: object
+      required: [id, order_no, order_type, resource_type, resource_id, buyer_id, seller_id, amount_cents, currency, payment_mode, trade_status, fulfillment_status, title_snapshot, resource_snapshot, expires_at, completed_at, cancelled_at, version, created_at, updated_at]
+      properties:
+        id: {type: integer, format: uint64}
+        order_no: {type: string}
+        order_type: {type: string}
+        resource_type: {type: string}
+        resource_id: {type: integer, format: uint64}
+        buyer_id: {type: integer, format: uint64}
+        seller_id: {type: integer, format: uint64}
+        amount_cents: {type: integer, format: int64}
+        currency: {type: string}
+        payment_mode: {type: string}
+        trade_status: {type: string}
+        fulfillment_status: {type: string}
+        title_snapshot: {type: string}
+        resource_snapshot: {type: object, additionalProperties: true}
+        expires_at: {type: string, format: date-time, nullable: true}
+        completed_at: {type: string, format: date-time, nullable: true}
+        cancelled_at: {type: string, format: date-time, nullable: true}
+        version: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    MarketplaceUpdatedResult:
+      type: object
+      required: [updated]
+      properties: {updated: {type: boolean}}
+    MarketplaceRemovedResult:
+      type: object
+      required: [removed]
+      properties: {removed: {type: boolean}}
+    MarketplaceListingResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/MarketplaceListingView"}, request_id: {type: string}}
+    MarketplaceListingPageResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/MarketplaceListingViewPage"}, request_id: {type: string}}
+    MarketplaceUpdatedResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/MarketplaceUpdatedResult"}, request_id: {type: string}}
+    MarketplaceRemovedResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/MarketplaceRemovedResult"}, request_id: {type: string}}
+    MarketplaceOrderResponseBody:
+      type: object
+      required: [data, request_id]
+      properties: {data: {$ref: "#/components/schemas/MarketplaceTradeOrder"}, request_id: {type: string}}
 operations:
   - operation_id: CreateMarketplaceListing
     default_roles: [member]
@@ -119,7 +222,7 @@ operations:
     permission: marketplace:submit
     summary: 提交商品审核
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: MarketplaceUpdatedResponse}, {status: 409, kind: error}]
   - operation_id: WithdrawMarketplaceListing
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -130,7 +233,7 @@ operations:
     permission: marketplace:withdraw
     summary: 撤回商品
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: MarketplaceUpdatedResponse}, {status: 409, kind: error}]
   - operation_id: ReviewMarketplaceListing
     headers: [{name: Idempotency-Key, type: string, required: true}]
     method: POST
@@ -144,7 +247,7 @@ operations:
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
         - {name: approved, type: boolean, required: true}
         - {name: reason, type: string, max_length: 500}
-    responses: [{status: 200, kind: success}, {status: 400, kind: error}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: MarketplaceUpdatedResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
   - operation_id: CreateMarketplaceOrder
     default_roles: [member]
     method: POST
@@ -155,7 +258,7 @@ operations:
     summary: 原子保留商品并创建订单
     headers: [{name: Idempotency-Key, type: string, required: true}]
     body: {fields: [{name: listing_id, type: integer, format: uint64, required: true, minimum: 1}]}
-    responses: [{status: 201, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 201, kind: success, ref: MarketplaceOrderResponse}, {status: 409, kind: error}]
   - operation_id: ListAdminMarketplaceListings
     method: GET
     path: /api/v1/admin/marketplace/listings
@@ -177,3 +280,4 @@ operations:
     permission: marketplace:remove
     summary: 管理员下架二手商品
     query: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]
+    responses: [{status: 200, kind: success, ref: MarketplaceRemovedResponse}, {status: 409, kind: error}]

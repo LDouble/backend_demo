@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/weouc-plus/campus-platform/internal/api/generated"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 )
@@ -107,4 +108,40 @@ func tradeOrderViews(orders []tradedomain.Order) []tradeOrderView {
 		views[i] = tradeOrderViewOf(&orders[i])
 	}
 	return views
+}
+
+func errandTradeOrderViewOf(order *tradedomain.Order) generated.ErrandTradeOrder {
+	return generated.ErrandTradeOrder{
+		ID: order.ID, OrderNo: order.OrderNo, OrderType: order.OrderType,
+		ResourceType: order.ResourceType, ResourceID: order.ResourceId,
+		BuyerID: order.BuyerId, SellerID: order.SellerId,
+		AmountCents: order.AmountCents, Currency: order.Currency,
+		PaymentMode: order.PaymentMode, TradeStatus: order.TradeStatus,
+		FulfillmentStatus: order.FulfillmentStatus, TitleSnapshot: order.TitleSnapshot,
+		ResourceSnapshot: tradeOrderSnapshot(order.ResourceSnapshot),
+		ExpiresAt:        order.ExpiresAt, CompletedAt: order.CompletedAt,
+		CancelledAt: order.CancelledAt, Version: order.Version,
+		CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,
+	}
+}
+
+func marketplaceTradeOrderViewOf(order *tradedomain.Order) generated.MarketplaceTradeOrder {
+	return generated.MarketplaceTradeOrder{
+		ID: order.ID, OrderNo: order.OrderNo, OrderType: order.OrderType,
+		ResourceType: order.ResourceType, ResourceID: order.ResourceId,
+		BuyerID: order.BuyerId, SellerID: order.SellerId,
+		AmountCents: order.AmountCents, Currency: order.Currency,
+		PaymentMode: order.PaymentMode, TradeStatus: order.TradeStatus,
+		FulfillmentStatus: order.FulfillmentStatus, TitleSnapshot: order.TitleSnapshot,
+		ResourceSnapshot: tradeOrderSnapshot(order.ResourceSnapshot),
+		ExpiresAt:        order.ExpiresAt, CompletedAt: order.CompletedAt,
+		CancelledAt: order.CancelledAt, Version: order.Version,
+		CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,
+	}
+}
+
+func tradeOrderSnapshot(raw []byte) map[string]interface{} {
+	result := map[string]interface{}{}
+	_ = json.Unmarshal(raw, &result)
+	return result
 }

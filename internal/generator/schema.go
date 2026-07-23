@@ -33,13 +33,14 @@ var (
 
 // Schema is the versioned declaration used to generate one business module.
 type Schema struct {
-	Version     int            `yaml:"version"`
-	Module      string         `yaml:"module"`
-	Entity      Entity         `yaml:"entity"`
-	Entities    []Entity       `yaml:"entities"`
-	CRUD        []string       `yaml:"crud"`
-	Permissions []Permission   `yaml:"permissions"`
-	Operations  []APIOperation `yaml:"operations,omitempty"`
+	Version     int                       `yaml:"version"`
+	Module      string                    `yaml:"module"`
+	Entity      Entity                    `yaml:"entity"`
+	Entities    []Entity                  `yaml:"entities"`
+	CRUD        []string                  `yaml:"crud"`
+	Permissions []Permission              `yaml:"permissions"`
+	Operations  []APIOperation            `yaml:"operations,omitempty"`
+	Components  map[string]map[string]any `yaml:"components,omitempty"`
 }
 
 // Entity describes the module's primary persistent entity.
@@ -355,6 +356,9 @@ func normalizeEntity(entity *Entity) error {
 }
 
 func (s *Schema) normalizeOperations() error {
+	if err := s.validateComponents(); err != nil {
+		return err
+	}
 	allowedCRUD := map[string]bool{"create": true, "get": true, "list": true, "update": true, "delete": true}
 	seenCRUD := map[string]struct{}{}
 	for i := range s.CRUD {
@@ -511,6 +515,18 @@ func (s *Schema) normalizeAPIOperations() error {
 			if response.Status < 100 || response.Status > 599 || (response.Kind != "success" && response.Kind != "error") {
 				return fmt.Errorf("operation %q has invalid response", op.OperationID)
 			}
+			if response.Ref != "" && !typePattern.MatchString(response.Ref) {
+				return fmt.Errorf("operation %q has invalid response ref %q", op.OperationID, response.Ref)
+			}
+			if response.Ref != "" && len(s.Components["responses"]) > 0 {
+				if _, ok := s.Components["responses"][response.Ref]; !ok {
+					return fmt.Errorf(
+						"operation %q references undefined local response %q",
+						op.OperationID,
+						response.Ref,
+					)
+				}
+			}
 		}
 	}
 	sort.Slice(s.Operations, func(i, j int) bool {
@@ -521,6 +537,20 @@ func (s *Schema) normalizeAPIOperations() error {
 	})
 	if len(s.Operations) > 0 {
 		s.Permissions = permissionsFromOperations(s.Operations)
+	}
+	return nil
+}
+
+func (s *Schema) validateComponents() error {
+	for group, definitions := range s.Components {
+		if group != "schemas" && group != "responses" {
+			return fmt.Errorf("unsupported OpenAPI component group %q", group)
+		}
+		for name := range definitions {
+			if !typePattern.MatchString(name) {
+				return fmt.Errorf("invalid OpenAPI component %s.%s", group, name)
+			}
+		}
 	}
 	return nil
 }

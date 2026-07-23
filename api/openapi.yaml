@@ -526,7 +526,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityPageResponse"
     post:
       operationId: CreateActivity
       tags: [activity]
@@ -668,7 +668,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityRegistrationPageResponse"
   /api/v1/activities/{id}:
     get:
       operationId: GetActivity
@@ -681,7 +681,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "404":
           $ref: "#/components/responses/Error"
     patch:
@@ -809,7 +809,7 @@ paths:
             maxLength: 128
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityRegistrationResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/activities/{id}/registrations/me:
@@ -844,7 +844,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityRegistrationResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/activities/{id}/submit-review:
@@ -1080,7 +1080,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/approve:
@@ -1117,7 +1117,7 @@ paths:
                   type: string
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/cancel:
@@ -1152,7 +1152,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/finish:
@@ -1187,7 +1187,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/publish:
@@ -1222,7 +1222,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/reject:
@@ -1260,7 +1260,7 @@ paths:
                   type: string
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}/submit-review:
@@ -1295,7 +1295,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/carpool/trips:
@@ -1378,7 +1378,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -1419,7 +1419,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -1677,7 +1677,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
   /api/v1/carpool/trips/{id}/join:
     post:
       operationId: JoinCarpoolTrip
@@ -1710,7 +1710,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/carpool/trips/{id}/leave:
@@ -1745,7 +1745,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
   /api/v1/carpool/trips/{id}/submit-review:
     post:
       operationId: SubmitCarpoolTripReview
@@ -1778,7 +1778,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/errands:
@@ -1861,7 +1861,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -1902,7 +1902,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -2153,7 +2153,7 @@ paths:
                   minimum: 1
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/cancel:
@@ -2188,7 +2188,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandOptionalOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/complete:
@@ -2223,7 +2223,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/deliver:
@@ -2258,7 +2258,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/pickup:
@@ -2293,7 +2293,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/submit-review:
@@ -2328,7 +2328,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/marketplace/listings:
@@ -2408,7 +2408,9 @@ paths:
             minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceRemovedResponse"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/admin/marketplace/listings/{id}/review:
     post:
       operationId: ReviewMarketplaceListing
@@ -2447,7 +2449,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceUpdatedResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -2677,7 +2679,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceUpdatedResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings/{id}/withdraw:
@@ -2712,7 +2714,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceUpdatedResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/marketplace/orders:
@@ -2746,7 +2748,7 @@ paths:
                   minimum: 1
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/notices:
@@ -3276,33 +3278,99 @@ components:
     ReadResultResponse:
       description: Read result
       content: {application/json: {schema: {$ref: "#/components/schemas/ReadResultEnvelope"}}}
-    ActivityResponse:
-      description: Activity with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/ActivityEnvelope"}}}
-    ActivityPageResponse:
-      description: Activity page with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/ActivityPageEnvelope"}}}
-    ErrandResponse:
-      description: Errand with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/ErrandEnvelope"}}}
-    ErrandPageResponse:
-      description: Errand page with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/ErrandPageEnvelope"}}}
-    MarketplaceListingResponse:
-      description: Marketplace listing with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/MarketplaceListingEnvelope"}}}
-    MarketplaceListingPageResponse:
-      description: Marketplace listing page with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/MarketplaceListingPageEnvelope"}}}
-    CarpoolTripResponse:
-      description: Carpool trip with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/CarpoolTripEnvelope"}}}
-    CarpoolTripPageResponse:
-      description: Carpool trip page with viewer-specific capabilities
-      content: {application/json: {schema: {$ref: "#/components/schemas/CarpoolTripPageEnvelope"}}}
     Error:
       description: Error response
       content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+    ActivityPageResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ActivityPageResponseBody'
+      description: 活动分页
+    ActivityRegistrationPageResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ActivityRegistrationPageResponseBody'
+      description: 我的活动报名分页
+    ActivityRegistrationResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ActivityRegistrationResponseBody'
+      description: 活动报名操作结果
+    ActivityResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ActivityResponseBody'
+      description: 活动
+    CarpoolTripPageResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CarpoolTripPageResponseBody'
+      description: 拼车行程分页
+    CarpoolTripResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CarpoolTripResponseBody'
+      description: 拼车行程
+    ErrandOptionalOrderResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrandOptionalOrderResponseBody'
+      description: 跑腿任务及可能存在的交易订单
+    ErrandOrderResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrandOrderResponseBody'
+      description: 跑腿任务及必有交易订单
+    ErrandPageResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrandPageResponseBody'
+      description: 跑腿任务分页
+    ErrandResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrandResponseBody'
+      description: 跑腿任务
+    MarketplaceListingPageResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MarketplaceListingPageResponseBody'
+      description: 二手商品分页
+    MarketplaceListingResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MarketplaceListingResponseBody'
+      description: 二手商品
+    MarketplaceOrderResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MarketplaceOrderResponseBody'
+      description: 二手交易订单
+    MarketplaceRemovedResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MarketplaceRemovedResponseBody'
+      description: 二手商品下架结果
+    MarketplaceUpdatedResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MarketplaceUpdatedResponseBody'
+      description: 二手商品状态更新结果
   schemas:
     TokenPair:
       type: object
@@ -3491,150 +3559,6 @@ components:
       type: object
       required: [data, request_id]
       properties: {data: {}, request_id: {type: string}}
-    ViewerAction:
-      type: string
-      description: 当前用户可执行的动作；verify_academic 表示需先完成教务认证
-      enum: [edit, submit_review, withdraw, cancel, register, cancel_registration, accept, pickup, deliver, complete, purchase, join, leave, verify_academic]
-    ViewerRelation:
-      type: string
-      description: 当前用户与资源的关系
-    Activity:
-      type: object
-      required: [id, title, summary, body, location, signup_start_at, signup_end_at, start_at, end_at, capacity, registered_count, status, review_status, created_by, updated_by, contact_type, contact, version, created_at, updated_at, viewer_relation, available_actions]
-      properties:
-        id: {type: integer, format: uint64}
-        title: {type: string}
-        summary: {type: string}
-        body: {type: string}
-        location: {type: string}
-        signup_start_at: {type: string, format: date-time}
-        signup_end_at: {type: string, format: date-time}
-        start_at: {type: string, format: date-time}
-        end_at: {type: string, format: date-time}
-        capacity: {type: integer, format: int64}
-        registered_count: {type: integer, format: int64}
-        status: {type: string}
-        review_status: {type: string}
-        review_comment: {type: string, nullable: true}
-        created_by: {type: integer, format: uint64}
-        updated_by: {type: integer, format: uint64}
-        contact_type: {type: string}
-        contact: {type: string}
-        version: {type: integer, format: uint64}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
-        viewer_relation: {$ref: "#/components/schemas/ViewerRelation"}
-        available_actions: {type: array, items: {$ref: "#/components/schemas/ViewerAction"}}
-    ActivityPage:
-      type: object
-      required: [items, page, page_size, total]
-      properties:
-        items: {type: array, items: {$ref: "#/components/schemas/Activity"}}
-        page: {type: integer, minimum: 1}
-        page_size: {type: integer, minimum: 1, maximum: 100}
-        total: {type: integer, format: int64}
-    Errand:
-      type: object
-      required: [id, title, description, reward_cents, currency, pickup_location, dropoff_location, deadline, status, review_status, requester_id, contact_type, contact, version, created_at, updated_at, viewer_relation, available_actions]
-      properties:
-        id: {type: integer, format: uint64}
-        title: {type: string}
-        description: {type: string}
-        reward_cents: {type: integer, format: int64}
-        currency: {type: string}
-        pickup_location: {type: string}
-        dropoff_location: {type: string}
-        deadline: {type: string, format: date-time}
-        status: {type: string}
-        review_status: {type: string}
-        review_reason: {type: string, nullable: true}
-        reviewed_by: {type: integer, format: uint64, nullable: true}
-        reviewed_at: {type: string, format: date-time, nullable: true}
-        requester_id: {type: integer, format: uint64}
-        contact_type: {type: string}
-        contact: {type: string}
-        runner_id: {type: integer, format: uint64, nullable: true}
-        trade_order_id: {type: integer, format: uint64, nullable: true}
-        accepted_at: {type: string, format: date-time, nullable: true}
-        picked_up_at: {type: string, format: date-time, nullable: true}
-        delivered_at: {type: string, format: date-time, nullable: true}
-        completed_at: {type: string, format: date-time, nullable: true}
-        cancelled_at: {type: string, format: date-time, nullable: true}
-        version: {type: integer, format: uint64}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
-        viewer_relation: {$ref: "#/components/schemas/ViewerRelation"}
-        available_actions: {type: array, items: {$ref: "#/components/schemas/ViewerAction"}}
-    ErrandPage:
-      type: object
-      required: [items, page, page_size, total]
-      properties:
-        items: {type: array, items: {$ref: "#/components/schemas/Errand"}}
-        page: {type: integer, minimum: 1}
-        page_size: {type: integer, minimum: 1, maximum: 100}
-        total: {type: integer, format: int64}
-    MarketplaceListing:
-      type: object
-      required: [id, title, description, price_cents, currency, status, owner_id, image_urls, contact_type, contact, version, created_at, updated_at, viewer_relation, available_actions]
-      properties:
-        id: {type: integer, format: uint64}
-        title: {type: string}
-        description: {type: string}
-        price_cents: {type: integer, format: int64}
-        currency: {type: string}
-        status: {type: string}
-        owner_id: {type: integer, format: uint64}
-        image_urls: {type: array, items: {type: string}}
-        rejection_reason: {type: string, nullable: true}
-        reviewed_by: {type: integer, format: uint64, nullable: true}
-        reviewed_at: {type: string, format: date-time, nullable: true}
-        contact_type: {type: string}
-        contact: {type: string}
-        version: {type: integer, format: uint64}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
-        viewer_relation: {$ref: "#/components/schemas/ViewerRelation"}
-        available_actions: {type: array, items: {$ref: "#/components/schemas/ViewerAction"}}
-    MarketplaceListingPage:
-      type: object
-      required: [items, page, page_size, total]
-      properties:
-        items: {type: array, items: {$ref: "#/components/schemas/MarketplaceListing"}}
-        page: {type: integer, minimum: 1}
-        page_size: {type: integer, minimum: 1, maximum: 100}
-        total: {type: integer, format: int64}
-    CarpoolTrip:
-      type: object
-      required: [id, title, origin, destination, departure_at, total_seats, occupied_seats, status, review_status, organizer_id, contact_type, contact, version, created_at, updated_at, viewer_relation, available_actions]
-      properties:
-        id: {type: integer, format: uint64}
-        title: {type: string}
-        origin: {type: string}
-        destination: {type: string}
-        departure_at: {type: string, format: date-time}
-        total_seats: {type: integer, format: int64}
-        occupied_seats: {type: integer, format: int64}
-        status: {type: string}
-        review_status: {type: string}
-        review_reason: {type: string, nullable: true}
-        reviewed_by: {type: integer, format: uint64, nullable: true}
-        reviewed_at: {type: string, format: date-time, nullable: true}
-        organizer_id: {type: integer, format: uint64}
-        contact_type: {type: string}
-        contact: {type: string}
-        version: {type: integer, format: uint64}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
-        viewer_relation: {$ref: "#/components/schemas/ViewerRelation"}
-        available_actions: {type: array, items: {$ref: "#/components/schemas/ViewerAction"}}
-    CarpoolTripPage:
-      type: object
-      required: [items, page, page_size, total]
-      properties:
-        items: {type: array, items: {$ref: "#/components/schemas/CarpoolTrip"}}
-        page: {type: integer, minimum: 1}
-        page_size: {type: integer, minimum: 1, maximum: 100}
-        total: {type: integer, format: int64}
     Config:
       type: object
       required: [id, group, key, value, encrypted, format, visibility, has_value, version, updated_by, created_at, updated_at]
@@ -3817,38 +3741,6 @@ components:
       type: object
       required: [data, request_id]
       properties: {data: {$ref: "#/components/schemas/ReadResult"}, request_id: {type: string}}
-    ActivityEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/Activity"}, request_id: {type: string}}
-    ActivityPageEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/ActivityPage"}, request_id: {type: string}}
-    ErrandEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/Errand"}, request_id: {type: string}}
-    ErrandPageEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/ErrandPage"}, request_id: {type: string}}
-    MarketplaceListingEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/MarketplaceListing"}, request_id: {type: string}}
-    MarketplaceListingPageEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/MarketplaceListingPage"}, request_id: {type: string}}
-    CarpoolTripEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/CarpoolTrip"}, request_id: {type: string}}
-    CarpoolTripPageEnvelope:
-      type: object
-      required: [data, request_id]
-      properties: {data: {$ref: "#/components/schemas/CarpoolTripPage"}, request_id: {type: string}}
     ErrorEnvelope:
       type: object
       required: [error, request_id]
@@ -3858,3 +3750,911 @@ components:
           required: [code, message]
           properties: {code: {type: string}, message: {type: string}}
         request_id: {type: string}
+    ActivityPageResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ActivityViewPage'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ActivityRegistration:
+      properties:
+        activity_id:
+          format: uint64
+          type: integer
+        cancelled_at:
+          format: date-time
+          nullable: true
+          type: string
+        id:
+          format: uint64
+          type: integer
+        registered_at:
+          format: date-time
+          type: string
+        registration_version:
+          format: uint64
+          type: integer
+        status:
+          type: string
+      required:
+        - id
+        - activity_id
+        - status
+        - registered_at
+        - cancelled_at
+        - registration_version
+      type: object
+    ActivityRegistrationPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MyActivityRegistration'
+          type: array
+        page:
+          minimum: 1
+          type: integer
+        page_size:
+          maximum: 100
+          minimum: 1
+          type: integer
+        total:
+          format: int64
+          type: integer
+      required:
+        - items
+        - page
+        - page_size
+        - total
+      type: object
+    ActivityRegistrationPageResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ActivityRegistrationPage'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ActivityRegistrationResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ActivityRegistrationResult'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ActivityRegistrationResult:
+      properties:
+        activity:
+          $ref: '#/components/schemas/ActivityView'
+        registration:
+          $ref: '#/components/schemas/ActivityRegistration'
+      required:
+        - registration
+        - activity
+      type: object
+    ActivityResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ActivityView'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ActivityView:
+      properties:
+        available_actions:
+          items:
+            $ref: '#/components/schemas/ActivityViewerAction'
+          type: array
+        body:
+          type: string
+        capacity:
+          format: int64
+          type: integer
+        contact:
+          type: string
+        contact_type:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        created_by:
+          format: uint64
+          type: integer
+        end_at:
+          format: date-time
+          type: string
+        id:
+          format: uint64
+          type: integer
+        location:
+          type: string
+        registered_count:
+          format: int64
+          type: integer
+        review_comment:
+          nullable: true
+          type: string
+        review_status:
+          type: string
+        signup_end_at:
+          format: date-time
+          type: string
+        signup_start_at:
+          format: date-time
+          type: string
+        start_at:
+          format: date-time
+          type: string
+        status:
+          type: string
+        summary:
+          type: string
+        title:
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        updated_by:
+          format: uint64
+          type: integer
+        version:
+          format: uint64
+          type: integer
+        viewer_relation:
+          type: string
+      required:
+        - id
+        - title
+        - summary
+        - body
+        - location
+        - signup_start_at
+        - signup_end_at
+        - start_at
+        - end_at
+        - capacity
+        - registered_count
+        - status
+        - review_status
+        - created_by
+        - updated_by
+        - contact_type
+        - contact
+        - version
+        - created_at
+        - updated_at
+        - viewer_relation
+        - available_actions
+      type: object
+    ActivityViewPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ActivityView'
+          type: array
+        page:
+          minimum: 1
+          type: integer
+        page_size:
+          maximum: 100
+          minimum: 1
+          type: integer
+        total:
+          format: int64
+          type: integer
+      required:
+        - items
+        - page
+        - page_size
+        - total
+      type: object
+    ActivityViewerAction:
+      enum:
+        - edit
+        - submit_review
+        - cancel
+        - register
+        - cancel_registration
+        - verify_academic
+      type: string
+    MyActivityRegistration:
+      properties:
+        activity:
+          $ref: '#/components/schemas/ActivityView'
+        activity_id:
+          format: uint64
+          type: integer
+        cancelled_at:
+          format: date-time
+          nullable: true
+          type: string
+        registered_at:
+          format: date-time
+          type: string
+        registration_id:
+          format: uint64
+          type: integer
+        registration_version:
+          format: uint64
+          type: integer
+        status:
+          type: string
+      required:
+        - registration_id
+        - activity_id
+        - status
+        - registered_at
+        - registration_version
+        - activity
+      type: object
+    CarpoolTripPageResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/CarpoolTripViewPage'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    CarpoolTripResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/CarpoolTripView'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    CarpoolTripView:
+      properties:
+        available_actions:
+          items:
+            $ref: '#/components/schemas/CarpoolViewerAction'
+          type: array
+        contact:
+          type: string
+        contact_type:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        departure_at:
+          format: date-time
+          type: string
+        destination:
+          type: string
+        id:
+          format: uint64
+          type: integer
+        occupied_seats:
+          format: int64
+          type: integer
+        organizer_id:
+          format: uint64
+          type: integer
+        origin:
+          type: string
+        review_reason:
+          nullable: true
+          type: string
+        review_status:
+          type: string
+        reviewed_at:
+          format: date-time
+          nullable: true
+          type: string
+        reviewed_by:
+          format: uint64
+          nullable: true
+          type: integer
+        status:
+          type: string
+        title:
+          type: string
+        total_seats:
+          format: int64
+          type: integer
+        updated_at:
+          format: date-time
+          type: string
+        version:
+          format: uint64
+          type: integer
+        viewer_relation:
+          type: string
+      required:
+        - id
+        - title
+        - origin
+        - destination
+        - departure_at
+        - total_seats
+        - occupied_seats
+        - status
+        - review_status
+        - review_reason
+        - reviewed_by
+        - reviewed_at
+        - organizer_id
+        - contact_type
+        - contact
+        - version
+        - created_at
+        - updated_at
+        - viewer_relation
+        - available_actions
+      type: object
+    CarpoolTripViewPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/CarpoolTripView'
+          type: array
+        page:
+          minimum: 1
+          type: integer
+        page_size:
+          maximum: 100
+          minimum: 1
+          type: integer
+        total:
+          format: int64
+          type: integer
+      required:
+        - items
+        - page
+        - page_size
+        - total
+      type: object
+    CarpoolViewerAction:
+      enum:
+        - edit
+        - submit_review
+        - cancel
+        - join
+        - leave
+        - verify_academic
+      type: string
+    ErrandOptionalOrderResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ErrandOptionalOrderResult'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ErrandOptionalOrderResult:
+      properties:
+        errand:
+          $ref: '#/components/schemas/ErrandView'
+        order:
+          $ref: '#/components/schemas/ErrandTradeOrder'
+      required:
+        - errand
+      type: object
+    ErrandOrderResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ErrandOrderResult'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ErrandOrderResult:
+      properties:
+        errand:
+          $ref: '#/components/schemas/ErrandView'
+        order:
+          $ref: '#/components/schemas/ErrandTradeOrder'
+      required:
+        - errand
+        - order
+      type: object
+    ErrandPageResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ErrandViewPage'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ErrandResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/ErrandView'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    ErrandTradeOrder:
+      properties:
+        amount_cents:
+          format: int64
+          type: integer
+        buyer_id:
+          format: uint64
+          type: integer
+        cancelled_at:
+          format: date-time
+          nullable: true
+          type: string
+        completed_at:
+          format: date-time
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        currency:
+          type: string
+        expires_at:
+          format: date-time
+          nullable: true
+          type: string
+        fulfillment_status:
+          type: string
+        id:
+          format: uint64
+          type: integer
+        order_no:
+          type: string
+        order_type:
+          type: string
+        payment_mode:
+          type: string
+        resource_id:
+          format: uint64
+          type: integer
+        resource_snapshot:
+          additionalProperties: true
+          type: object
+        resource_type:
+          type: string
+        seller_id:
+          format: uint64
+          type: integer
+        title_snapshot:
+          type: string
+        trade_status:
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        version:
+          format: uint64
+          type: integer
+      required:
+        - id
+        - order_no
+        - order_type
+        - resource_type
+        - resource_id
+        - buyer_id
+        - seller_id
+        - amount_cents
+        - currency
+        - payment_mode
+        - trade_status
+        - fulfillment_status
+        - title_snapshot
+        - resource_snapshot
+        - expires_at
+        - completed_at
+        - cancelled_at
+        - version
+        - created_at
+        - updated_at
+      type: object
+    ErrandView:
+      properties:
+        accepted_at:
+          format: date-time
+          nullable: true
+          type: string
+        available_actions:
+          items:
+            $ref: '#/components/schemas/ErrandViewerAction'
+          type: array
+        cancelled_at:
+          format: date-time
+          nullable: true
+          type: string
+        completed_at:
+          format: date-time
+          nullable: true
+          type: string
+        contact:
+          type: string
+        contact_type:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        currency:
+          type: string
+        deadline:
+          format: date-time
+          type: string
+        delivered_at:
+          format: date-time
+          nullable: true
+          type: string
+        description:
+          type: string
+        dropoff_location:
+          type: string
+        id:
+          format: uint64
+          type: integer
+        picked_up_at:
+          format: date-time
+          nullable: true
+          type: string
+        pickup_location:
+          type: string
+        requester_id:
+          format: uint64
+          type: integer
+        review_reason:
+          nullable: true
+          type: string
+        review_status:
+          type: string
+        reviewed_at:
+          format: date-time
+          nullable: true
+          type: string
+        reviewed_by:
+          format: uint64
+          nullable: true
+          type: integer
+        reward_cents:
+          format: int64
+          type: integer
+        runner_id:
+          format: uint64
+          nullable: true
+          type: integer
+        status:
+          type: string
+        title:
+          type: string
+        trade_order_id:
+          format: uint64
+          nullable: true
+          type: integer
+        updated_at:
+          format: date-time
+          type: string
+        version:
+          format: uint64
+          type: integer
+        viewer_relation:
+          type: string
+      required:
+        - id
+        - title
+        - description
+        - reward_cents
+        - currency
+        - pickup_location
+        - dropoff_location
+        - deadline
+        - status
+        - review_status
+        - review_reason
+        - reviewed_by
+        - reviewed_at
+        - requester_id
+        - contact_type
+        - contact
+        - runner_id
+        - trade_order_id
+        - accepted_at
+        - picked_up_at
+        - delivered_at
+        - completed_at
+        - cancelled_at
+        - version
+        - created_at
+        - updated_at
+        - viewer_relation
+        - available_actions
+      type: object
+    ErrandViewPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ErrandView'
+          type: array
+        page:
+          minimum: 1
+          type: integer
+        page_size:
+          maximum: 100
+          minimum: 1
+          type: integer
+        total:
+          format: int64
+          type: integer
+      required:
+        - items
+        - page
+        - page_size
+        - total
+      type: object
+    ErrandViewerAction:
+      enum:
+        - edit
+        - submit_review
+        - accept
+        - pickup
+        - deliver
+        - complete
+        - cancel
+        - verify_academic
+      type: string
+    MarketplaceListingPageResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/MarketplaceListingViewPage'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    MarketplaceListingResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/MarketplaceListingView'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    MarketplaceListingView:
+      properties:
+        available_actions:
+          items:
+            $ref: '#/components/schemas/MarketplaceViewerAction'
+          type: array
+        contact:
+          type: string
+        contact_type:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        currency:
+          type: string
+        description:
+          type: string
+        id:
+          format: uint64
+          type: integer
+        image_urls:
+          items:
+            type: string
+          type: array
+        owner_id:
+          format: uint64
+          type: integer
+        price_cents:
+          format: int64
+          type: integer
+        rejection_reason:
+          nullable: true
+          type: string
+        reviewed_at:
+          format: date-time
+          nullable: true
+          type: string
+        reviewed_by:
+          format: uint64
+          nullable: true
+          type: integer
+        status:
+          type: string
+        title:
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        version:
+          format: uint64
+          type: integer
+        viewer_relation:
+          type: string
+      required:
+        - id
+        - title
+        - description
+        - price_cents
+        - currency
+        - status
+        - owner_id
+        - image_urls
+        - contact_type
+        - contact
+        - version
+        - created_at
+        - updated_at
+        - viewer_relation
+        - available_actions
+      type: object
+    MarketplaceListingViewPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/MarketplaceListingView'
+          type: array
+        page:
+          minimum: 1
+          type: integer
+        page_size:
+          maximum: 100
+          minimum: 1
+          type: integer
+        total:
+          format: int64
+          type: integer
+      required:
+        - items
+        - page
+        - page_size
+        - total
+      type: object
+    MarketplaceOrderResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/MarketplaceTradeOrder'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    MarketplaceRemovedResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/MarketplaceRemovedResult'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    MarketplaceRemovedResult:
+      properties:
+        removed:
+          type: boolean
+      required:
+        - removed
+      type: object
+    MarketplaceTradeOrder:
+      properties:
+        amount_cents:
+          format: int64
+          type: integer
+        buyer_id:
+          format: uint64
+          type: integer
+        cancelled_at:
+          format: date-time
+          nullable: true
+          type: string
+        completed_at:
+          format: date-time
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        currency:
+          type: string
+        expires_at:
+          format: date-time
+          nullable: true
+          type: string
+        fulfillment_status:
+          type: string
+        id:
+          format: uint64
+          type: integer
+        order_no:
+          type: string
+        order_type:
+          type: string
+        payment_mode:
+          type: string
+        resource_id:
+          format: uint64
+          type: integer
+        resource_snapshot:
+          additionalProperties: true
+          type: object
+        resource_type:
+          type: string
+        seller_id:
+          format: uint64
+          type: integer
+        title_snapshot:
+          type: string
+        trade_status:
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        version:
+          format: uint64
+          type: integer
+      required:
+        - id
+        - order_no
+        - order_type
+        - resource_type
+        - resource_id
+        - buyer_id
+        - seller_id
+        - amount_cents
+        - currency
+        - payment_mode
+        - trade_status
+        - fulfillment_status
+        - title_snapshot
+        - resource_snapshot
+        - expires_at
+        - completed_at
+        - cancelled_at
+        - version
+        - created_at
+        - updated_at
+      type: object
+    MarketplaceUpdatedResponseBody:
+      properties:
+        data:
+          $ref: '#/components/schemas/MarketplaceUpdatedResult'
+        request_id:
+          type: string
+      required:
+        - data
+        - request_id
+      type: object
+    MarketplaceUpdatedResult:
+      properties:
+        updated:
+          type: boolean
+      required:
+        - updated
+      type: object
+    MarketplaceViewerAction:
+      enum:
+        - edit
+        - submit_review
+        - withdraw
+        - purchase
+        - verify_academic
+      type: string

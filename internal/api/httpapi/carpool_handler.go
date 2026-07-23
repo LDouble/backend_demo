@@ -56,7 +56,7 @@ func (h *Handler) listCarpoolTrips(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.CarpoolTripViewPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 func (h *Handler) createCarpoolTrip(c *gin.Context) {
 	var req carpoolRequest
@@ -107,7 +107,7 @@ func (h *Handler) listAdminCarpoolTrips(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, size, total))
+	success(c, http.StatusOK, generated.CarpoolTripViewPage{Items: views, Page: p, PageSize: size, Total: total})
 }
 func (h *Handler) listMyCarpoolTrips(c *gin.Context) {
 	params, ok := generatedParams[generated.ListMyCarpoolTripsParams](c, "ListMyCarpoolTrips")
@@ -129,7 +129,7 @@ func (h *Handler) listMyCarpoolTrips(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, size, total))
+	success(c, http.StatusOK, generated.CarpoolTripViewPage{Items: views, Page: p, PageSize: size, Total: total})
 }
 func (h *Handler) submitCarpoolTripReview(c *gin.Context) {
 	h.carpoolChange(c, func(id, user, version uint64) (*carpool.Trip, error) {
@@ -233,28 +233,7 @@ func (h *Handler) carpoolChange(c *gin.Context, change func(uint64, uint64, uint
 	h.successCarpool(c, http.StatusOK, trip, true)
 }
 
-type carpoolView struct {
-	ID               uint64     `json:"id"`
-	Title            string     `json:"title"`
-	Origin           string     `json:"origin"`
-	Destination      string     `json:"destination"`
-	DepartureAt      time.Time  `json:"departure_at"`
-	TotalSeats       int64      `json:"total_seats"`
-	OccupiedSeats    int64      `json:"occupied_seats"`
-	Status           string     `json:"status"`
-	ReviewStatus     string     `json:"review_status"`
-	ReviewReason     *string    `json:"review_reason"`
-	ReviewedBy       *uint64    `json:"reviewed_by"`
-	ReviewedAt       *time.Time `json:"reviewed_at"`
-	OrganizerID      uint64     `json:"organizer_id"`
-	ContactType      string     `json:"contact_type"`
-	Contact          string     `json:"contact"`
-	Version          uint64     `json:"version"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	ViewerRelation   string     `json:"viewer_relation"`
-	AvailableActions []string   `json:"available_actions"`
-}
+type carpoolView = generated.CarpoolTripView
 
 func (h *Handler) carpoolViews(c *gin.Context, trips []carpool.Trip, full bool) ([]carpoolView, error) {
 	viewerID := c.GetUint64(userIDKey)
@@ -301,7 +280,7 @@ func (h *Handler) carpoolViewOf(trip *carpool.Trip, full bool, relation string, 
 			contact = plain
 		}
 	}
-	return carpoolView{ID: trip.ID, Title: trip.Title, Origin: trip.Origin, Destination: trip.Destination, DepartureAt: trip.DepartureAt, TotalSeats: trip.TotalSeats, OccupiedSeats: trip.OccupiedSeats, Status: trip.Status, ReviewStatus: trip.ReviewStatus, ReviewReason: trip.ReviewReason, ReviewedBy: trip.ReviewedBy, ReviewedAt: trip.ReviewedAt, OrganizerID: trip.OrganizerId, ContactType: trip.ContactType, Contact: strings.TrimSpace(contact), Version: trip.Version, CreatedAt: trip.CreatedAt, UpdatedAt: trip.UpdatedAt, ViewerRelation: relation, AvailableActions: actions}
+	return carpoolView{ID: trip.ID, Title: trip.Title, Origin: trip.Origin, Destination: trip.Destination, DepartureAt: trip.DepartureAt, TotalSeats: trip.TotalSeats, OccupiedSeats: trip.OccupiedSeats, Status: trip.Status, ReviewStatus: trip.ReviewStatus, ReviewReason: trip.ReviewReason, ReviewedBy: trip.ReviewedBy, ReviewedAt: trip.ReviewedAt, OrganizerID: trip.OrganizerId, ContactType: trip.ContactType, Contact: strings.TrimSpace(contact), Version: trip.Version, CreatedAt: trip.CreatedAt, UpdatedAt: trip.UpdatedAt, ViewerRelation: relation, AvailableActions: generatedActions[generated.CarpoolViewerAction](actions)}
 }
 
 func (h *Handler) successCarpool(c *gin.Context, status int, trip *carpool.Trip, full bool) {

@@ -195,6 +195,14 @@ func containsAction(actions []string, target string) bool {
 	return false
 }
 
+func generatedActions[T ~string](actions []string) []T {
+	result := make([]T, len(actions))
+	for i := range actions {
+		result[i] = T(actions[i])
+	}
+	return result
+}
+
 // New creates an HTTP handler backed by the supplied core services.
 func New(authService *auth.Service, userService *user.Service, permissionService *permission.Service, configService *configcenter.Service, mysqlPing, redisPing func(context.Context) error, log *zap.Logger) *Handler {
 	return &Handler{

@@ -3,7 +3,6 @@ package httpapi
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/weouc-plus/campus-platform/internal/api/generated"
@@ -69,7 +68,9 @@ func (h *Handler) listMarketplace(c *gin.Context, scope string, search marketpla
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, search.Page, search.PageSize, total))
+	success(c, http.StatusOK, generated.MarketplaceListingViewPage{
+		Items: views, Page: search.Page, PageSize: search.PageSize, Total: total,
+	})
 }
 
 func marketplacePaging(page, pageSize *int32) (int, int) {
@@ -196,7 +197,7 @@ func (h *Handler) removeMarketplaceListing(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, gin.H{"removed": true})
+	success(c, http.StatusOK, generated.MarketplaceRemovedResult{Removed: true})
 }
 
 type marketplaceVersionRequest struct {
@@ -254,7 +255,7 @@ func (h *Handler) changeMarketplaceListing(c *gin.Context, submit bool) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, gin.H{"updated": true})
+	success(c, http.StatusOK, generated.MarketplaceUpdatedResult{Updated: true})
 }
 func (h *Handler) reviewMarketplaceListing(c *gin.Context) {
 	id, ok := idParam(c)
@@ -277,7 +278,7 @@ func (h *Handler) reviewMarketplaceListing(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, gin.H{"updated": true})
+	success(c, http.StatusOK, generated.MarketplaceUpdatedResult{Updated: true})
 }
 func (h *Handler) createMarketplaceOrder(c *gin.Context) {
 	var req marketplaceOrderRequest
@@ -290,7 +291,7 @@ func (h *Handler) createMarketplaceOrder(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusCreated, tradeOrderViewOf(order))
+	success(c, http.StatusCreated, marketplaceTradeOrderViewOf(order))
 }
 func marketplaceListingInput(req marketplaceListingRequest) marketplacedomain.ListingInput {
 	provided := strings.TrimSpace(req.ContactType) != "" || strings.TrimSpace(req.Contact) != ""
@@ -327,26 +328,7 @@ func marketplaceListingUpdateInput(req generated.UpdateMarketplaceListingJSONBod
 	}
 }
 
-type marketplaceListingView struct {
-	ID               uint64     `json:"id"`
-	Title            string     `json:"title"`
-	Description      string     `json:"description"`
-	PriceCents       int64      `json:"price_cents"`
-	Currency         string     `json:"currency"`
-	Status           string     `json:"status"`
-	OwnerID          uint64     `json:"owner_id"`
-	ImageURLs        []string   `json:"image_urls"`
-	RejectionReason  *string    `json:"rejection_reason,omitempty"`
-	ReviewedBy       *uint64    `json:"reviewed_by,omitempty"`
-	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
-	ContactType      string     `json:"contact_type"`
-	Contact          string     `json:"contact"`
-	Version          uint64     `json:"version"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	ViewerRelation   string     `json:"viewer_relation"`
-	AvailableActions []string   `json:"available_actions"`
-}
+type marketplaceListingView = generated.MarketplaceListingView
 
 func (h *Handler) marketplaceListingViews(c *gin.Context, rows []marketplacedomain.ListingDetails) ([]marketplaceListingView, error) {
 	viewerID := c.GetUint64(userIDKey)
@@ -412,10 +394,11 @@ func marketplaceListingViewOf(
 	return marketplaceListingView{
 		ID: details.ID, Title: details.Title, Description: details.Description,
 		PriceCents: details.PriceCents, Currency: details.Currency, Status: details.Status,
-		OwnerID: details.OwnerId, ImageURLs: append([]string{}, details.ImageURLs...),
+		OwnerID: details.OwnerId, ImageUrls: append([]string{}, details.ImageURLs...),
 		RejectionReason: details.RejectionReason, ReviewedBy: details.ReviewedBy, ReviewedAt: details.ReviewedAt,
 		ContactType: contact.Type, Contact: contact.Value, Version: details.Version,
 		CreatedAt: details.CreatedAt, UpdatedAt: details.UpdatedAt,
-		ViewerRelation: relation, AvailableActions: actions,
+		ViewerRelation:   relation,
+		AvailableActions: generatedActions[generated.MarketplaceViewerAction](actions),
 	}
 }

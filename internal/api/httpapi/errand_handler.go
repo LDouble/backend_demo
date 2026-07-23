@@ -38,7 +38,7 @@ func (h *Handler) listErrands(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.ErrandViewPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 func (h *Handler) listMyErrands(c *gin.Context) {
 	params, ok := generatedParams[generated.ListMyErrandsParams](c, "ListMyErrands")
@@ -72,7 +72,7 @@ func (h *Handler) listMyErrands(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.ErrandViewPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 func (h *Handler) listAdminErrands(c *gin.Context) {
 	params, ok := generatedParams[generated.ListAdminErrandsParams](c, "ListAdminErrands")
@@ -95,7 +95,7 @@ func (h *Handler) listAdminErrands(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.ErrandViewPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 func (h *Handler) createErrand(c *gin.Context) {
 	var req errandRequest
@@ -233,7 +233,10 @@ func (h *Handler) acceptErrand(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusCreated, gin.H{"errand": view, "order": tradeOrderViewOf(order)})
+	success(c, http.StatusCreated, generated.ErrandOrderResult{
+		Errand: view,
+		Order:  errandTradeOrderViewOf(order),
+	})
 }
 func (h *Handler) pickupErrand(c *gin.Context)  { h.moveErrand(c, true) }
 func (h *Handler) deliverErrand(c *gin.Context) { h.moveErrand(c, false) }
@@ -278,7 +281,10 @@ func (h *Handler) completeErrand(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, gin.H{"errand": view, "order": tradeOrderViewOf(order)})
+	success(c, http.StatusOK, generated.ErrandOrderResult{
+		Errand: view,
+		Order:  errandTradeOrderViewOf(order),
+	})
 }
 func (h *Handler) cancelErrand(c *gin.Context) {
 	id, ok := idParam(c)
@@ -299,9 +305,10 @@ func (h *Handler) cancelErrand(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	out := gin.H{"errand": view}
+	out := generated.ErrandOptionalOrderResult{Errand: view}
 	if order.ID != 0 {
-		out["order"] = tradeOrderViewOf(order)
+		orderView := errandTradeOrderViewOf(order)
+		out.Order = &orderView
 	}
 	success(c, http.StatusOK, out)
 }
@@ -310,36 +317,7 @@ func errandInput(req errandRequest) erraddomain.TaskInput {
 	return erraddomain.TaskInput{Title: req.Title, Description: req.Description, RewardCents: req.RewardCents, PickupLocation: req.PickupLocation, DropoffLocation: req.DropoffLocation, Deadline: req.Deadline, Contact: erraddomain.ContactInput{Type: req.ContactType, Value: req.Contact, Provided: provided}}
 }
 
-type errandView struct {
-	ID               uint64     `json:"id"`
-	Title            string     `json:"title"`
-	Description      string     `json:"description"`
-	RewardCents      int64      `json:"reward_cents"`
-	Currency         string     `json:"currency"`
-	PickupLocation   string     `json:"pickup_location"`
-	DropoffLocation  string     `json:"dropoff_location"`
-	Deadline         time.Time  `json:"deadline"`
-	Status           string     `json:"status"`
-	ReviewStatus     string     `json:"review_status"`
-	ReviewReason     *string    `json:"review_reason"`
-	ReviewedBy       *uint64    `json:"reviewed_by"`
-	ReviewedAt       *time.Time `json:"reviewed_at"`
-	RequesterID      uint64     `json:"requester_id"`
-	ContactType      string     `json:"contact_type"`
-	Contact          string     `json:"contact"`
-	RunnerID         *uint64    `json:"runner_id"`
-	TradeOrderID     *uint64    `json:"trade_order_id"`
-	AcceptedAt       *time.Time `json:"accepted_at"`
-	PickedUpAt       *time.Time `json:"picked_up_at"`
-	DeliveredAt      *time.Time `json:"delivered_at"`
-	CompletedAt      *time.Time `json:"completed_at"`
-	CancelledAt      *time.Time `json:"cancelled_at"`
-	Version          uint64     `json:"version"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	ViewerRelation   string     `json:"viewer_relation"`
-	AvailableActions []string   `json:"available_actions"`
-}
+type errandView = generated.ErrandView
 
 func errandViewOf(
 	task *erraddomain.Task,
@@ -359,7 +337,8 @@ func errandViewOf(
 		PickedUpAt: task.PickedUpAt, DeliveredAt: task.DeliveredAt,
 		CompletedAt: task.CompletedAt, CancelledAt: task.CancelledAt,
 		Version: task.Version, CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt,
-		ViewerRelation: relation, AvailableActions: actions,
+		ViewerRelation:   relation,
+		AvailableActions: generatedActions[generated.ErrandViewerAction](actions),
 	}
 }
 func (h *Handler) errandView(c *gin.Context, task *erraddomain.Task) (errandView, error) {
