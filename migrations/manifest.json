@@ -168,6 +168,14 @@
     {
       "path": "migrations/20260722161337_wechat_auth.up.sql",
       "sha256": "1ff8ad0b4a80b1b69c76528c3994ceda27a6103c74308ea7a3fd381845777ed1"
+    },
+    {
+      "path": "migrations/20260723082936_errand_review.down.sql",
+      "sha256": "a8bceaf0e755af19c80b6506efee76ebd2cc48407fbd663e4308be90805438e9"
+    },
+    {
+      "path": "migrations/20260723082936_errand_review.up.sql",
+      "sha256": "9b6f2ada3c35b7a9f260e24c901c16845965311e9139af34c31e5278d4a50cc1"
     }
   ]
 }

@@ -12,6 +12,13 @@
       ]
     },
     {
+      "name": "errand:admin_read",
+      "path_pattern": "/api/v1/admin/errands",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
       "name": "errand:cancel",
       "path_pattern": "/api/v1/errands/:id/cancel",
       "methods": [
@@ -88,6 +95,30 @@
       "path_pattern": "/api/v1/errands/mine",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "errand:review",
+      "path_pattern": "/api/v1/admin/errands/:id/review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "errand:review_revoke",
+      "path_pattern": "/api/v1/admin/errands/:id/revoke-review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "errand:submit_review",
+      "path_pattern": "/api/v1/errands/:id/submit-review",
+      "methods": [
+        "POST"
       ],
       "default_roles": [
         "member"

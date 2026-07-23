@@ -44,6 +44,8 @@ func TestMarketplaceAndErrandHTTPFlows(t *testing.T) {
 	testMarketplaceAdminModeration(t, client, base, adminToken, requester.token, suffix)
 
 	task := createErrandThroughAPI(t, client, base, requester.token, suffix)
+	assertErrandHiddenBeforeApproval(t, client, base, runner.token, task.ID)
+	task = reviewErrandThroughAPI(t, client, base, adminToken, task, true, "")
 	accepted := acceptErrandThroughAPI(t, client, base, runner.token, task.ID, task.Version, "accept-"+suffix)
 	replayed := acceptErrandThroughAPI(t, client, base, runner.token, task.ID, task.Version, "accept-"+suffix)
 	if replayed.Order.ID != accepted.Order.ID {
@@ -102,6 +104,10 @@ func TestMarketplaceAndErrandConcurrentReservations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	task, err = errand.Review(ctx, task.ID, 81_099, task.Version, true, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var acceptSuccesses int
 	var acceptMu sync.Mutex
 	var acceptWG sync.WaitGroup
@@ -144,9 +150,10 @@ type marketplaceListingPage struct {
 const integrationPassword = "integration-password"
 
 type errandTask struct {
-	ID      uint64 `json:"id"`
-	Version uint64 `json:"version"`
-	Status  string `json:"status"`
+	ID           uint64 `json:"id"`
+	Version      uint64 `json:"version"`
+	Status       string `json:"status"`
+	ReviewStatus string `json:"review_status"`
 }
 type tradeSummary struct {
 	ID          uint64 `json:"id"`
@@ -307,6 +314,51 @@ func createErrandThroughAPI(t *testing.T, client http.Client, base, token, suffi
 	task := errandTask{}
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/errands", token, map[string]any{"title": "接口跑腿" + suffix, "description": "请帮忙取件", "reward_cents": 300, "pickup_location": "快递站", "dropoff_location": "宿舍", "deadline": time.Now().Add(time.Hour).UTC().Format(time.RFC3339), "contact_type": "wechat", "contact": "requester_" + suffix}), &task)
 	return task
+}
+
+func assertErrandHiddenBeforeApproval(
+	t *testing.T,
+	client http.Client,
+	base,
+	viewerToken string,
+	taskID uint64,
+) {
+	t.Helper()
+	response := request(
+		t,
+		client,
+		http.MethodGet,
+		fmt.Sprintf("%s/api/v1/errands/%d", base, taskID),
+		viewerToken,
+		nil,
+	)
+	assertStatus(t, response, http.StatusNotFound)
+}
+
+func reviewErrandThroughAPI(
+	t *testing.T,
+	client http.Client,
+	base,
+	adminToken string,
+	task errandTask,
+	approved bool,
+	reason string,
+) errandTask {
+	t.Helper()
+	reviewed := errandTask{}
+	decodeData(t, request(
+		t,
+		client,
+		http.MethodPost,
+		fmt.Sprintf("%s/api/v1/admin/errands/%d/review", base, task.ID),
+		adminToken,
+		map[string]any{
+			"approved":         approved,
+			"expected_version": task.Version,
+			"reason":           reason,
+		},
+	), &reviewed)
+	return reviewed
 }
 
 func integrationContactCipher(t *testing.T) *configcenter.Cipher {

@@ -15,9 +15,13 @@ import (
 type Store interface {
 	Create(context.Context, uint64, domain.TaskInput) (*domain.Task, error)
 	Update(context.Context, uint64, uint64, uint64, domain.TaskInput, time.Time) (*domain.Task, error)
-	Get(context.Context, uint64) (*domain.Task, error)
+	GetVisible(context.Context, uint64, uint64) (*domain.Task, error)
 	ListOpen(context.Context, int, int, time.Time) ([]domain.Task, int64, error)
 	ListMine(context.Context, uint64, int, int) ([]domain.Task, int64, error)
+	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Task, int64, error)
+	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Task, error)
+	Review(context.Context, uint64, uint64, uint64, bool, string, time.Time) (*domain.Task, error)
+	RevokeReview(context.Context, uint64, uint64, uint64, string, time.Time) (*domain.Task, error)
 	Accept(context.Context, uint64, uint64, uint64, string, time.Time) (*domain.Task, *tradedomain.Order, error)
 	Pickup(context.Context, uint64, uint64, uint64, time.Time) (*domain.Task, error)
 	Deliver(context.Context, uint64, uint64, uint64, time.Time) (*domain.Task, error)
@@ -58,9 +62,47 @@ func (m *Manager) Update(ctx context.Context, id, requester, version uint64, inp
 	return m.store.Update(ctx, id, requester, version, input, m.now().UTC())
 }
 
-// Get returns one task by ID.
-func (m *Manager) Get(ctx context.Context, id uint64) (*domain.Task, error) {
-	return m.store.Get(ctx, id)
+// GetVisible returns a task only when it is public or owned by the viewer.
+func (m *Manager) GetVisible(ctx context.Context, id, viewerID uint64) (*domain.Task, error) {
+	return m.store.GetVisible(ctx, id, viewerID)
+}
+
+// ListAdmin returns tasks matching moderation filters.
+func (m *Manager) ListAdmin(
+	ctx context.Context,
+	search domain.AdminSearch,
+	page,
+	size int,
+) ([]domain.Task, int64, error) {
+	return m.store.ListAdmin(ctx, search, page, size)
+}
+
+// SubmitReview resubmits an edited task for moderation.
+func (m *Manager) SubmitReview(ctx context.Context, id, requester, version uint64) (*domain.Task, error) {
+	return m.store.SubmitReview(ctx, id, requester, version)
+}
+
+// Review records an administrator moderation decision.
+func (m *Manager) Review(
+	ctx context.Context,
+	id,
+	adminID,
+	version uint64,
+	approved bool,
+	reason string,
+) (*domain.Task, error) {
+	return m.store.Review(ctx, id, adminID, version, approved, reason, m.now().UTC())
+}
+
+// RevokeReview moves a publicly visible, unaccepted task back to moderation.
+func (m *Manager) RevokeReview(
+	ctx context.Context,
+	id,
+	adminID,
+	version uint64,
+	reason string,
+) (*domain.Task, error) {
+	return m.store.RevokeReview(ctx, id, adminID, version, reason, m.now().UTC())
 }
 
 // ListOpen returns open tasks available for acceptance.

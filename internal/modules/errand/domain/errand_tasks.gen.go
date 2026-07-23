@@ -16,6 +16,10 @@ type Task struct {
 	DropoffLocation   string     `gorm:"column:dropoff_location;not null" json:"dropoff_location"`
 	Deadline          time.Time  `gorm:"column:deadline;not null;index" json:"deadline"`
 	Status            string     `gorm:"column:status;not null;index" json:"status"`
+	ReviewStatus      string     `gorm:"column:review_status;not null;index" json:"review_status"`
+	ReviewReason      *string    `gorm:"column:review_reason" json:"review_reason"`
+	ReviewedBy        *uint64    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt        *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
 	RequesterId       uint64     `gorm:"column:requester_id;not null;index" json:"requester_id"`
 	ContactType       string     `gorm:"column:contact_type;not null" json:"contact_type"`
 	ContactCiphertext string     `gorm:"column:contact_ciphertext;not null" json:"contact_ciphertext"`
