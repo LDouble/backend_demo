@@ -7,20 +7,24 @@ import "time"
 
 // Trip is the persistent domain entity for the carpool module.
 type Trip struct {
-	ID                uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
-	Title             string    `gorm:"column:title;not null" json:"title"`
-	Origin            string    `gorm:"column:origin;not null" json:"origin"`
-	Destination       string    `gorm:"column:destination;not null" json:"destination"`
-	DepartureAt       time.Time `gorm:"column:departure_at;not null;index" json:"departure_at"`
-	TotalSeats        int64     `gorm:"column:total_seats;not null" json:"total_seats"`
-	OccupiedSeats     int64     `gorm:"column:occupied_seats;not null" json:"occupied_seats"`
-	Status            string    `gorm:"column:status;not null;index" json:"status"`
-	OrganizerId       uint64    `gorm:"column:organizer_id;not null;index" json:"organizer_id"`
-	ContactType       string    `gorm:"column:contact_type;not null" json:"contact_type"`
-	ContactCiphertext string    `gorm:"column:contact_ciphertext;not null" json:"contact_ciphertext"`
-	Version           uint64    `gorm:"column:version;not null" json:"version"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	Title             string     `gorm:"column:title;not null" json:"title"`
+	Origin            string     `gorm:"column:origin;not null" json:"origin"`
+	Destination       string     `gorm:"column:destination;not null" json:"destination"`
+	DepartureAt       time.Time  `gorm:"column:departure_at;not null;index" json:"departure_at"`
+	TotalSeats        int64      `gorm:"column:total_seats;not null" json:"total_seats"`
+	OccupiedSeats     int64      `gorm:"column:occupied_seats;not null" json:"occupied_seats"`
+	Status            string     `gorm:"column:status;not null;index" json:"status"`
+	ReviewStatus      string     `gorm:"column:review_status;not null;index" json:"review_status"`
+	ReviewReason      *string    `gorm:"column:review_reason" json:"review_reason"`
+	ReviewedBy        *uint64    `gorm:"column:reviewed_by" json:"reviewed_by"`
+	ReviewedAt        *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	OrganizerId       uint64     `gorm:"column:organizer_id;not null;index" json:"organizer_id"`
+	ContactType       string     `gorm:"column:contact_type;not null" json:"contact_type"`
+	ContactCiphertext string     `gorm:"column:contact_ciphertext;not null" json:"contact_ciphertext"`
+	Version           uint64     `gorm:"column:version;not null" json:"version"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // TableName returns the schema-controlled database table.

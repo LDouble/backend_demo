@@ -34,7 +34,7 @@ func (s *Store) RevealContact(trip *domain.Trip) (string, error) {
 
 // CreateTrip inserts a new trip and encrypts the organizer contact.
 func (s *Store) CreateTrip(ctx context.Context, organizer uint64, in domain.TripInput, _ time.Time) (*domain.Trip, error) {
-	trip := &domain.Trip{Title: strings.TrimSpace(in.Title), Origin: strings.TrimSpace(in.Origin), Destination: strings.TrimSpace(in.Destination), DepartureAt: in.DepartureAt.UTC(), TotalSeats: in.TotalSeats, Status: domain.TripOpen, OrganizerId: organizer, ContactType: strings.TrimSpace(in.ContactType), Version: 1}
+	trip := &domain.Trip{Title: strings.TrimSpace(in.Title), Origin: strings.TrimSpace(in.Origin), Destination: strings.TrimSpace(in.Destination), DepartureAt: in.DepartureAt.UTC(), TotalSeats: in.TotalSeats, Status: domain.TripOpen, ReviewStatus: domain.ReviewPending, OrganizerId: organizer, ContactType: strings.TrimSpace(in.ContactType), Version: 1}
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(trip).Error; err != nil {
 			return err
@@ -58,6 +58,9 @@ func (s *Store) GetTrip(ctx context.Context, id, viewer uint64) (*domain.Trip, b
 	if err := idempotency.DB(ctx, s.db).First(&trip, id).Error; err != nil {
 		return nil, false, notFound(err)
 	}
+	if trip.ReviewStatus != domain.ReviewApproved && trip.OrganizerId != viewer {
+		return nil, false, notFound(gorm.ErrRecordNotFound)
+	}
 	visible := trip.OrganizerId == viewer
 	if !visible && trip.Status != domain.TripCancelled && trip.Status != domain.TripCompleted {
 		var p domain.Participant
@@ -73,7 +76,12 @@ func (s *Store) GetTrip(ctx context.Context, id, viewer uint64) (*domain.Trip, b
 // SearchTrips returns public trips that have not departed.
 func (s *Store) SearchTrips(ctx context.Context, search domain.Search, page, size int, now time.Time) ([]domain.Trip, int64, error) {
 	rows := []domain.Trip{}
-	base := idempotency.DB(ctx, s.db).Model(&domain.Trip{}).Where("status IN ? AND departure_at > ?", []string{domain.TripOpen, domain.TripFull}, now)
+	base := idempotency.DB(ctx, s.db).Model(&domain.Trip{}).Where(
+		"status IN ? AND review_status = ? AND departure_at > ?",
+		[]string{domain.TripOpen, domain.TripFull},
+		domain.ReviewApproved,
+		now,
+	)
 	if v := strings.TrimSpace(search.Origin); v != "" {
 		base = base.Where("origin LIKE ?", "%"+v+"%")
 	}
@@ -97,6 +105,185 @@ func (s *Store) SearchTrips(ctx context.Context, search domain.Search, page, siz
 	return rows, total, nil
 }
 
+// UpdateTrip changes an organizer-owned, unoccupied trip and requires re-review.
+func (s *Store) UpdateTrip(
+	ctx context.Context,
+	id,
+	organizer,
+	version uint64,
+	in domain.TripInput,
+	_ time.Time,
+) (*domain.Trip, error) {
+	return s.mutateReviewableTrip(ctx, id, organizer, version, func(tx *gorm.DB, trip *domain.Trip) error {
+		if trip.OccupiedSeats != 0 {
+			return conflict("trip_has_participants", "已有参与者的行程不可修改")
+		}
+		trip.Title = strings.TrimSpace(in.Title)
+		trip.Origin = strings.TrimSpace(in.Origin)
+		trip.Destination = strings.TrimSpace(in.Destination)
+		trip.DepartureAt = in.DepartureAt.UTC()
+		trip.TotalSeats = in.TotalSeats
+		if in.ContactProvided {
+			ciphertext, err := s.cipher.Encrypt(strings.TrimSpace(in.Contact), contactAAD(trip.ID))
+			if err != nil {
+				return err
+			}
+			trip.ContactType = strings.TrimSpace(in.ContactType)
+			trip.ContactCiphertext = ciphertext
+		}
+		trip.ReviewStatus = domain.ReviewDraft
+		trip.ReviewReason = nil
+		trip.ReviewedBy = nil
+		trip.ReviewedAt = nil
+		trip.Version++
+		if err := tx.Save(trip).Error; err != nil {
+			return err
+		}
+		return event(tx, trip, "carpool.updated")
+	})
+}
+
+// ListAdmin returns trips matching moderation filters.
+func (s *Store) ListAdmin(
+	ctx context.Context,
+	search domain.AdminSearch,
+	page,
+	size int,
+) ([]domain.Trip, int64, error) {
+	rows := []domain.Trip{}
+	base := idempotency.DB(ctx, s.db).Model(&domain.Trip{})
+	if keyword := strings.TrimSpace(search.Keyword); keyword != "" {
+		pattern := "%" + keyword + "%"
+		base = base.Where(
+			"(title LIKE ? OR origin LIKE ? OR destination LIKE ?)",
+			pattern,
+			pattern,
+			pattern,
+		)
+	}
+	if status := strings.TrimSpace(search.Status); status != "" {
+		base = base.Where("status = ?", status)
+	}
+	if reviewStatus := strings.TrimSpace(search.ReviewStatus); reviewStatus != "" {
+		base = base.Where("review_status = ?", reviewStatus)
+	}
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := base.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+	return rows, total, nil
+}
+
+// SubmitReview moves an edited trip back into moderation.
+func (s *Store) SubmitReview(ctx context.Context, id, organizer, version uint64) (*domain.Trip, error) {
+	return s.mutateReviewableTrip(ctx, id, organizer, version, func(tx *gorm.DB, trip *domain.Trip) error {
+		if trip.ReviewStatus != domain.ReviewDraft && trip.ReviewStatus != domain.ReviewRejected {
+			return conflict("invalid_carpool_review_state", "当前行程不可重新提交审核")
+		}
+		trip.ReviewStatus = domain.ReviewPending
+		trip.ReviewReason = nil
+		trip.ReviewedBy = nil
+		trip.ReviewedAt = nil
+		trip.Version++
+		if err := tx.Save(trip).Error; err != nil {
+			return err
+		}
+		return event(tx, trip, "carpool.review_submitted")
+	})
+}
+
+// Review records an administrator moderation decision.
+func (s *Store) Review(
+	ctx context.Context,
+	id,
+	adminID,
+	version uint64,
+	approved bool,
+	reason string,
+	now time.Time,
+) (*domain.Trip, error) {
+	return s.mutateReviewableTrip(ctx, id, 0, version, func(tx *gorm.DB, trip *domain.Trip) error {
+		if trip.ReviewStatus != domain.ReviewPending {
+			return conflict("invalid_carpool_review_state", "行程当前不在待审核状态")
+		}
+		trimmedReason := strings.TrimSpace(reason)
+		if !approved && trimmedReason == "" {
+			return apperror.New(400, "rejection_reason_required", "驳回原因不能为空")
+		}
+		trip.ReviewStatus = domain.ReviewApproved
+		trip.ReviewReason = nil
+		if !approved {
+			trip.ReviewStatus = domain.ReviewRejected
+			trip.ReviewReason = &trimmedReason
+		}
+		trip.ReviewedBy = &adminID
+		trip.ReviewedAt = &now
+		trip.Version++
+		if err := tx.Save(trip).Error; err != nil {
+			return err
+		}
+		return event(tx, trip, "carpool.reviewed")
+	})
+}
+
+// RevokeReview hides an approved, unoccupied trip and returns it to moderation.
+func (s *Store) RevokeReview(
+	ctx context.Context,
+	id,
+	adminID,
+	version uint64,
+	reason string,
+	now time.Time,
+) (*domain.Trip, error) {
+	return s.mutateReviewableTrip(ctx, id, 0, version, func(tx *gorm.DB, trip *domain.Trip) error {
+		trimmedReason := strings.TrimSpace(reason)
+		if trimmedReason == "" {
+			return apperror.New(400, "revoke_reason_required", "撤销原因不能为空")
+		}
+		if trip.ReviewStatus != domain.ReviewApproved || trip.OccupiedSeats != 0 {
+			return conflict("invalid_carpool_review_state", "仅可撤销未成行的已通过审核")
+		}
+		trip.ReviewStatus = domain.ReviewPending
+		trip.ReviewReason = &trimmedReason
+		trip.ReviewedBy = &adminID
+		trip.ReviewedAt = &now
+		trip.Version++
+		if err := tx.Save(trip).Error; err != nil {
+			return err
+		}
+		return event(tx, trip, "carpool.review_revoked")
+	})
+}
+
+func (s *Store) mutateReviewableTrip(
+	ctx context.Context,
+	id,
+	organizer,
+	version uint64,
+	change func(*gorm.DB, *domain.Trip) error,
+) (*domain.Trip, error) {
+	var trip domain.Trip
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&trip, id).Error; err != nil {
+			return notFound(err)
+		}
+		if organizer != 0 && trip.OrganizerId != organizer {
+			return apperror.New(403, "not_organizer", "仅发起人可以执行此操作")
+		}
+		if trip.Version != version {
+			return conflict("version_conflict", "行程已被其他请求更新")
+		}
+		if trip.Status != domain.TripOpen || !trip.DepartureAt.After(time.Now().UTC()) {
+			return conflict("trip_unavailable", "当前行程不可执行审核操作")
+		}
+		return change(tx, &trip)
+	})
+	return &trip, err
+}
+
 // Join adds a participant and reserves one seat atomically.
 func (s *Store) Join(ctx context.Context, id, user, version uint64, now time.Time) (*domain.Trip, error) {
 	var trip domain.Trip
@@ -112,6 +299,9 @@ func (s *Store) Join(ctx context.Context, id, user, version uint64, now time.Tim
 		}
 		if trip.Status != domain.TripOpen && trip.Status != domain.TripFull {
 			return conflict("trip_unavailable", "行程当前不可加入")
+		}
+		if trip.ReviewStatus != domain.ReviewApproved {
+			return conflict("trip_unavailable", "行程尚未通过审核")
 		}
 		if !trip.DepartureAt.After(now) {
 			return conflict("trip_departed", "行程已经出发")

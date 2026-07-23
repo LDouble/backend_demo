@@ -2,6 +2,13 @@
   "module": "carpool",
   "permissions": [
     {
+      "name": "carpool:admin_read",
+      "path_pattern": "/api/v1/admin/carpool/trips",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
       "name": "carpool:cancel",
       "path_pattern": "/api/v1/carpool/trips/:id/cancel",
       "methods": [
@@ -60,6 +67,40 @@
       ],
       "default_roles": [
         "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "carpool:review",
+      "path_pattern": "/api/v1/admin/carpool/trips/:id/review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "carpool:review_revoke",
+      "path_pattern": "/api/v1/admin/carpool/trips/:id/revoke-review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "carpool:submit_review",
+      "path_pattern": "/api/v1/carpool/trips/:id/submit-review",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "carpool:update",
+      "path_pattern": "/api/v1/carpool/trips/:id",
+      "methods": [
+        "PATCH"
+      ],
+      "default_roles": [
         "member"
       ]
     }

@@ -13,13 +13,27 @@ import (
 // Store defines the transactional persistence contract for carpool trips.
 type Store interface {
 	CreateTrip(context.Context, uint64, domain.TripInput, time.Time) (*domain.Trip, error)
+	UpdateTrip(context.Context, uint64, uint64, uint64, domain.TripInput, time.Time) (*domain.Trip, error)
 	GetTrip(context.Context, uint64, uint64) (*domain.Trip, bool, error)
 	SearchTrips(context.Context, domain.Search, int, int, time.Time) ([]domain.Trip, int64, error)
+	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Trip, int64, error)
+	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Trip, error)
+	Review(context.Context, uint64, uint64, uint64, bool, string, time.Time) (*domain.Trip, error)
+	RevokeReview(context.Context, uint64, uint64, uint64, string, time.Time) (*domain.Trip, error)
 	Join(context.Context, uint64, uint64, uint64, time.Time) (*domain.Trip, error)
 	Leave(context.Context, uint64, uint64, uint64, time.Time) (*domain.Trip, error)
 	Cancel(context.Context, uint64, uint64, uint64, time.Time) (*domain.Trip, error)
 	CompleteDue(context.Context, time.Time) (int64, error)
 	RevealContact(*domain.Trip) (string, error)
+}
+
+// Update validates and updates an unoccupied trip.
+func (m *Manager) Update(ctx context.Context, id, user, version uint64, in domain.TripInput) (*domain.Trip, error) {
+	now := m.now().UTC()
+	if err := domain.ValidateTripUpdateInput(in, now); err != nil {
+		return nil, apperror.Wrap(http.StatusBadRequest, "invalid_carpool_trip", err.Error(), err)
+	}
+	return m.store.UpdateTrip(ctx, id, user, version, in, now)
 }
 
 // Manager validates carpool input before delegating to the store.
@@ -48,6 +62,26 @@ func (m *Manager) Get(ctx context.Context, id, viewer uint64) (*domain.Trip, boo
 // Search returns matching trips for the supplied filters.
 func (m *Manager) Search(ctx context.Context, s domain.Search, p, size int) ([]domain.Trip, int64, error) {
 	return m.store.SearchTrips(ctx, s, p, size, m.now().UTC())
+}
+
+// ListAdmin returns trips matching moderation filters.
+func (m *Manager) ListAdmin(ctx context.Context, search domain.AdminSearch, page, size int) ([]domain.Trip, int64, error) {
+	return m.store.ListAdmin(ctx, search, page, size)
+}
+
+// SubmitReview resubmits an edited trip for moderation.
+func (m *Manager) SubmitReview(ctx context.Context, id, user, version uint64) (*domain.Trip, error) {
+	return m.store.SubmitReview(ctx, id, user, version)
+}
+
+// Review records an administrator moderation decision.
+func (m *Manager) Review(ctx context.Context, id, adminID, version uint64, approved bool, reason string) (*domain.Trip, error) {
+	return m.store.Review(ctx, id, adminID, version, approved, reason, m.now().UTC())
+}
+
+// RevokeReview hides an approved, unoccupied trip and returns it to moderation.
+func (m *Manager) RevokeReview(ctx context.Context, id, adminID, version uint64, reason string) (*domain.Trip, error) {
+	return m.store.RevokeReview(ctx, id, adminID, version, reason, m.now().UTC())
 }
 
 // Join atomically joins a trip.

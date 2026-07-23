@@ -536,6 +536,9 @@ func (s *Service) Bootstrap(ctx context.Context, userID uint64) error {
 	if err := s.ensureBuiltinRole(ctx, model.GuestRole, "平台访客", s.guestPolicies); err != nil {
 		return err
 	}
+	if err := s.ensureBuiltinRole(ctx, model.MemberRole, "已认证成员", s.memberPolicies); err != nil {
+		return err
+	}
 	if err := s.EnsureCurrentBaseRoleForUser(ctx, userID); err != nil {
 		return err
 	}

@@ -12,6 +12,10 @@ entities:
       - {name: total_seats, type: int64, required: true}
       - {name: occupied_seats, type: int64, required: true}
       - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: review_status, type: string, size: 24, required: true, index: true}
+      - {name: review_reason, type: string, size: 500}
+      - {name: reviewed_by, type: uint64}
+      - {name: reviewed_at, type: datetime}
       - {name: organizer_id, type: uint64, required: true, index: true}
       - {name: contact_type, type: string, size: 16, required: true}
       - {name: contact_ciphertext, type: text, required: true}
@@ -62,6 +66,38 @@ operations:
     permission: carpool:read_item
     summary: 查看拼车行程
     responses: [{status: 200, kind: success}]
+  - operation_id: UpdateCarpoolTrip
+    default_roles: [member]
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: PATCH
+    idempotency: required
+    academic_verification: required
+    path: /api/v1/carpool/trips/{id}
+    permission: carpool:update
+    summary: 修改未成行的拼车行程
+    body:
+      fields:
+        - {name: title, type: string, required: true, max_length: 200}
+        - {name: origin, type: string, required: true, max_length: 500}
+        - {name: destination, type: string, required: true, max_length: 500}
+        - {name: departure_at, type: string, format: date-time, required: true}
+        - {name: total_seats, type: integer, format: int64, required: true, minimum: 1}
+        - {name: contact_type, type: string, max_length: 16}
+        - {name: contact, type: string, max_length: 200}
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: ListAdminCarpoolTrips
+    method: GET
+    path: /api/v1/admin/carpool/trips
+    permission: carpool:admin_read
+    summary: 管理端查询拼车行程
+    query:
+      - {name: status, type: string}
+      - {name: review_status, type: string}
+      - {name: keyword, type: string}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success}]
   - operation_id: JoinCarpoolTrip
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -73,6 +109,44 @@ operations:
     summary: 原子加入拼车行程
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: SubmitCarpoolTripReview
+    default_roles: [member]
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    path: /api/v1/carpool/trips/{id}/submit-review
+    permission: carpool:submit_review
+    summary: 重新提交拼车行程审核
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: ReviewCarpoolTrip
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/admin/carpool/trips/{id}/review
+    permission: carpool:review
+    summary: 审核拼车行程
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: approved, type: boolean, required: true}
+        - {name: reason, type: string, max_length: 500}
+    responses: [{status: 200, kind: success}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: RevokeCarpoolTripReview
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/admin/carpool/trips/{id}/revoke-review
+    permission: carpool:review_revoke
+    summary: 撤销拼车行程审核结果
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: reason, type: string, required: true, max_length: 500}
+    responses: [{status: 200, kind: success}, {status: 400, kind: error}, {status: 409, kind: error}]
   - operation_id: LeaveCarpoolTrip
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]

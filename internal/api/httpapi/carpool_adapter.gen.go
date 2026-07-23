@@ -8,6 +8,30 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/api/generated"
 )
 
+// ListAdminCarpoolTrips adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListAdminCarpoolTrips(c *gin.Context, params generated.ListAdminCarpoolTripsParams) {
+	setGeneratedParams(c, "ListAdminCarpoolTrips", params)
+	h.listAdminCarpoolTrips(c)
+}
+
+// ReviewCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ReviewCarpoolTrip(c *gin.Context, id uint64, params generated.ReviewCarpoolTripParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "ReviewCarpoolTrip", params)
+	h.idempotent(c, "ReviewCarpoolTrip", func() {
+		h.reviewCarpoolTrip(c)
+	})
+}
+
+// RevokeCarpoolTripReview adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) RevokeCarpoolTripReview(c *gin.Context, id uint64, params generated.RevokeCarpoolTripReviewParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "RevokeCarpoolTripReview", params)
+	h.idempotent(c, "RevokeCarpoolTripReview", func() {
+		h.revokeCarpoolTripReview(c)
+	})
+}
+
 // ListCarpoolTrips adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) ListCarpoolTrips(c *gin.Context, params generated.ListCarpoolTripsParams) {
 	setGeneratedParams(c, "ListCarpoolTrips", params)
@@ -29,6 +53,18 @@ func (h *Handler) CreateCarpoolTrip(c *gin.Context, params generated.CreateCarpo
 func (h *Handler) GetCarpoolTrip(c *gin.Context, id uint64) {
 	setGeneratedPathParam(c, "id", id)
 	h.getCarpoolTrip(c)
+}
+
+// UpdateCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) UpdateCarpoolTrip(c *gin.Context, id uint64, params generated.UpdateCarpoolTripParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "UpdateCarpoolTrip", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	h.idempotent(c, "UpdateCarpoolTrip", func() {
+		h.updateCarpoolTrip(c)
+	})
 }
 
 // CancelCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
@@ -64,5 +100,17 @@ func (h *Handler) LeaveCarpoolTrip(c *gin.Context, id uint64, params generated.L
 	}
 	h.idempotent(c, "LeaveCarpoolTrip", func() {
 		h.leaveCarpoolTrip(c)
+	})
+}
+
+// SubmitCarpoolTripReview adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) SubmitCarpoolTripReview(c *gin.Context, id uint64, params generated.SubmitCarpoolTripReviewParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "SubmitCarpoolTripReview", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	h.idempotent(c, "SubmitCarpoolTripReview", func() {
+		h.submitCarpoolTripReview(c)
 	})
 }

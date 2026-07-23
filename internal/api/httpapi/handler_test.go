@@ -85,12 +85,32 @@ func (s failingCarpoolStore) CreateTrip(context.Context, uint64, carpooldomain.T
 	return nil, s.err
 }
 
+func (failingCarpoolStore) UpdateTrip(context.Context, uint64, uint64, uint64, carpooldomain.TripInput, time.Time) (*carpooldomain.Trip, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (failingCarpoolStore) GetTrip(context.Context, uint64, uint64) (*carpooldomain.Trip, bool, error) {
 	return nil, false, errors.New("not implemented")
 }
 
 func (failingCarpoolStore) SearchTrips(context.Context, carpooldomain.Search, int, int, time.Time) ([]carpooldomain.Trip, int64, error) {
 	return nil, 0, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) ListAdmin(context.Context, carpooldomain.AdminSearch, int, int) ([]carpooldomain.Trip, int64, error) {
+	return nil, 0, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) SubmitReview(context.Context, uint64, uint64, uint64) (*carpooldomain.Trip, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) Review(context.Context, uint64, uint64, uint64, bool, string, time.Time) (*carpooldomain.Trip, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) RevokeReview(context.Context, uint64, uint64, uint64, string, time.Time) (*carpooldomain.Trip, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (failingCarpoolStore) Join(context.Context, uint64, uint64, uint64, time.Time) (*carpooldomain.Trip, error) {

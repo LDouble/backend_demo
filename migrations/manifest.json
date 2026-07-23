@@ -176,6 +176,14 @@
     {
       "path": "migrations/20260723082936_errand_review.up.sql",
       "sha256": "9b6f2ada3c35b7a9f260e24c901c16845965311e9139af34c31e5278d4a50cc1"
+    },
+    {
+      "path": "migrations/20260723090848_carpool_review.down.sql",
+      "sha256": "3cceebde535880fdbd2fbd81f384d51ded08e96c5340a90daf17b632f094df42"
+    },
+    {
+      "path": "migrations/20260723090848_carpool_review.up.sql",
+      "sha256": "076e664e02b1fd85c5108bf08b8c6f7811bdcd999d7aa3630ca7018768eff519"
     }
   ]
 }
