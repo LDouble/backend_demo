@@ -90,6 +90,12 @@ func (m *Manager) IsViewerRegisteredBatch(ctx context.Context, viewerID uint64, 
 	return m.store.IsViewerRegisteredBatch(ctx, viewerID, activityIDs)
 }
 
+// ViewerContext returns the viewer relation and member actions for an activity.
+func (m *Manager) ViewerContext(activity *domain.Activity, viewerID uint64, registered bool) (string, []string) {
+	return domain.ViewerRelation(activity, viewerID, registered),
+		domain.AvailableActions(activity, viewerID, registered, m.now().UTC())
+}
+
 // ContactWithAccess is the list-path variant of Contact that reuses a
 // precomputed `hasActiveRegistration` flag in lieu of issuing a fresh query.
 func (m *Manager) ContactWithAccess(ctx context.Context, activity *domain.Activity, viewerID uint64, hasActiveRegistration bool) (domain.ContactDetails, error) {

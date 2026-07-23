@@ -226,7 +226,7 @@ func (s *Store) Contact(ctx context.Context, listing *domain.Listing, viewerID u
 	if isTerminal || listing.OwnerId == viewerID {
 		return s.contactWithAccess(listing, viewerID, false)
 	}
-	access, err := s.activeBuyerListings(ctx, viewerID, []uint64{listing.ID})
+	access, err := s.ActiveBuyerListings(ctx, viewerID, []uint64{listing.ID})
 	if err != nil {
 		return domain.ContactDetails{}, err
 	}
@@ -248,7 +248,7 @@ func (s *Store) Contacts(
 			listingIDs = append(listingIDs, listing.ID)
 		}
 	}
-	access, err := s.activeBuyerListings(ctx, viewerID, listingIDs)
+	access, err := s.ActiveBuyerListings(ctx, viewerID, listingIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,8 @@ func (s *Store) Contacts(
 	return contacts, nil
 }
 
-func (s *Store) activeBuyerListings(
+// ActiveBuyerListings returns listings for which the viewer owns a confirmed order.
+func (s *Store) ActiveBuyerListings(
 	ctx context.Context,
 	viewerID uint64,
 	listingIDs []uint64,

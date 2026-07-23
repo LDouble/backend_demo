@@ -47,3 +47,59 @@ func TestStateTransitions(t *testing.T) {
 		t.Fatal("unexpected listing state transition")
 	}
 }
+
+func TestViewerRelation(t *testing.T) {
+	listing := &Listing{OwnerId: 7}
+	tests := []struct {
+		name           string
+		viewerID       uint64
+		hasActiveOrder bool
+		want           string
+	}{
+		{name: "anonymous", want: ViewerRelationNone},
+		{name: "owner takes precedence", viewerID: 7, hasActiveOrder: true, want: ViewerRelationOwner},
+		{name: "buyer", viewerID: 8, hasActiveOrder: true, want: ViewerRelationBuyer},
+		{name: "unrelated", viewerID: 8, want: ViewerRelationNone},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ViewerRelation(listing, test.viewerID, test.hasActiveOrder); got != test.want {
+				t.Fatalf("ViewerRelation()=%q want=%q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestAvailableActions(t *testing.T) {
+	tests := []struct {
+		name           string
+		status         string
+		ownerID        uint64
+		viewerID       uint64
+		hasActiveOrder bool
+		want           []string
+	}{
+		{name: "anonymous published", status: ListingPublished, ownerID: 7, want: []string{}},
+		{name: "stranger published", status: ListingPublished, ownerID: 7, viewerID: 8, want: []string{ActionPurchase}},
+		{name: "buyer reserved", status: ListingReserved, ownerID: 7, viewerID: 8, hasActiveOrder: true, want: []string{}},
+		{name: "owner draft", status: ListingDraft, ownerID: 7, viewerID: 7, want: []string{ActionEdit, ActionSubmitReview, ActionWithdraw}},
+		{name: "owner rejected", status: ListingRejected, ownerID: 7, viewerID: 7, want: []string{ActionEdit, ActionSubmitReview, ActionWithdraw}},
+		{name: "owner pending", status: ListingPendingReview, ownerID: 7, viewerID: 7, want: []string{ActionWithdraw}},
+		{name: "owner published", status: ListingPublished, ownerID: 7, viewerID: 7, want: []string{ActionWithdraw}},
+		{name: "owner terminal", status: ListingSold, ownerID: 7, viewerID: 7, want: []string{}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			listing := &Listing{Status: test.status, OwnerId: test.ownerID}
+			got := AvailableActions(listing, test.viewerID, test.hasActiveOrder)
+			if len(got) != len(test.want) {
+				t.Fatalf("AvailableActions()=%v want=%v", got, test.want)
+			}
+			for i := range got {
+				if got[i] != test.want[i] {
+					t.Fatalf("AvailableActions()=%v want=%v", got, test.want)
+				}
+			}
+		})
+	}
+}

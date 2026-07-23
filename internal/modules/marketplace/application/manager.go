@@ -24,6 +24,7 @@ type Store interface {
 	Complete(context.Context, uint64, uint64, uint64, time.Time) (*tradedomain.Order, error)
 	Contact(context.Context, *domain.Listing, uint64) (domain.ContactDetails, error)
 	Contacts(context.Context, []domain.ListingDetails, uint64) (map[uint64]domain.ContactDetails, error)
+	ActiveBuyerListings(context.Context, uint64, []uint64) (map[uint64]bool, error)
 	ExpireReservations(context.Context, time.Time) (int64, error)
 	GetVisible(context.Context, uint64, uint64) (*domain.ListingDetails, error)
 	ListPublished(context.Context, domain.ListingSearch) ([]domain.ListingDetails, int64, error)
@@ -85,6 +86,31 @@ func (m *Manager) Contacts(
 	viewerID uint64,
 ) (map[uint64]domain.ContactDetails, error) {
 	return m.store.Contacts(ctx, listings, viewerID)
+}
+
+// ViewerContexts resolves viewer relation and member actions for a listing page.
+func (m *Manager) ViewerContexts(
+	ctx context.Context,
+	listings []domain.ListingDetails,
+	viewerID uint64,
+) (map[uint64]string, map[uint64][]string, error) {
+	ids := make([]uint64, 0, len(listings))
+	for i := range listings {
+		ids = append(ids, listings[i].ID)
+	}
+	activeOrders, err := m.store.ActiveBuyerListings(ctx, viewerID, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	relations := make(map[uint64]string, len(listings))
+	actions := make(map[uint64][]string, len(listings))
+	for i := range listings {
+		listing := &listings[i].Listing
+		hasActiveOrder := activeOrders[listing.ID]
+		relations[listing.ID] = domain.ViewerRelation(listing, viewerID, hasActiveOrder)
+		actions[listing.ID] = domain.AvailableActions(listing, viewerID, hasActiveOrder)
+	}
+	return relations, actions, nil
 }
 
 // Manager enforces input validation before the transactional repository boundary.

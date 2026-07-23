@@ -36,27 +36,29 @@ type activityReviewRequest struct {
 }
 
 type activityView struct {
-	ID              uint64    `json:"id"`
-	Title           string    `json:"title"`
-	Summary         string    `json:"summary"`
-	Body            string    `json:"body"`
-	Location        string    `json:"location"`
-	SignupStartAt   time.Time `json:"signup_start_at"`
-	SignupEndAt     time.Time `json:"signup_end_at"`
-	StartAt         time.Time `json:"start_at"`
-	EndAt           time.Time `json:"end_at"`
-	Capacity        int64     `json:"capacity"`
-	RegisteredCount int64     `json:"registered_count"`
-	Status          string    `json:"status"`
-	ReviewStatus    string    `json:"review_status"`
-	ReviewComment   *string   `json:"review_comment,omitempty"`
-	CreatedBy       uint64    `json:"created_by"`
-	UpdatedBy       uint64    `json:"updated_by"`
-	ContactType     string    `json:"contact_type"`
-	Contact         string    `json:"contact"`
-	Version         uint64    `json:"version"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID               uint64    `json:"id"`
+	Title            string    `json:"title"`
+	Summary          string    `json:"summary"`
+	Body             string    `json:"body"`
+	Location         string    `json:"location"`
+	SignupStartAt    time.Time `json:"signup_start_at"`
+	SignupEndAt      time.Time `json:"signup_end_at"`
+	StartAt          time.Time `json:"start_at"`
+	EndAt            time.Time `json:"end_at"`
+	Capacity         int64     `json:"capacity"`
+	RegisteredCount  int64     `json:"registered_count"`
+	Status           string    `json:"status"`
+	ReviewStatus     string    `json:"review_status"`
+	ReviewComment    *string   `json:"review_comment,omitempty"`
+	CreatedBy        uint64    `json:"created_by"`
+	UpdatedBy        uint64    `json:"updated_by"`
+	ContactType      string    `json:"contact_type"`
+	Contact          string    `json:"contact"`
+	Version          uint64    `json:"version"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	ViewerRelation   string    `json:"viewer_relation"`
+	AvailableActions []string  `json:"available_actions"`
 }
 
 type myActivityRegistrationView struct {
@@ -314,7 +316,8 @@ func (h *Handler) listMyActivityRegistrations(c *gin.Context) {
 	}
 	views := make([]myActivityRegistrationView, 0, len(rows))
 	for _, row := range rows {
-		view, err := h.activityView(c, &row.Activity)
+		registered := row.Registration.Status == activitydomain.RegistrationStatusActive
+		view, err := h.activityViewWithAccess(c, &row.Activity, registered)
 		if err != nil {
 			failure(c, err)
 			return
@@ -386,44 +389,59 @@ func (h *Handler) activityViews(c *gin.Context, rows []activitydomain.Activity) 
 // a precomputed registration flag. Single-row callers use activityView
 // (which falls back to issuing a fresh IsViewerRegistered query).
 func (h *Handler) activityViewWithAccess(c *gin.Context, activity *activitydomain.Activity, registered bool) (activityView, error) {
-	contact, err := h.activities.ContactWithAccess(c.Request.Context(), activity, c.GetUint64(userIDKey), registered)
+	viewerID := c.GetUint64(userIDKey)
+	contact, err := h.activities.ContactWithAccess(c.Request.Context(), activity, viewerID, registered)
 	if err != nil {
 		return activityView{}, err
 	}
-	return h.assembleActivityView(activity, contact), nil
+	relation, actions := h.activities.ViewerContext(activity, viewerID, registered)
+	return h.assembleActivityView(activity, contact, relation, actions), nil
 }
 
 func (h *Handler) activityView(c *gin.Context, activity *activitydomain.Activity) (activityView, error) {
-	contact, err := h.activities.Contact(c.Request.Context(), activity, c.GetUint64(userIDKey))
+	viewerID := c.GetUint64(userIDKey)
+	registered, err := h.activities.IsViewerRegistered(c.Request.Context(), viewerID, activity.ID)
 	if err != nil {
 		return activityView{}, err
 	}
-	return h.assembleActivityView(activity, contact), nil
+	contact, err := h.activities.ContactWithAccess(c.Request.Context(), activity, viewerID, registered)
+	if err != nil {
+		return activityView{}, err
+	}
+	relation, actions := h.activities.ViewerContext(activity, viewerID, registered)
+	return h.assembleActivityView(activity, contact, relation, actions), nil
 }
 
-func (h *Handler) assembleActivityView(activity *activitydomain.Activity, contact activitydomain.ContactDetails) activityView {
+func (h *Handler) assembleActivityView(
+	activity *activitydomain.Activity,
+	contact activitydomain.ContactDetails,
+	relation string,
+	actions []string,
+) activityView {
 	return activityView{
-		ID:              activity.ID,
-		Title:           activity.Title,
-		Summary:         activity.Summary,
-		Body:            activity.Body,
-		Location:        activity.Location,
-		SignupStartAt:   activity.SignupStartAt,
-		SignupEndAt:     activity.SignupEndAt,
-		StartAt:         activity.StartAt,
-		EndAt:           activity.EndAt,
-		Capacity:        activity.Capacity,
-		RegisteredCount: activity.RegisteredCount,
-		Status:          activity.Status,
-		ReviewStatus:    activity.ReviewStatus,
-		ReviewComment:   activity.ReviewComment,
-		CreatedBy:       activity.CreatedBy,
-		UpdatedBy:       activity.UpdatedBy,
-		ContactType:     contact.Type,
-		Contact:         contact.Value,
-		Version:         activity.Version,
-		CreatedAt:       activity.CreatedAt,
-		UpdatedAt:       activity.UpdatedAt,
+		ID:               activity.ID,
+		Title:            activity.Title,
+		Summary:          activity.Summary,
+		Body:             activity.Body,
+		Location:         activity.Location,
+		SignupStartAt:    activity.SignupStartAt,
+		SignupEndAt:      activity.SignupEndAt,
+		StartAt:          activity.StartAt,
+		EndAt:            activity.EndAt,
+		Capacity:         activity.Capacity,
+		RegisteredCount:  activity.RegisteredCount,
+		Status:           activity.Status,
+		ReviewStatus:     activity.ReviewStatus,
+		ReviewComment:    activity.ReviewComment,
+		CreatedBy:        activity.CreatedBy,
+		UpdatedBy:        activity.UpdatedBy,
+		ContactType:      contact.Type,
+		Contact:          contact.Value,
+		Version:          activity.Version,
+		CreatedAt:        activity.CreatedAt,
+		UpdatedAt:        activity.UpdatedAt,
+		ViewerRelation:   relation,
+		AvailableActions: actions,
 	}
 }
 

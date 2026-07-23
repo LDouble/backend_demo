@@ -53,6 +53,20 @@ type listMineStore struct {
 	err     error
 }
 
+type viewerActivityStore struct {
+	Store
+	registered bool
+	batch      map[uint64]bool
+}
+
+func (s *viewerActivityStore) IsViewerRegistered(context.Context, uint64, uint64) (bool, error) {
+	return s.registered, nil
+}
+
+func (s *viewerActivityStore) IsViewerRegisteredBatch(context.Context, uint64, []uint64) (map[uint64]bool, error) {
+	return s.batch, nil
+}
+
 func (s *listMineStore) ListMine(_ context.Context, actorID uint64, search domain.AdminSearch, page, size int) ([]domain.Activity, int64, error) {
 	s.actorID, s.search, s.page, s.size = actorID, search, page, size
 	return []domain.Activity{{ID: 11}}, 1, s.err
@@ -142,5 +156,30 @@ func TestPublishingLifecycleValidatesAndDelegates(t *testing.T) {
 	}
 	if !store.now.Equal(now) {
 		t.Fatalf("delegated now=%v want=%v", store.now, now)
+	}
+}
+
+func TestViewerRegistrationContext(t *testing.T) {
+	now := time.Date(2026, 7, 23, 10, 0, 0, 0, time.UTC)
+	store := &viewerActivityStore{registered: true, batch: map[uint64]bool{1: true}}
+	manager := NewManager(store)
+	manager.now = func() time.Time { return now }
+	activity := &domain.Activity{
+		ID: 1, CreatedBy: 7, Status: domain.ActivityStatusPublished,
+		ReviewStatus: domain.ReviewStatusApproved, StartAt: now.Add(time.Hour),
+	}
+	registered, err := manager.IsViewerRegistered(context.Background(), 8, 1)
+	if err != nil || !registered {
+		t.Fatalf("registered=%t err=%v", registered, err)
+	}
+	batch, err := manager.IsViewerRegisteredBatch(context.Background(), 8, []uint64{1})
+	if err != nil || !batch[1] {
+		t.Fatalf("batch=%v err=%v", batch, err)
+	}
+	relation, actions := manager.ViewerContext(activity, 8, true)
+	if relation != domain.ViewerRelationParticipant ||
+		len(actions) != 1 ||
+		actions[0] != domain.ActionCancelRegistration {
+		t.Fatalf("relation=%q actions=%v", relation, actions)
 	}
 }

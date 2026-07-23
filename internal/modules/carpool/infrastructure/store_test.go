@@ -104,3 +104,52 @@ func TestCompleteDueProcessesBoundedBatch(t *testing.T) {
 		t.Fatalf("remaining=%d want=1", remaining)
 	}
 }
+
+func TestJoinedTrips(t *testing.T) {
+	db := newCarpoolTestDB(t)
+	now := time.Now().UTC()
+	trips := []domain.Trip{
+		{Title: "one", Origin: "a", Destination: "b", DepartureAt: now.Add(time.Hour), TotalSeats: 2, Status: domain.TripOpen, OrganizerId: 1, ContactType: "phone", ContactCiphertext: "ciphertext", Version: 1},
+		{Title: "two", Origin: "a", Destination: "b", DepartureAt: now.Add(time.Hour), TotalSeats: 2, Status: domain.TripOpen, OrganizerId: 1, ContactType: "phone", ContactCiphertext: "ciphertext", Version: 1},
+	}
+	if err := db.Create(&trips).Error; err != nil {
+		t.Fatal(err)
+	}
+	participants := []domain.Participant{
+		{TripId: trips[0].ID, UserId: 9, Status: domain.ParticipantJoined, JoinedAt: now, Version: 1},
+		{TripId: trips[1].ID, UserId: 9, Status: domain.ParticipantLeft, JoinedAt: now, Version: 2},
+		{TripId: trips[1].ID, UserId: 10, Status: domain.ParticipantJoined, JoinedAt: now, Version: 1},
+	}
+	if err := db.Create(&participants).Error; err != nil {
+		t.Fatal(err)
+	}
+	store := NewStore(db, nil)
+	joined, err := store.JoinedTrips(context.Background(), 9, []uint64{trips[0].ID, trips[1].ID})
+	if err != nil || !joined[trips[0].ID] || joined[trips[1].ID] {
+		t.Fatalf("joined=%v err=%v", joined, err)
+	}
+	anonymous, err := store.JoinedTrips(context.Background(), 0, []uint64{trips[0].ID})
+	if err != nil || len(anonymous) != 0 {
+		t.Fatalf("anonymous joined=%v err=%v", anonymous, err)
+	}
+	empty, err := store.JoinedTrips(context.Background(), 9, nil)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty joined=%v err=%v", empty, err)
+	}
+}
+
+func TestJoinedTripsPreservesQueryError(t *testing.T) {
+	db := newCarpoolTestDB(t)
+	want := errors.New("participants unavailable")
+	if err := db.Callback().Query().Before("gorm:query").Register("test:fail-joined-query", func(tx *gorm.DB) {
+		if tx.Statement.Table == "carpool_participants" {
+			_ = tx.AddError(want)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	joined, err := NewStore(db, nil).JoinedTrips(context.Background(), 9, []uint64{1})
+	if !errors.Is(err, want) || joined != nil {
+		t.Fatalf("joined=%v err=%v", joined, err)
+	}
+}

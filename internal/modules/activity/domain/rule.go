@@ -30,6 +30,24 @@ const (
 	RegistrationStatusActive = "active"
 	// RegistrationStatusCancelled marks a cancelled registration.
 	RegistrationStatusCancelled = "cancelled"
+
+	// ViewerRelationPublisher means the viewer created the activity.
+	ViewerRelationPublisher = "publisher"
+	// ViewerRelationParticipant means the viewer has an active registration.
+	ViewerRelationParticipant = "participant"
+	// ViewerRelationNone means the viewer has no active activity relationship.
+	ViewerRelationNone = "none"
+
+	// ActionEdit updates an editable activity.
+	ActionEdit = "edit"
+	// ActionSubmitReview submits an activity for moderation.
+	ActionSubmitReview = "submit_review"
+	// ActionCancel cancels an activity as its publisher.
+	ActionCancel = "cancel"
+	// ActionRegister creates an activity registration.
+	ActionRegister = "register"
+	// ActionCancelRegistration cancels the viewer's active registration.
+	ActionCancelRegistration = "cancel_registration"
 )
 
 // ActivityInput contains the user-controlled mutable activity content.
@@ -250,4 +268,46 @@ func CancellationAllowed(registration *ActivityRegistration, activity *Activity,
 		return fmt.Errorf("活动开始后不可取消报名")
 	}
 	return nil
+}
+
+// ViewerRelation returns how the viewer participates in an activity.
+func ViewerRelation(activity *Activity, viewerID uint64, registered bool) string {
+	if viewerID == 0 {
+		return ViewerRelationNone
+	}
+	if activity.CreatedBy == viewerID {
+		return ViewerRelationPublisher
+	}
+	if registered {
+		return ViewerRelationParticipant
+	}
+	return ViewerRelationNone
+}
+
+// AvailableActions returns member actions allowed by activity state and relation.
+func AvailableActions(activity *Activity, viewerID uint64, registered bool, now time.Time) []string {
+	actions := []string{}
+	relation := ViewerRelation(activity, viewerID, registered)
+	if relation == ViewerRelationPublisher {
+		if CanEdit(activity.Status, activity.ReviewStatus) {
+			actions = append(actions, ActionEdit)
+		}
+		if CanSubmitReview(activity.Status, activity.ReviewStatus) {
+			actions = append(actions, ActionSubmitReview)
+		}
+		if CanCancel(activity.Status) {
+			actions = append(actions, ActionCancel)
+		}
+		return actions
+	}
+	if relation == ViewerRelationParticipant {
+		if now.Before(activity.StartAt) {
+			return append(actions, ActionCancelRegistration)
+		}
+		return actions
+	}
+	if viewerID != 0 && RegistrationAllowed(activity, now) == nil {
+		return append(actions, ActionRegister)
+	}
+	return actions
 }

@@ -28,6 +28,24 @@ const (
 	ReviewRejected = "rejected"
 	// ReviewDraft means an edited trip has not been resubmitted.
 	ReviewDraft = "draft"
+
+	// ViewerRelationOrganizer means the viewer created the trip.
+	ViewerRelationOrganizer = "organizer"
+	// ViewerRelationParticipant means the viewer currently occupies a seat.
+	ViewerRelationParticipant = "participant"
+	// ViewerRelationNone means the viewer has no active trip relationship.
+	ViewerRelationNone = "none"
+
+	// ActionEdit updates an editable, unoccupied trip.
+	ActionEdit = "edit"
+	// ActionSubmitReview submits an edited or rejected trip for moderation.
+	ActionSubmitReview = "submit_review"
+	// ActionCancel cancels an active trip as its organizer.
+	ActionCancel = "cancel"
+	// ActionJoin occupies one available seat.
+	ActionJoin = "join"
+	// ActionLeave releases the viewer's occupied seat.
+	ActionLeave = "leave"
 )
 
 // TripInput is the user-controlled portion of a trip.
@@ -90,4 +108,53 @@ func validateTripInput(in TripInput, now time.Time, contactRequired bool) error 
 		return fmt.Errorf("联系方式无效")
 	}
 	return nil
+}
+
+// ViewerRelation returns how the viewer participates in a trip.
+func ViewerRelation(trip *Trip, viewerID uint64, joined bool) string {
+	if viewerID == 0 {
+		return ViewerRelationNone
+	}
+	if trip.OrganizerId == viewerID {
+		return ViewerRelationOrganizer
+	}
+	if joined {
+		return ViewerRelationParticipant
+	}
+	return ViewerRelationNone
+}
+
+// AvailableActions returns member actions allowed by trip state and relation.
+func AvailableActions(trip *Trip, viewerID uint64, joined bool, now time.Time) []string {
+	actions := []string{}
+	if !trip.DepartureAt.After(now) {
+		return actions
+	}
+	relation := ViewerRelation(trip, viewerID, joined)
+	if relation == ViewerRelationOrganizer {
+		if trip.Status != TripOpen && trip.Status != TripFull {
+			return actions
+		}
+		if trip.Status == TripOpen && trip.OccupiedSeats == 0 {
+			actions = append(actions, ActionEdit)
+			if trip.ReviewStatus == ReviewDraft || trip.ReviewStatus == ReviewRejected {
+				actions = append(actions, ActionSubmitReview)
+			}
+		}
+		return append(actions, ActionCancel)
+	}
+	if relation == ViewerRelationParticipant {
+		if trip.Status == TripOpen || trip.Status == TripFull {
+			return append(actions, ActionLeave)
+		}
+		return actions
+	}
+	canJoin := viewerID != 0 &&
+		trip.ReviewStatus == ReviewApproved &&
+		(trip.Status == TripOpen || trip.Status == TripFull) &&
+		trip.OccupiedSeats < trip.TotalSeats
+	if canJoin {
+		return append(actions, ActionJoin)
+	}
+	return actions
 }

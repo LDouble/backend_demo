@@ -395,6 +395,9 @@ func (s *Store) Register(ctx context.Context, activityID, userID uint64, key str
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&activity, activityID).Error; err != nil {
 			return activityNotFound(err)
 		}
+		if activity.CreatedBy == userID {
+			return apperror.New(http.StatusForbidden, "self_registration", "不能报名自己发布的活动")
+		}
 		// Replay-first dedupe: a row with the same (activity_id, user_id, key) is the
 		// canonical idempotent representation; if found, return that row unchanged.
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).

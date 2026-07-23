@@ -111,6 +111,10 @@ func (failingCarpoolStore) GetTrip(context.Context, uint64, uint64) (*carpooldom
 	return nil, false, errors.New("not implemented")
 }
 
+func (failingCarpoolStore) JoinedTrips(context.Context, uint64, []uint64) (map[uint64]bool, error) {
+	return map[uint64]bool{}, nil
+}
+
 func (failingCarpoolStore) SearchTrips(context.Context, carpooldomain.Search, int, int, time.Time) ([]carpooldomain.Trip, int64, error) {
 	return nil, 0, errors.New("not implemented")
 }
