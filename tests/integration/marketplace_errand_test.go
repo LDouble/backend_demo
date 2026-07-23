@@ -41,6 +41,7 @@ func TestMarketplaceAndErrandHTTPFlows(t *testing.T) {
 	}), &listing)
 	assertStatus(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/marketplace/listings/%d/submit", base, listing.ID), requester.token, map[string]any{"expected_version": listing.Version}), http.StatusOK)
 	assertStatus(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/marketplace/listings/%d/withdraw", base, listing.ID), requester.token, map[string]any{"expected_version": listing.Version + 1}), http.StatusOK)
+	testMarketplaceAdminModeration(t, client, base, adminToken, requester.token, suffix)
 
 	task := createErrandThroughAPI(t, client, base, requester.token, suffix)
 	accepted := acceptErrandThroughAPI(t, client, base, runner.token, task.ID, task.Version, "accept-"+suffix)
@@ -127,6 +128,19 @@ type integrationUser struct {
 	username string
 }
 
+type marketplaceListing struct {
+	ID              uint64  `json:"id"`
+	RejectionReason *string `json:"rejection_reason"`
+	Status          string  `json:"status"`
+	Title           string  `json:"title"`
+	Version         uint64  `json:"version"`
+}
+
+type marketplaceListingPage struct {
+	Items []marketplaceListing `json:"items"`
+	Total int64                `json:"total"`
+}
+
 const integrationPassword = "integration-password"
 
 type errandTask struct {
@@ -165,6 +179,129 @@ func grantMarketplaceErrandPermissions(t *testing.T, client http.Client, base, a
 	}
 	return role.ID
 }
+
+func testMarketplaceAdminModeration(
+	t *testing.T,
+	client http.Client,
+	base string,
+	adminToken string,
+	ownerToken string,
+	suffix string,
+) {
+	t.Helper()
+	approved := createSubmittedMarketplaceListing(t, client, base, ownerToken, "待通过商品"+suffix, 2500)
+	assertStatus(t, request(
+		t,
+		client,
+		http.MethodPost,
+		fmt.Sprintf("%s/api/v1/admin/marketplace/listings/%d/review", base, approved.ID),
+		adminToken,
+		map[string]any{"approved": true, "expected_version": approved.Version},
+	), http.StatusOK)
+	approved = findAdminMarketplaceListing(t, client, base, adminToken, approved.ID, 2000, 3000)
+	if approved.Status != marketplacedomain.ListingPublished {
+		t.Fatalf("approved listing=%+v", approved)
+	}
+	assertStatus(t, request(
+		t,
+		client,
+		http.MethodDelete,
+		fmt.Sprintf(
+			"%s/api/v1/admin/marketplace/listings/%d?expected_version=%d",
+			base,
+			approved.ID,
+			approved.Version,
+		),
+		adminToken,
+		nil,
+	), http.StatusOK)
+	approved = findAdminMarketplaceListing(t, client, base, adminToken, approved.ID, 2000, 3000)
+	if approved.Status != marketplacedomain.ListingRemoved {
+		t.Fatalf("removed listing=%+v", approved)
+	}
+
+	rejected := createSubmittedMarketplaceListing(t, client, base, ownerToken, "待驳回商品"+suffix, 3500)
+	assertStatus(t, request(
+		t,
+		client,
+		http.MethodPost,
+		fmt.Sprintf("%s/api/v1/admin/marketplace/listings/%d/review", base, rejected.ID),
+		adminToken,
+		map[string]any{
+			"approved":         false,
+			"expected_version": rejected.Version,
+			"reason":           "商品图片不清晰",
+		},
+	), http.StatusOK)
+	rejected = findAdminMarketplaceListing(t, client, base, adminToken, rejected.ID, 3000, 4000)
+	if rejected.Status != marketplacedomain.ListingRejected ||
+		rejected.RejectionReason == nil ||
+		*rejected.RejectionReason != "商品图片不清晰" {
+		t.Fatalf("rejected listing=%+v", rejected)
+	}
+}
+
+func createSubmittedMarketplaceListing(
+	t *testing.T,
+	client http.Client,
+	base string,
+	ownerToken string,
+	title string,
+	priceCents int64,
+) marketplaceListing {
+	t.Helper()
+	listing := marketplaceListing{}
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/marketplace/listings", ownerToken, map[string]any{
+		"title": title, "description": "审核闭环接口测试", "price_cents": priceCents,
+		"contact_type": "phone", "contact": "13800138000",
+		"image_urls": []string{"https://example.test/moderation.jpg"},
+	}), &listing)
+	assertStatus(t, request(
+		t,
+		client,
+		http.MethodPost,
+		fmt.Sprintf("%s/api/v1/marketplace/listings/%d/submit", base, listing.ID),
+		ownerToken,
+		map[string]any{"expected_version": listing.Version},
+	), http.StatusOK)
+	listing.Version++
+	listing.Status = marketplacedomain.ListingPendingReview
+	return listing
+}
+
+func findAdminMarketplaceListing(
+	t *testing.T,
+	client http.Client,
+	base string,
+	adminToken string,
+	id uint64,
+	minPriceCents int64,
+	maxPriceCents int64,
+) marketplaceListing {
+	t.Helper()
+	page := marketplaceListingPage{}
+	decodeData(t, request(
+		t,
+		client,
+		http.MethodGet,
+		fmt.Sprintf(
+			"%s/api/v1/admin/marketplace/listings?min_price_cents=%d&max_price_cents=%d&page_size=100",
+			base,
+			minPriceCents,
+			maxPriceCents,
+		),
+		adminToken,
+		nil,
+	), &page)
+	for _, listing := range page.Items {
+		if listing.ID == id {
+			return listing
+		}
+	}
+	t.Fatalf("admin marketplace listing %d not found in %+v", id, page)
+	return marketplaceListing{}
+}
+
 func createErrandThroughAPI(t *testing.T, client http.Client, base, token, suffix string) errandTask {
 	t.Helper()
 	task := errandTask{}

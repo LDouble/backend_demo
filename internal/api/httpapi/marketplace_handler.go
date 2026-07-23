@@ -106,10 +106,12 @@ func marketplaceSearchFromMineParams(params generated.ListMyMarketplaceListingsP
 func marketplaceSearchFromAdminParams(params generated.ListAdminMarketplaceListingsParams) marketplacedomain.ListingSearch {
 	page, size := marketplacePaging(params.Page, params.PageSize)
 	return marketplacedomain.ListingSearch{
-		Keyword:  trimmedMarketplaceFilter(params.Keyword),
-		Status:   trimmedMarketplaceFilter(params.Status),
-		Page:     page,
-		PageSize: size,
+		Keyword:       trimmedMarketplaceFilter(params.Keyword),
+		Status:        trimmedMarketplaceFilter(params.Status),
+		MinPriceCents: params.MinPriceCents,
+		MaxPriceCents: params.MaxPriceCents,
+		Page:          page,
+		PageSize:      size,
 	}
 }
 

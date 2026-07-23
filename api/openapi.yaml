@@ -1638,6 +1638,20 @@ paths:
           required: false
           schema:
             type: string
+        - name: min_price_cents
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+        - name: max_price_cents
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
         - name: page
           in: query
           required: false
