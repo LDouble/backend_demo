@@ -94,6 +94,16 @@
       ]
     },
     {
+      "name": "activity:read_mine",
+      "path_pattern": "/api/v1/activities/mine",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
       "name": "activity:register",
       "path_pattern": "/api/v1/activities/:id/registrations",
       "methods": [

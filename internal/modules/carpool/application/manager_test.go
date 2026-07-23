@@ -34,6 +34,10 @@ func (s *managerStore) ListAdmin(context.Context, domain.AdminSearch, int, int) 
 	s.called("list-admin")
 	return []domain.Trip{*s.trip}, 1, nil
 }
+func (s *managerStore) ListMine(context.Context, uint64, domain.AdminSearch, int, int) ([]domain.Trip, int64, error) {
+	s.called("list-mine")
+	return []domain.Trip{*s.trip}, 1, nil
+}
 func (s *managerStore) SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Trip, error) {
 	return s.called("submit-review"), nil
 }
@@ -102,6 +106,9 @@ func TestManagerValidatesAndDelegatesEveryOperation(t *testing.T) {
 	if _, _, err := manager.ListAdmin(ctx, domain.AdminSearch{}, 1, 20); err != nil {
 		t.Fatal(err)
 	}
+	if _, _, err := manager.ListMine(ctx, 7, domain.AdminSearch{}, 1, 20); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := manager.SubmitReview(ctx, 1, 7, 1); err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +133,7 @@ func TestManagerValidatesAndDelegatesEveryOperation(t *testing.T) {
 	if contact, err := manager.RevealContact(store.trip); err != nil || contact != "contact" {
 		t.Fatalf("RevealContact() contact=%q err=%v", contact, err)
 	}
-	if len(store.calls) != 13 {
+	if len(store.calls) != 14 {
 		t.Fatalf("delegated calls=%v", store.calls)
 	}
 }

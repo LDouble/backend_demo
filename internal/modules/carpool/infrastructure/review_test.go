@@ -203,6 +203,36 @@ func TestCarpoolAdminFiltersAndJoinRequireApproval(t *testing.T) {
 	}
 }
 
+func TestCarpoolListMineScopesFiltersAndPaginates(t *testing.T) {
+	db := newCarpoolTestDB(t)
+	store := NewStore(db, nil)
+	target := createReviewTrip(t, db, domain.ReviewRejected)
+	target.Title = "我的高铁拼车"
+	if err := db.Save(target).Error; err != nil {
+		t.Fatal(err)
+	}
+	createReviewTrip(t, db, domain.ReviewPending)
+	foreign := createReviewTrip(t, db, domain.ReviewRejected)
+	foreign.OrganizerId = 8
+	foreign.Title = "他人的高铁拼车"
+	if err := db.Save(foreign).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	rows, total, err := store.ListMine(context.Background(), 7, domain.AdminSearch{}, 1, 1)
+	if err != nil || total != 2 || len(rows) != 1 {
+		t.Fatalf("page rows=%+v total=%d err=%v", rows, total, err)
+	}
+	rows, total, err = store.ListMine(context.Background(), 7, domain.AdminSearch{
+		Status:       domain.TripOpen,
+		ReviewStatus: domain.ReviewRejected,
+		Keyword:      " 高铁 ",
+	}, 1, 20)
+	if err != nil || total != 1 || len(rows) != 1 || rows[0].ID != target.ID {
+		t.Fatalf("filtered rows=%+v total=%d err=%v", rows, total, err)
+	}
+}
+
 func createReviewTrip(t *testing.T, db *gorm.DB, reviewStatus string) *domain.Trip {
 	t.Helper()
 	trip := &domain.Trip{

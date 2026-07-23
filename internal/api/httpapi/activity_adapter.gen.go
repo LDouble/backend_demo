@@ -14,6 +14,12 @@ func (h *Handler) ListActivities(c *gin.Context, params generated.ListActivities
 	h.listActivities(c)
 }
 
+// ListMyActivities adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListMyActivities(c *gin.Context, params generated.ListMyActivitiesParams) {
+	setGeneratedParams(c, "ListMyActivities", params)
+	h.listMyActivities(c)
+}
+
 // ListMyActivityRegistrations adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) ListMyActivityRegistrations(c *gin.Context, params generated.ListMyActivityRegistrationsParams) {
 	setGeneratedParams(c, "ListMyActivityRegistrations", params)

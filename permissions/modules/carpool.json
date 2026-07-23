@@ -71,6 +71,16 @@
       ]
     },
     {
+      "name": "carpool:read_mine",
+      "path_pattern": "/api/v1/carpool/trips/mine",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
       "name": "carpool:review",
       "path_pattern": "/api/v1/admin/carpool/trips/:id/review",
       "methods": [

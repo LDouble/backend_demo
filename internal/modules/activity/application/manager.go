@@ -21,6 +21,7 @@ type Store interface {
 	IsViewerRegistered(context.Context, uint64, uint64) (bool, error)
 	IsViewerRegisteredBatch(context.Context, uint64, []uint64) (map[uint64]bool, error)
 	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Activity, int64, error)
+	ListMine(context.Context, uint64, domain.AdminSearch, int, int) ([]domain.Activity, int64, error)
 	ListPublic(context.Context, domain.PublicSearch, int, int) ([]domain.Activity, int64, error)
 	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Activity, error)
 	Approve(context.Context, uint64, uint64, uint64, string, time.Time) (*domain.Activity, error)
@@ -99,6 +100,13 @@ func (m *Manager) ContactWithAccess(ctx context.Context, activity *domain.Activi
 func (m *Manager) ListAdmin(ctx context.Context, search domain.AdminSearch, page, pageSize int) ([]domain.Activity, int64, error) {
 	search.Keyword = strings.TrimSpace(search.Keyword)
 	return m.store.ListAdmin(ctx, search, page, pageSize)
+}
+
+// ListMine returns all activities owned by the current user, including drafts
+// and activities awaiting moderation.
+func (m *Manager) ListMine(ctx context.Context, actorID uint64, search domain.AdminSearch, page, pageSize int) ([]domain.Activity, int64, error) {
+	search.Keyword = strings.TrimSpace(search.Keyword)
+	return m.store.ListMine(ctx, actorID, search, page, pageSize)
 }
 
 // ListPublic returns published and approved activities with search filters.

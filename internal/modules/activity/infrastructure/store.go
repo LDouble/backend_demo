@@ -183,6 +183,16 @@ func (s *Store) IsViewerRegisteredBatch(ctx context.Context, viewerID uint64, ac
 // ListAdmin returns activities visible to administrators.
 func (s *Store) ListAdmin(ctx context.Context, search domain.AdminSearch, page, pageSize int) ([]domain.Activity, int64, error) {
 	dao := idempotency.DB(ctx, s.db).Model(&domain.Activity{})
+	return listActivities(dao, search, page, pageSize)
+}
+
+// ListMine returns activities owned by one user in every lifecycle state.
+func (s *Store) ListMine(ctx context.Context, actorID uint64, search domain.AdminSearch, page, pageSize int) ([]domain.Activity, int64, error) {
+	dao := idempotency.DB(ctx, s.db).Model(&domain.Activity{}).Where("created_by = ?", actorID)
+	return listActivities(dao, search, page, pageSize)
+}
+
+func listActivities(dao *gorm.DB, search domain.AdminSearch, page, pageSize int) ([]domain.Activity, int64, error) {
 	if status := strings.TrimSpace(search.Status); status != "" {
 		dao = dao.Where("status = ?", status)
 	}

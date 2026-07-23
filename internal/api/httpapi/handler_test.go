@@ -81,6 +81,24 @@ func (*accountFailureLimiter) AllowRefresh(context.Context, string, string) (boo
 
 type failingCarpoolStore struct{ err error }
 
+type mineCarpoolStore struct {
+	failingCarpoolStore
+	userID uint64
+	search carpooldomain.AdminSearch
+}
+
+func (s *mineCarpoolStore) ListMine(_ context.Context, userID uint64, search carpooldomain.AdminSearch, _, _ int) ([]carpooldomain.Trip, int64, error) {
+	s.userID, s.search = userID, search
+	return []carpooldomain.Trip{{
+		ID: 42, Title: "我的待审拼车", Status: carpooldomain.TripOpen,
+		ReviewStatus: carpooldomain.ReviewPending, OrganizerId: userID,
+	}}, 1, nil
+}
+
+func (*mineCarpoolStore) RevealContact(*carpooldomain.Trip) (string, error) {
+	return "carpool_owner", nil
+}
+
 func (s failingCarpoolStore) CreateTrip(context.Context, uint64, carpooldomain.TripInput, time.Time) (*carpooldomain.Trip, error) {
 	return nil, s.err
 }
@@ -98,6 +116,10 @@ func (failingCarpoolStore) SearchTrips(context.Context, carpooldomain.Search, in
 }
 
 func (failingCarpoolStore) ListAdmin(context.Context, carpooldomain.AdminSearch, int, int) ([]carpooldomain.Trip, int64, error) {
+	return nil, 0, errors.New("not implemented")
+}
+
+func (failingCarpoolStore) ListMine(context.Context, uint64, carpooldomain.AdminSearch, int, int) ([]carpooldomain.Trip, int64, error) {
 	return nil, 0, errors.New("not implemented")
 }
 
@@ -214,6 +236,40 @@ func TestAcademicVerificationGateCannotBeBypassedBySuperAdmin(t *testing.T) {
 		},
 	)
 	assertErrorEnvelope(t, response, http.StatusForbidden, "academic_verification_required")
+}
+
+func TestMyCarpoolTripsIncludesPendingTrips(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	store := &mineCarpoolStore{}
+	fixture.handler.WithCarpools(carpoolapp.NewManager(store))
+
+	response := perform(
+		t,
+		fixture.router,
+		http.MethodGet,
+		"/api/v1/carpool/trips/mine?status=open&review_status=pending_review&keyword=%E5%BE%85%E5%AE%A1&page=1&page_size=10",
+		fixture.adminToken,
+		nil,
+	)
+	assertStatusCode(t, response, http.StatusOK)
+	var page pageEnvelope[struct {
+		ID           uint64 `json:"id"`
+		ReviewStatus string `json:"review_status"`
+		Contact      string `json:"contact"`
+	}]
+	decodeDataRecorder(t, response, &page)
+	if len(page.Items) != 1 ||
+		page.Items[0].ID != 42 ||
+		page.Items[0].ReviewStatus != carpooldomain.ReviewPending ||
+		page.Items[0].Contact != "carpool_owner" {
+		t.Fatalf("my carpool page=%+v", page.Items)
+	}
+	if store.userID == 0 ||
+		store.search.Status != carpooldomain.TripOpen ||
+		store.search.ReviewStatus != carpooldomain.ReviewPending ||
+		store.search.Keyword != "待审" {
+		t.Fatalf("delegated user=%d search=%+v", store.userID, store.search)
+	}
 }
 
 func TestChangeMyPasswordRevokesAllSessions(t *testing.T) {
@@ -550,6 +606,14 @@ func TestActivityHTTPFlow(t *testing.T) {
 	created := decodeActivityView(t, createResponse)
 	if created.CreatedBy != ownerID || created.Contact != "owner_wechat_42" {
 		t.Fatalf("created activity = %+v", created)
+	}
+
+	myList := perform(t, fixture.router, http.MethodGet, "/api/v1/activities/mine?status=draft&review_status=draft&keyword=training&page=1&page_size=10", ownerToken, nil)
+	assertStatusCode(t, myList, http.StatusOK)
+	var myPage pageEnvelope[activityView]
+	decodeDataRecorder(t, myList, &myPage)
+	if len(myPage.Items) != 1 || myPage.Items[0].ID != created.ID || myPage.Items[0].Contact != "owner_wechat_42" {
+		t.Fatalf("my activity page items=%+v", myPage.Items)
 	}
 
 	adminList := perform(t, fixture.router, http.MethodGet, "/api/v1/admin/activities?keyword=training&status=draft&review_status=draft&page=1&page_size=10", ownerToken, nil)
@@ -1049,6 +1113,7 @@ func activityAdminPermissions() []permission.Permission {
 func activityUserPermissions() []permission.Permission {
 	return []permission.Permission{
 		{PathPattern: "/api/v1/activities", Methods: []string{"GET"}},
+		{PathPattern: "/api/v1/activities/mine", Methods: []string{"GET"}},
 		{PathPattern: "/api/v1/activities/:id", Methods: []string{"GET"}},
 		{PathPattern: "/api/v1/activities/:id/registrations", Methods: []string{"POST"}},
 		{PathPattern: "/api/v1/activities/:id/registrations/me", Methods: []string{"DELETE"}},
