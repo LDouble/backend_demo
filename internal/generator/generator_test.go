@@ -56,7 +56,30 @@ func TestGenerateDeterministicPreservesRulesAndDetectsDrift(t *testing.T) {
 
 func TestGeneratedArtifacts(t *testing.T) {
 	root := t.TempDir()
-	if _, err := Generate(context.Background(), validSchema(), Options{Root: root, Source: "schemas/activity.yaml"}); err != nil {
+	schema := validSchema()
+	schema.Components = map[string]map[string]any{
+		"schemas": {
+			"ActivityResponseBody": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"data": map[string]any{"type": "object"},
+				},
+			},
+		},
+		"responses": {
+			"ActivityResponse": map[string]any{
+				"description": "Activity response",
+				"content": map[string]any{
+					"application/json": map[string]any{
+						"schema": map[string]any{
+							"$ref": "#/components/schemas/ActivityResponseBody",
+						},
+					},
+				},
+			},
+		},
+	}
+	if _, err := Generate(context.Background(), schema, Options{Root: root, Source: "schemas/activity.yaml"}); err != nil {
 		t.Fatal(err)
 	}
 	files := []string{
@@ -83,6 +106,11 @@ func TestGeneratedArtifacts(t *testing.T) {
 	}
 	if err = document.Validate(context.Background()); err != nil {
 		t.Fatalf("validate generated OpenAPI: %v", err)
+	}
+	if document.Components == nil ||
+		document.Components.Schemas["ActivityResponseBody"] == nil ||
+		document.Components.Responses["ActivityResponse"] == nil {
+		t.Fatal("generated OpenAPI omitted schema-owned components")
 	}
 	modules, err := ListModules(context.Background(), root)
 	if err != nil || len(modules) != 1 || modules[0].Name != "activity" {

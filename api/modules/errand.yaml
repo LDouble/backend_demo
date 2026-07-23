@@ -46,7 +46,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandPageResponse"
   /api/v1/admin/errands/{id}/review:
     post:
       operationId: ReviewErrand
@@ -85,7 +85,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -126,7 +126,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -157,7 +157,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandPageResponse"
     post:
       operationId: CreateErrand
       tags: [errand]
@@ -210,7 +210,7 @@ paths:
                   type: string
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "400":
           $ref: "#/components/responses/Error"
   /api/v1/errands/mine:
@@ -270,7 +270,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandPageResponse"
   /api/v1/errands/{id}:
     get:
       operationId: GetErrand
@@ -283,7 +283,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "404":
           $ref: "#/components/responses/Error"
     patch:
@@ -342,7 +342,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/accept:
@@ -377,7 +377,7 @@ paths:
                   minimum: 1
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/cancel:
@@ -412,7 +412,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandOptionalOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/complete:
@@ -447,7 +447,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/deliver:
@@ -482,7 +482,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/pickup:
@@ -517,7 +517,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/submit-review:
@@ -552,6 +552,320 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
+components:
+  responses:
+      ErrandOptionalOrderResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ErrandOptionalOrderResponseBody'
+          description: 跑腿任务及可能存在的交易订单
+      ErrandOrderResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ErrandOrderResponseBody'
+          description: 跑腿任务及必有交易订单
+      ErrandPageResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ErrandPageResponseBody'
+          description: 跑腿任务分页
+      ErrandResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/ErrandResponseBody'
+          description: 跑腿任务
+  schemas:
+      ErrandOptionalOrderResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ErrandOptionalOrderResult'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ErrandOptionalOrderResult:
+          properties:
+              errand:
+                  $ref: '#/components/schemas/ErrandView'
+              order:
+                  $ref: '#/components/schemas/ErrandTradeOrder'
+          required:
+              - errand
+          type: object
+      ErrandOrderResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ErrandOrderResult'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ErrandOrderResult:
+          properties:
+              errand:
+                  $ref: '#/components/schemas/ErrandView'
+              order:
+                  $ref: '#/components/schemas/ErrandTradeOrder'
+          required:
+              - errand
+              - order
+          type: object
+      ErrandPageResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ErrandViewPage'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ErrandResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/ErrandView'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      ErrandTradeOrder:
+          properties:
+              amount_cents:
+                  format: int64
+                  type: integer
+              buyer_id:
+                  format: uint64
+                  type: integer
+              cancelled_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              completed_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              created_at:
+                  format: date-time
+                  type: string
+              currency:
+                  type: string
+              expires_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              fulfillment_status:
+                  type: string
+              id:
+                  format: uint64
+                  type: integer
+              order_no:
+                  type: string
+              order_type:
+                  type: string
+              payment_mode:
+                  type: string
+              resource_id:
+                  format: uint64
+                  type: integer
+              resource_snapshot:
+                  additionalProperties: true
+                  type: object
+              resource_type:
+                  type: string
+              seller_id:
+                  format: uint64
+                  type: integer
+              title_snapshot:
+                  type: string
+              trade_status:
+                  type: string
+              updated_at:
+                  format: date-time
+                  type: string
+              version:
+                  format: uint64
+                  type: integer
+          required:
+              - id
+              - order_no
+              - order_type
+              - resource_type
+              - resource_id
+              - buyer_id
+              - seller_id
+              - amount_cents
+              - currency
+              - payment_mode
+              - trade_status
+              - fulfillment_status
+              - title_snapshot
+              - resource_snapshot
+              - expires_at
+              - completed_at
+              - cancelled_at
+              - version
+              - created_at
+              - updated_at
+          type: object
+      ErrandView:
+          properties:
+              accepted_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              available_actions:
+                  items:
+                      $ref: '#/components/schemas/ErrandViewerAction'
+                  type: array
+              cancelled_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              completed_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              contact:
+                  type: string
+              contact_type:
+                  type: string
+              created_at:
+                  format: date-time
+                  type: string
+              currency:
+                  type: string
+              deadline:
+                  format: date-time
+                  type: string
+              delivered_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              description:
+                  type: string
+              dropoff_location:
+                  type: string
+              id:
+                  format: uint64
+                  type: integer
+              picked_up_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              pickup_location:
+                  type: string
+              requester_id:
+                  format: uint64
+                  type: integer
+              review_reason:
+                  nullable: true
+                  type: string
+              review_status:
+                  type: string
+              reviewed_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              reviewed_by:
+                  format: uint64
+                  nullable: true
+                  type: integer
+              reward_cents:
+                  format: int64
+                  type: integer
+              runner_id:
+                  format: uint64
+                  nullable: true
+                  type: integer
+              status:
+                  type: string
+              title:
+                  type: string
+              trade_order_id:
+                  format: uint64
+                  nullable: true
+                  type: integer
+              updated_at:
+                  format: date-time
+                  type: string
+              version:
+                  format: uint64
+                  type: integer
+              viewer_relation:
+                  type: string
+          required:
+              - id
+              - title
+              - description
+              - reward_cents
+              - currency
+              - pickup_location
+              - dropoff_location
+              - deadline
+              - status
+              - review_status
+              - review_reason
+              - reviewed_by
+              - reviewed_at
+              - requester_id
+              - contact_type
+              - contact
+              - runner_id
+              - trade_order_id
+              - accepted_at
+              - picked_up_at
+              - delivered_at
+              - completed_at
+              - cancelled_at
+              - version
+              - created_at
+              - updated_at
+              - viewer_relation
+              - available_actions
+          type: object
+      ErrandViewPage:
+          properties:
+              items:
+                  items:
+                      $ref: '#/components/schemas/ErrandView'
+                  type: array
+              page:
+                  minimum: 1
+                  type: integer
+              page_size:
+                  maximum: 100
+                  minimum: 1
+                  type: integer
+              total:
+                  format: int64
+                  type: integer
+          required:
+              - items
+              - page
+              - page_size
+              - total
+          type: object
+      ErrandViewerAction:
+          enum:
+              - edit
+              - submit_review
+              - accept
+              - pickup
+              - deliver
+              - complete
+              - cancel
+              - verify_academic
+          type: string

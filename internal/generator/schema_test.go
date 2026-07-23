@@ -49,6 +49,27 @@ func TestSchemaNormalize(t *testing.T) {
 		{name: "permission path YAML injection", mutate: func(s *Schema) { s.Permissions[0].Path = "/api/v1/activities\ninjected: true" }, want: "invalid permission path"},
 		{name: "missing permission methods", mutate: func(s *Schema) { s.Permissions[0].Methods = nil }, want: "has no methods"},
 		{name: "duplicate permission method", mutate: func(s *Schema) { s.Permissions[0].Methods = []string{"GET", "get"} }, want: "repeats method"},
+		{
+			name: "undefined local response component",
+			mutate: func(s *Schema) {
+				s.Permissions = nil
+				s.Components = map[string]map[string]any{
+					"responses": {"OtherResponse": map[string]any{"description": "other"}},
+				}
+				s.Operations = []APIOperation{{
+					OperationID: "ListActivities",
+					Method:      "GET",
+					Path:        "/api/v1/activities",
+					Permission:  "activity:list",
+					Responses: []APIResponse{{
+						Status: 200,
+						Kind:   "success",
+						Ref:    "ActivityResponse",
+					}},
+				}}
+			},
+			want: "undefined local response",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

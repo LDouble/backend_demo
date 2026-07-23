@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/weouc-plus/campus-platform/internal/api/generated"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	activitydomain "github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
 )
@@ -35,41 +36,8 @@ type activityReviewRequest struct {
 	ReviewComment   string `json:"review_comment"`
 }
 
-type activityView struct {
-	ID               uint64    `json:"id"`
-	Title            string    `json:"title"`
-	Summary          string    `json:"summary"`
-	Body             string    `json:"body"`
-	Location         string    `json:"location"`
-	SignupStartAt    time.Time `json:"signup_start_at"`
-	SignupEndAt      time.Time `json:"signup_end_at"`
-	StartAt          time.Time `json:"start_at"`
-	EndAt            time.Time `json:"end_at"`
-	Capacity         int64     `json:"capacity"`
-	RegisteredCount  int64     `json:"registered_count"`
-	Status           string    `json:"status"`
-	ReviewStatus     string    `json:"review_status"`
-	ReviewComment    *string   `json:"review_comment,omitempty"`
-	CreatedBy        uint64    `json:"created_by"`
-	UpdatedBy        uint64    `json:"updated_by"`
-	ContactType      string    `json:"contact_type"`
-	Contact          string    `json:"contact"`
-	Version          uint64    `json:"version"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	ViewerRelation   string    `json:"viewer_relation"`
-	AvailableActions []string  `json:"available_actions"`
-}
-
-type myActivityRegistrationView struct {
-	RegistrationID      uint64       `json:"registration_id"`
-	ActivityID          uint64       `json:"activity_id"`
-	Status              string       `json:"status"`
-	RegisteredAt        time.Time    `json:"registered_at"`
-	CancelledAt         *time.Time   `json:"cancelled_at,omitempty"`
-	RegistrationVersion uint64       `json:"registration_version"`
-	Activity            activityView `json:"activity"`
-}
+type activityView = generated.ActivityView
+type myActivityRegistrationView = generated.MyActivityRegistration
 
 func (h *Handler) listAdminActivities(c *gin.Context) {
 	p, s := paging(c)
@@ -87,7 +55,7 @@ func (h *Handler) listAdminActivities(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.ActivityViewPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 
 func (h *Handler) listMyActivities(c *gin.Context) {
@@ -106,7 +74,7 @@ func (h *Handler) listMyActivities(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.ActivityViewPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 
 func (h *Handler) createAdminActivity(c *gin.Context) {
@@ -231,7 +199,7 @@ func (h *Handler) listActivities(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.ActivityViewPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 
 func (h *Handler) getActivity(c *gin.Context) {
@@ -262,16 +230,13 @@ func (h *Handler) createActivityRegistration(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusCreated, gin.H{
-		"registration": gin.H{
-			"id":                   registration.ID,
-			"activity_id":          registration.ActivityId,
-			"status":               registration.Status,
-			"registered_at":        registration.RegisteredAt,
-			"cancelled_at":         registration.CancelledAt,
-			"registration_version": registration.Version,
+	success(c, http.StatusCreated, generated.ActivityRegistrationResult{
+		Registration: generated.ActivityRegistration{
+			ID: registration.ID, ActivityID: registration.ActivityId,
+			Status: registration.Status, RegisteredAt: registration.RegisteredAt,
+			CancelledAt: registration.CancelledAt, RegistrationVersion: registration.Version,
 		},
-		"activity": view,
+		Activity: view,
 	})
 }
 
@@ -294,16 +259,13 @@ func (h *Handler) cancelMyActivityRegistration(c *gin.Context) {
 		failure(c, err)
 		return
 	}
-	success(c, http.StatusOK, gin.H{
-		"registration": gin.H{
-			"id":                   registration.ID,
-			"activity_id":          registration.ActivityId,
-			"status":               registration.Status,
-			"registered_at":        registration.RegisteredAt,
-			"cancelled_at":         registration.CancelledAt,
-			"registration_version": registration.Version,
+	success(c, http.StatusOK, generated.ActivityRegistrationResult{
+		Registration: generated.ActivityRegistration{
+			ID: registration.ID, ActivityID: registration.ActivityId,
+			Status: registration.Status, RegisteredAt: registration.RegisteredAt,
+			CancelledAt: registration.CancelledAt, RegistrationVersion: registration.Version,
 		},
-		"activity": view,
+		Activity: view,
 	})
 }
 
@@ -332,7 +294,7 @@ func (h *Handler) listMyActivityRegistrations(c *gin.Context) {
 			Activity:            view,
 		})
 	}
-	success(c, http.StatusOK, pageData(views, p, s, total))
+	success(c, http.StatusOK, generated.ActivityRegistrationPage{Items: views, Page: p, PageSize: s, Total: total})
 }
 
 func (h *Handler) changeActivity(
@@ -395,6 +357,10 @@ func (h *Handler) activityViewWithAccess(c *gin.Context, activity *activitydomai
 		return activityView{}, err
 	}
 	relation, actions := h.activities.ViewerContext(activity, viewerID, registered)
+	actions, err = h.availableActionsForViewer(c, actions, activitydomain.ActionRegister)
+	if err != nil {
+		return activityView{}, err
+	}
 	return h.assembleActivityView(activity, contact, relation, actions), nil
 }
 
@@ -409,6 +375,10 @@ func (h *Handler) activityView(c *gin.Context, activity *activitydomain.Activity
 		return activityView{}, err
 	}
 	relation, actions := h.activities.ViewerContext(activity, viewerID, registered)
+	actions, err = h.availableActionsForViewer(c, actions, activitydomain.ActionRegister)
+	if err != nil {
+		return activityView{}, err
+	}
 	return h.assembleActivityView(activity, contact, relation, actions), nil
 }
 
@@ -441,7 +411,7 @@ func (h *Handler) assembleActivityView(
 		CreatedAt:        activity.CreatedAt,
 		UpdatedAt:        activity.UpdatedAt,
 		ViewerRelation:   relation,
-		AvailableActions: actions,
+		AvailableActions: generatedActions[generated.ActivityViewerAction](actions),
 	}
 }
 

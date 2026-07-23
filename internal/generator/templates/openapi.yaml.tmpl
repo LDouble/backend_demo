@@ -138,3 +138,7 @@ paths:{{if and (not .OperationRoutes) (not .Routes)}} {}{{end}}
 {{- end}}
 {{- end}}
 {{- end}}
+{{- if .ComponentsYAML}}
+components:
+{{.ComponentsYAML -}}
+{{- end}}

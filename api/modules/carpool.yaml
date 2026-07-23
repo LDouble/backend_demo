@@ -46,7 +46,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripPageResponse"
   /api/v1/admin/carpool/trips/{id}/review:
     post:
       operationId: ReviewCarpoolTrip
@@ -85,7 +85,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -126,7 +126,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -180,7 +180,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripPageResponse"
     post:
       operationId: CreateCarpoolTrip
       tags: [carpool]
@@ -235,7 +235,7 @@ paths:
                   maxLength: 200
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
   /api/v1/carpool/trips/mine:
     get:
       operationId: ListMyCarpoolTrips
@@ -277,7 +277,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripPageResponse"
   /api/v1/carpool/trips/{id}:
     get:
       operationId: GetCarpoolTrip
@@ -290,7 +290,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
     patch:
       operationId: UpdateCarpoolTrip
       tags: [carpool]
@@ -349,7 +349,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/carpool/trips/{id}/cancel:
@@ -384,7 +384,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
   /api/v1/carpool/trips/{id}/join:
     post:
       operationId: JoinCarpoolTrip
@@ -417,7 +417,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/carpool/trips/{id}/leave:
@@ -452,7 +452,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
   /api/v1/carpool/trips/{id}/submit-review:
     post:
       operationId: SubmitCarpoolTripReview
@@ -485,6 +485,151 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "409":
           $ref: "#/components/responses/Error"
+components:
+  responses:
+      CarpoolTripPageResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/CarpoolTripPageResponseBody'
+          description: 拼车行程分页
+      CarpoolTripResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/CarpoolTripResponseBody'
+          description: 拼车行程
+  schemas:
+      CarpoolTripPageResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/CarpoolTripViewPage'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      CarpoolTripResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/CarpoolTripView'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      CarpoolTripView:
+          properties:
+              available_actions:
+                  items:
+                      $ref: '#/components/schemas/CarpoolViewerAction'
+                  type: array
+              contact:
+                  type: string
+              contact_type:
+                  type: string
+              created_at:
+                  format: date-time
+                  type: string
+              departure_at:
+                  format: date-time
+                  type: string
+              destination:
+                  type: string
+              id:
+                  format: uint64
+                  type: integer
+              occupied_seats:
+                  format: int64
+                  type: integer
+              organizer_id:
+                  format: uint64
+                  type: integer
+              origin:
+                  type: string
+              review_reason:
+                  nullable: true
+                  type: string
+              review_status:
+                  type: string
+              reviewed_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              reviewed_by:
+                  format: uint64
+                  nullable: true
+                  type: integer
+              status:
+                  type: string
+              title:
+                  type: string
+              total_seats:
+                  format: int64
+                  type: integer
+              updated_at:
+                  format: date-time
+                  type: string
+              version:
+                  format: uint64
+                  type: integer
+              viewer_relation:
+                  type: string
+          required:
+              - id
+              - title
+              - origin
+              - destination
+              - departure_at
+              - total_seats
+              - occupied_seats
+              - status
+              - review_status
+              - review_reason
+              - reviewed_by
+              - reviewed_at
+              - organizer_id
+              - contact_type
+              - contact
+              - version
+              - created_at
+              - updated_at
+              - viewer_relation
+              - available_actions
+          type: object
+      CarpoolTripViewPage:
+          properties:
+              items:
+                  items:
+                      $ref: '#/components/schemas/CarpoolTripView'
+                  type: array
+              page:
+                  minimum: 1
+                  type: integer
+              page_size:
+                  maximum: 100
+                  minimum: 1
+                  type: integer
+              total:
+                  format: int64
+                  type: integer
+          required:
+              - items
+              - page
+              - page_size
+              - total
+          type: object
+      CarpoolViewerAction:
+          enum:
+              - edit
+              - submit_review
+              - cancel
+              - join
+              - leave
+              - verify_academic
+          type: string

@@ -111,6 +111,11 @@ type AcademicVerificationGate interface {
 	IsVerified(context.Context, uint64) (bool, error)
 }
 
+const (
+	academicVerificationStatusKey = "academic_verification_status"
+	actionVerifyAcademic          = "verify_academic"
+)
+
 // WithAcademicVerificationGate overrides only the write gate, primarily for isolated adapters.
 func (h *Handler) WithAcademicVerificationGate(gate AcademicVerificationGate) *Handler {
 	h.academicGate = gate
@@ -132,6 +137,70 @@ func (h *Handler) requireAcademicVerification(c *gin.Context) bool {
 		return false
 	}
 	return true
+}
+
+// availableActionsForViewer replaces one action that requires academic
+// verification with the action that starts verification. Publisher-owned and
+// participant-owned actions pass through unchanged because they do not include
+// the restricted action.
+func (h *Handler) availableActionsForViewer(
+	c *gin.Context,
+	actions []string,
+	restrictedAction string,
+) ([]string, error) {
+	if actions == nil {
+		actions = []string{}
+	}
+	if c.GetUint64(userIDKey) == 0 || !containsAction(actions, restrictedAction) {
+		return actions, nil
+	}
+	verified, err := h.viewerAcademicVerified(c)
+	if err != nil {
+		return nil, err
+	}
+	if verified {
+		return actions, nil
+	}
+	return []string{actionVerifyAcademic}, nil
+}
+
+func (h *Handler) viewerAcademicVerified(c *gin.Context) (bool, error) {
+	if cached, ok := c.Get(academicVerificationStatusKey); ok {
+		verified, ok := cached.(bool)
+		if ok {
+			return verified, nil
+		}
+	}
+	if h.academicGate == nil {
+		return false, apperror.New(
+			http.StatusServiceUnavailable,
+			"academic_verification_unavailable",
+			"教务认证服务暂不可用",
+		)
+	}
+	verified, err := h.academicGate.IsVerified(c.Request.Context(), c.GetUint64(userIDKey))
+	if err != nil {
+		return false, err
+	}
+	c.Set(academicVerificationStatusKey, verified)
+	return verified, nil
+}
+
+func containsAction(actions []string, target string) bool {
+	for _, action := range actions {
+		if action == target {
+			return true
+		}
+	}
+	return false
+}
+
+func generatedActions[T ~string](actions []string) []T {
+	result := make([]T, len(actions))
+	for i := range actions {
+		result[i] = T(actions[i])
+	}
+	return result
 }
 
 // New creates an HTTP handler backed by the supplied core services.

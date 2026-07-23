@@ -55,7 +55,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingPageResponse"
   /api/v1/admin/marketplace/listings/{id}:
     delete:
       operationId: RemoveMarketplaceListing
@@ -82,7 +82,9 @@ paths:
             minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceRemovedResponse"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/admin/marketplace/listings/{id}/review:
     post:
       operationId: ReviewMarketplaceListing
@@ -121,7 +123,7 @@ paths:
                   maxLength: 500
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceUpdatedResponse"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -171,7 +173,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingPageResponse"
     post:
       operationId: CreateMarketplaceListing
       tags: [marketplace]
@@ -217,7 +219,7 @@ paths:
                   items: {type: string}
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingResponse"
         "400":
           $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings/mine:
@@ -251,7 +253,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingPageResponse"
   /api/v1/marketplace/listings/{id}:
     get:
       operationId: GetMarketplaceListing
@@ -264,7 +266,9 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingResponse"
+        "404":
+          $ref: "#/components/responses/Error"
     patch:
       operationId: UpdateMarketplaceListing
       tags: [marketplace]
@@ -314,7 +318,9 @@ paths:
                   items: {type: string}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingResponse"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings/{id}/submit:
     post:
       operationId: SubmitMarketplaceListing
@@ -347,7 +353,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceUpdatedResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings/{id}/withdraw:
@@ -382,7 +388,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceUpdatedResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/marketplace/orders:
@@ -416,6 +422,282 @@ paths:
                   minimum: 1
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceOrderResponse"
         "409":
           $ref: "#/components/responses/Error"
+components:
+  responses:
+      MarketplaceListingPageResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/MarketplaceListingPageResponseBody'
+          description: 二手商品分页
+      MarketplaceListingResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/MarketplaceListingResponseBody'
+          description: 二手商品
+      MarketplaceOrderResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/MarketplaceOrderResponseBody'
+          description: 二手交易订单
+      MarketplaceRemovedResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/MarketplaceRemovedResponseBody'
+          description: 二手商品下架结果
+      MarketplaceUpdatedResponse:
+          content:
+              application/json:
+                  schema:
+                      $ref: '#/components/schemas/MarketplaceUpdatedResponseBody'
+          description: 二手商品状态更新结果
+  schemas:
+      MarketplaceListingPageResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/MarketplaceListingViewPage'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      MarketplaceListingResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/MarketplaceListingView'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      MarketplaceListingView:
+          properties:
+              available_actions:
+                  items:
+                      $ref: '#/components/schemas/MarketplaceViewerAction'
+                  type: array
+              contact:
+                  type: string
+              contact_type:
+                  type: string
+              created_at:
+                  format: date-time
+                  type: string
+              currency:
+                  type: string
+              description:
+                  type: string
+              id:
+                  format: uint64
+                  type: integer
+              image_urls:
+                  items:
+                      type: string
+                  type: array
+              owner_id:
+                  format: uint64
+                  type: integer
+              price_cents:
+                  format: int64
+                  type: integer
+              rejection_reason:
+                  nullable: true
+                  type: string
+              reviewed_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              reviewed_by:
+                  format: uint64
+                  nullable: true
+                  type: integer
+              status:
+                  type: string
+              title:
+                  type: string
+              updated_at:
+                  format: date-time
+                  type: string
+              version:
+                  format: uint64
+                  type: integer
+              viewer_relation:
+                  type: string
+          required:
+              - id
+              - title
+              - description
+              - price_cents
+              - currency
+              - status
+              - owner_id
+              - image_urls
+              - contact_type
+              - contact
+              - version
+              - created_at
+              - updated_at
+              - viewer_relation
+              - available_actions
+          type: object
+      MarketplaceListingViewPage:
+          properties:
+              items:
+                  items:
+                      $ref: '#/components/schemas/MarketplaceListingView'
+                  type: array
+              page:
+                  minimum: 1
+                  type: integer
+              page_size:
+                  maximum: 100
+                  minimum: 1
+                  type: integer
+              total:
+                  format: int64
+                  type: integer
+          required:
+              - items
+              - page
+              - page_size
+              - total
+          type: object
+      MarketplaceOrderResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/MarketplaceTradeOrder'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      MarketplaceRemovedResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/MarketplaceRemovedResult'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      MarketplaceRemovedResult:
+          properties:
+              removed:
+                  type: boolean
+          required:
+              - removed
+          type: object
+      MarketplaceTradeOrder:
+          properties:
+              amount_cents:
+                  format: int64
+                  type: integer
+              buyer_id:
+                  format: uint64
+                  type: integer
+              cancelled_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              completed_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              created_at:
+                  format: date-time
+                  type: string
+              currency:
+                  type: string
+              expires_at:
+                  format: date-time
+                  nullable: true
+                  type: string
+              fulfillment_status:
+                  type: string
+              id:
+                  format: uint64
+                  type: integer
+              order_no:
+                  type: string
+              order_type:
+                  type: string
+              payment_mode:
+                  type: string
+              resource_id:
+                  format: uint64
+                  type: integer
+              resource_snapshot:
+                  additionalProperties: true
+                  type: object
+              resource_type:
+                  type: string
+              seller_id:
+                  format: uint64
+                  type: integer
+              title_snapshot:
+                  type: string
+              trade_status:
+                  type: string
+              updated_at:
+                  format: date-time
+                  type: string
+              version:
+                  format: uint64
+                  type: integer
+          required:
+              - id
+              - order_no
+              - order_type
+              - resource_type
+              - resource_id
+              - buyer_id
+              - seller_id
+              - amount_cents
+              - currency
+              - payment_mode
+              - trade_status
+              - fulfillment_status
+              - title_snapshot
+              - resource_snapshot
+              - expires_at
+              - completed_at
+              - cancelled_at
+              - version
+              - created_at
+              - updated_at
+          type: object
+      MarketplaceUpdatedResponseBody:
+          properties:
+              data:
+                  $ref: '#/components/schemas/MarketplaceUpdatedResult'
+              request_id:
+                  type: string
+          required:
+              - data
+              - request_id
+          type: object
+      MarketplaceUpdatedResult:
+          properties:
+              updated:
+                  type: boolean
+          required:
+              - updated
+          type: object
+      MarketplaceViewerAction:
+          enum:
+              - edit
+              - submit_review
+              - withdraw
+              - purchase
+              - verify_academic
+          type: string
