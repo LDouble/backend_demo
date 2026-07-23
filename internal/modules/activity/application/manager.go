@@ -23,7 +23,7 @@ type Store interface {
 	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Activity, int64, error)
 	ListPublic(context.Context, domain.PublicSearch, int, int) ([]domain.Activity, int64, error)
 	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Activity, error)
-	Approve(context.Context, uint64, uint64, uint64, string) (*domain.Activity, error)
+	Approve(context.Context, uint64, uint64, uint64, string, time.Time) (*domain.Activity, error)
 	Reject(context.Context, uint64, uint64, uint64, string) (*domain.Activity, error)
 	Publish(context.Context, uint64, uint64, uint64, time.Time) (*domain.Activity, error)
 	Cancel(context.Context, uint64, uint64, uint64, time.Time) (*domain.Activity, error)
@@ -112,9 +112,9 @@ func (m *Manager) SubmitReview(ctx context.Context, id, actorID, version uint64)
 	return m.store.SubmitReview(ctx, id, actorID, version)
 }
 
-// Approve records an approval decision for a pending activity.
+// Approve records an approval decision and publishes the activity atomically.
 func (m *Manager) Approve(ctx context.Context, id, actorID, version uint64, comment string) (*domain.Activity, error) {
-	return m.store.Approve(ctx, id, actorID, version, comment)
+	return m.store.Approve(ctx, id, actorID, version, comment, m.now().UTC())
 }
 
 // Reject records a rejection decision for a pending activity.

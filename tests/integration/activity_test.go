@@ -64,9 +64,6 @@ func TestActivityHTTPFlow(t *testing.T) {
 		"expected_version": submitted.Version,
 		"review_comment":   "通过",
 	}), &approved)
-	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/publish", base, created.ID), owner.token, map[string]any{
-		"expected_version": approved.Version,
-	}), &approved)
 	if approved.Status != "published" || approved.ReviewStatus != "approved" {
 		t.Fatalf("published activity = %+v", approved)
 	}
@@ -179,9 +176,6 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/approve", base, created.ID), adminToken, map[string]any{
 		"expected_version": updated.Version,
 	}), &updated)
-	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/publish", base, created.ID), owner.token, map[string]any{
-		"expected_version": updated.Version,
-	}), &updated)
 	assertStatus(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/activities/%d/finish", base, created.ID), owner.token, map[string]any{
 		"expected_version": updated.Version,
 	}), http.StatusConflict)
@@ -221,10 +215,6 @@ func TestActivityConcurrentRegistrationsRespectCapacity(t *testing.T) {
 		t.Fatal(err)
 	}
 	activity, err = activities.Approve(ctx, activity.ID, 91_099, activity.Version, "ok")
-	if err != nil {
-		t.Fatal(err)
-	}
-	activity, err = activities.Publish(ctx, activity.ID, activity.CreatedBy, activity.Version)
 	if err != nil {
 		t.Fatal(err)
 	}

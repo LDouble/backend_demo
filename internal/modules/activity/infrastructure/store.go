@@ -236,17 +236,32 @@ func (s *Store) SubmitReview(ctx context.Context, id, actorID, version uint64) (
 	})
 }
 
-// Approve marks a pending activity as approved.
-func (s *Store) Approve(ctx context.Context, id, actorID, version uint64, comment string) (*domain.Activity, error) {
-	return s.review(ctx, id, actorID, version, true, comment)
+// Approve marks a pending activity as approved and publishes it atomically.
+func (s *Store) Approve(
+	ctx context.Context,
+	id uint64,
+	actorID uint64,
+	version uint64,
+	comment string,
+	now time.Time,
+) (*domain.Activity, error) {
+	return s.review(ctx, id, actorID, version, true, comment, now)
 }
 
 // Reject marks a pending activity as rejected.
 func (s *Store) Reject(ctx context.Context, id, actorID, version uint64, comment string) (*domain.Activity, error) {
-	return s.review(ctx, id, actorID, version, false, comment)
+	return s.review(ctx, id, actorID, version, false, comment, time.Time{})
 }
 
-func (s *Store) review(ctx context.Context, id, actorID, version uint64, approved bool, comment string) (*domain.Activity, error) {
+func (s *Store) review(
+	ctx context.Context,
+	id uint64,
+	actorID uint64,
+	version uint64,
+	approved bool,
+	comment string,
+	now time.Time,
+) (*domain.Activity, error) {
 	kind := "activity.rejected"
 	if approved {
 		kind = "activity.approved"
@@ -269,6 +284,10 @@ func (s *Store) review(ctx context.Context, id, actorID, version uint64, approve
 			return apperror.Wrap(http.StatusBadRequest, "review_comment_too_long", err.Error(), err)
 		}
 		if approved {
+			if !activity.EndAt.After(now) {
+				return apperror.New(http.StatusConflict, "activity_expired", "活动已结束，无法审核通过")
+			}
+			activity.Status = domain.ActivityStatusPublished
 			activity.ReviewStatus = domain.ReviewStatusApproved
 			if trimmed == "" {
 				activity.ReviewComment = nil
@@ -287,9 +306,21 @@ func (s *Store) review(ctx context.Context, id, actorID, version uint64, approve
 
 // Publish exposes an approved draft activity to users.
 func (s *Store) Publish(ctx context.Context, id, actorID, version uint64, now time.Time) (*domain.Activity, error) {
-	return s.mutateActivityWithEvent(ctx, id, version, "activity.published", func(tx *gorm.DB, activity *domain.Activity) error {
+	var activity domain.Activity
+	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&activity, id).Error; err != nil {
+			return activityNotFound(err)
+		}
+		if activity.Version != version {
+			return apperror.New(http.StatusConflict, "version_conflict", "活动已被其他请求更新")
+		}
 		if activity.CreatedBy != actorID {
 			return apperror.New(http.StatusForbidden, "not_activity_owner", "仅活动发布者可以执行此操作")
+		}
+		alreadyPublished := activity.Status == domain.ActivityStatusPublished &&
+			activity.ReviewStatus == domain.ReviewStatusApproved
+		if alreadyPublished {
+			return nil
 		}
 		if !domain.CanPublish(activity.Status, activity.ReviewStatus) {
 			return apperror.New(http.StatusConflict, "invalid_activity_state", "当前活动状态不允许发布")
@@ -300,8 +331,12 @@ func (s *Store) Publish(ctx context.Context, id, actorID, version uint64, now ti
 		activity.Status = domain.ActivityStatusPublished
 		activity.UpdatedBy = actorID
 		activity.Version++
-		return tx.Save(activity).Error
+		if err := tx.Save(&activity).Error; err != nil {
+			return err
+		}
+		return activityEvent(tx, &activity, "activity.published")
 	})
+	return &activity, err
 }
 
 // Cancel marks a published activity cancelled.

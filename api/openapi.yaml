@@ -831,7 +831,7 @@ paths:
     post:
       operationId: ApproveAdminActivity
       tags: [activity]
-      summary: "审核通过活动"
+      summary: "审核通过并发布活动"
       x-generated-module: activity
       x-permission: activity:admin_approve
       x-academic-verification: none

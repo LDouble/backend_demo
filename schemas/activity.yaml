@@ -125,7 +125,7 @@ operations:
     academic_verification: none
     path: /api/v1/admin/activities/{id}/approve
     permission: activity:admin_approve
-    summary: 审核通过活动
+    summary: 审核通过并发布活动
     body:
       fields:
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
