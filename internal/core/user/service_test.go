@@ -51,6 +51,22 @@ func (g *assigningGuard) EnsureGuestForUser(_ context.Context, id uint64) error 
 	return g.err
 }
 
+type preservingGuard struct {
+	guestAssigned   uint64
+	currentAssigned uint64
+	err             error
+}
+
+func (g *preservingGuard) CanDisable(context.Context, uint64) (bool, error) { return true, nil }
+func (g *preservingGuard) EnsureGuestForUser(_ context.Context, id uint64) error {
+	g.guestAssigned = id
+	return nil
+}
+func (g *preservingGuard) EnsureCurrentBaseRoleForUser(_ context.Context, id uint64) error {
+	g.currentAssigned = id
+	return g.err
+}
+
 // txAssigningGuard proves the service prefers the transaction-aware variant
 // of EnsureGuestForUser when one is exposed by the role guard, so the user
 // insert and the role assignment are observable to a single SQL transaction.
@@ -158,6 +174,11 @@ func TestCreateAndPassword(t *testing.T) {
 func TestHashPasswordLength(t *testing.T) {
 	if _, err := HashPassword("too-short"); err == nil {
 		t.Fatal("expected short password rejection")
+	}
+	if _, err := HashPassword(strings.Repeat("a", 73)); err == nil {
+		t.Fatal("expected overlong password rejection")
+	} else if appErr, ok := apperror.As(err); !ok || appErr.Code != "invalid_password" {
+		t.Fatalf("expected invalid_password, got %v", err)
 	}
 }
 
@@ -449,6 +470,32 @@ func TestFindOrCreateForWechatReconcilesGuestRole(t *testing.T) {
 	}
 }
 
+func TestFindOrCreateForWechatPreservesCurrentBaseRole(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	guard := &preservingGuard{}
+	svc := NewService(repo, guard)
+
+	user, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-member", "oMember", "")
+	if err != nil || !created {
+		t.Fatalf("seed: created=%v err=%v", created, err)
+	}
+	guard.guestAssigned = 0
+	if _, created, err = svc.FindOrCreateForWechat(ctx, "wxapp-member", "oMember", ""); err != nil || created {
+		t.Fatalf("reload: created=%v err=%v", created, err)
+	}
+	if guard.currentAssigned != user.ID {
+		t.Fatalf("current base role was not reconciled for user %d", user.ID)
+	}
+	if guard.guestAssigned != 0 {
+		t.Fatalf("existing account was forced back to guest: user=%d", guard.guestAssigned)
+	}
+	guard.err = errors.New("role reconciliation unavailable")
+	if _, _, err = svc.FindOrCreateForWechat(ctx, "wxapp-member", "oMember", ""); !errors.Is(err, guard.err) {
+		t.Fatalf("expected role reconciliation error, got %v", err)
+	}
+}
+
 // TestFindOrCreateForWechatPropagatesRandFailure locks in the P2 fix that
 // refuses to create an account when the locked-password randomness source
 // is unavailable, rather than silently writing a publicly known hash.
@@ -464,6 +511,18 @@ func TestFindOrCreateForWechatPropagatesRandFailure(t *testing.T) {
 	}
 	if !errors.Is(err, err) || !strings.Contains(err.Error(), "entropy unavailable") {
 		t.Fatalf("expected entropy error, got %v", err)
+	}
+}
+
+func TestFindOrCreateForWechatRejectsOverlongLockedSecret(t *testing.T) {
+	original := lockedSecretGenerator
+	lockedSecretGenerator = func() (string, error) { return strings.Repeat("x", 73), nil }
+	defer func() { lockedSecretGenerator = original }()
+
+	svc := NewService(newFakeRepo(), nil)
+	_, _, err := svc.FindOrCreateForWechat(context.Background(), "wxapp-1", "oX1", "")
+	if err == nil || !strings.Contains(err.Error(), "hash locked password") {
+		t.Fatalf("expected locked-password length error, got %v", err)
 	}
 }
 
@@ -568,6 +627,143 @@ func TestFindOrCreateForWechatRepoAndBackfillErrors(t *testing.T) {
 	}
 }
 
+func TestFindOrCreateForWechatFallbackCreateFailures(t *testing.T) {
+	ctx := context.Background()
+	winner := &model.User{ID: 77, Username: "wx_winner", Status: model.UserActive}
+	cases := []struct {
+		name       string
+		repo       *scriptedWechatRepo
+		guard      *assigningGuard
+		wantCode   string
+		wantError  string
+		wantWinner bool
+	}{
+		{
+			name:      "create error",
+			repo:      &scriptedWechatRepo{createErr: errors.New("insert unavailable")},
+			wantError: "create wechat user",
+		},
+		{
+			name:      "duplicate reload error",
+			repo:      &scriptedWechatRepo{createErr: gorm.ErrDuplicatedKey, reloadErr: errors.New("reload unavailable")},
+			wantError: "reload wechat user",
+		},
+		{
+			name:       "duplicate active winner",
+			repo:       &scriptedWechatRepo{createErr: gorm.ErrDuplicatedKey, winner: winner},
+			wantWinner: true,
+		},
+		{
+			name:     "duplicate disabled winner",
+			repo:     &scriptedWechatRepo{createErr: gorm.ErrDuplicatedKey, winner: disabledWechatWinner(78)},
+			wantCode: "user_disabled",
+		},
+		{
+			name:      "guest assignment error",
+			repo:      &scriptedWechatRepo{},
+			guard:     &assigningGuard{err: errors.New("role unavailable")},
+			wantError: "assign guest role",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := NewService(tc.repo, tc.guard)
+			user, created, err := svc.FindOrCreateForWechat(ctx, "wxapp-scripted", "oScripted", "")
+			switch {
+			case tc.wantCode != "":
+				appErr, ok := apperror.As(err)
+				if !ok || appErr.Code != tc.wantCode {
+					t.Fatalf("expected %s, got %v", tc.wantCode, err)
+				}
+			case tc.wantError != "":
+				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("expected %q error, got %v", tc.wantError, err)
+				}
+			case tc.wantWinner:
+				if err != nil || created || user.ID != winner.ID {
+					t.Fatalf("winner=%+v created=%v err=%v", user, created, err)
+				}
+			}
+		})
+	}
+}
+
+func TestFindOrCreateForWechatDatabaseRaceRecovery(t *testing.T) {
+	cases := []struct {
+		name      string
+		winner    *model.User
+		reloadErr error
+		guardErr  error
+		wantCode  string
+		wantError string
+	}{
+		{name: "active winner", winner: &model.User{Username: "db-winner", Status: model.UserActive}},
+		{name: "disabled winner", winner: disabledWechatWinner(0), wantCode: "user_disabled"},
+		{name: "reload error", reloadErr: errors.New("reload unavailable"), wantError: "reload wechat user"},
+		{
+			name: "role reconciliation error", winner: &model.User{Username: "role-winner", Status: model.UserActive},
+			guardErr: errors.New("role unavailable"), wantError: "role unavailable",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := openWechatTestDB(t)
+			winner := tc.winner
+			if winner == nil {
+				winner = &model.User{Username: "reload-winner", Status: model.UserActive}
+			}
+			appID, openID := "wxapp-race", "oRace"
+			winner.AppID = &appID
+			winner.OpenID = &openID
+			winner.PasswordHash = "locked"
+			winner.SessionVersion = 1
+			if err := db.Create(winner).Error; err != nil {
+				t.Fatal(err)
+			}
+			repo := &scriptedWechatRepo{winner: winner, reloadErr: tc.reloadErr}
+			guard := &assigningGuard{err: tc.guardErr}
+			svc := NewService(repo, guard).WithDatabase(db)
+			user, created, err := svc.FindOrCreateForWechat(context.Background(), appID, openID, "")
+			switch {
+			case tc.wantCode != "":
+				appErr, ok := apperror.As(err)
+				if !ok || appErr.Code != tc.wantCode {
+					t.Fatalf("expected %s, got %v", tc.wantCode, err)
+				}
+			case tc.wantError != "":
+				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("expected %q error, got %v", tc.wantError, err)
+				}
+			default:
+				if err != nil || created || user.ID != winner.ID {
+					t.Fatalf("winner=%+v created=%v err=%v", user, created, err)
+				}
+			}
+		})
+	}
+}
+
+func TestFindOrCreateForWechatDatabaseCreateErrors(t *testing.T) {
+	db := openWechatTestDB(t)
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = sqlDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(&scriptedWechatRepo{}, &txAssigningGuard{}).WithDatabase(db)
+	if _, _, err = svc.FindOrCreateForWechat(context.Background(), "wxapp-closed", "oClosed", ""); err == nil {
+		t.Fatal("expected closed database error")
+	}
+
+	db = openWechatTestDB(t)
+	svc = NewService(&scriptedWechatRepo{}, &fakeGuard{allowed: true}).WithDatabase(db)
+	if _, created, err := svc.FindOrCreateForWechat(context.Background(), "wxapp-no-assigner", "oNone", ""); err != nil || !created {
+		t.Fatalf("missing optional assigner: created=%v err=%v", created, err)
+	}
+}
+
 type explodingRepo struct {
 	lookupErr error
 }
@@ -611,6 +807,64 @@ func (r backfillErrRepo) UpdateFields(_ context.Context, id uint64, _ UpdateFiel
 		return r.updateErr
 	}
 	return nil
+}
+
+type scriptedWechatRepo struct {
+	lookups   int
+	winner    *model.User
+	createErr error
+	reloadErr error
+}
+
+func (r *scriptedWechatRepo) Create(_ context.Context, user *model.User) error {
+	if r.createErr != nil {
+		return r.createErr
+	}
+	user.ID = 1
+	return nil
+}
+func (r *scriptedWechatRepo) GetByID(context.Context, uint64) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (r *scriptedWechatRepo) GetByUsername(context.Context, string) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (r *scriptedWechatRepo) GetByAppOpenID(context.Context, string, string) (*model.User, error) {
+	r.lookups++
+	if r.lookups == 1 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	if r.reloadErr != nil {
+		return nil, r.reloadErr
+	}
+	if r.winner == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	clone := *r.winner
+	return &clone, nil
+}
+func (*scriptedWechatRepo) List(context.Context, int, int) ([]model.User, int64, error) {
+	return []model.User{}, 0, nil
+}
+func (*scriptedWechatRepo) UpdateFields(context.Context, uint64, UpdateFields) error { return nil }
+
+func disabledWechatWinner(id uint64) *model.User {
+	return &model.User{ID: id, Username: "disabled-winner", Status: model.UserDisabled}
+}
+
+func openWechatTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(
+		sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"),
+		&gorm.Config{TranslateError: true},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = db.AutoMigrate(&model.User{}); err != nil {
+		t.Fatal(err)
+	}
+	return db
 }
 
 type dupKeyRepo struct {
@@ -724,5 +978,26 @@ func TestFindOrCreateForWechatAtomicWithDB(t *testing.T) {
 	}
 	if guard.assigned == 0 {
 		t.Fatal("guest role was not reconciled for existing user via DB path")
+	}
+
+	// When an idempotent HTTP operation already owns the transaction, account
+	// provisioning must join it instead of opening an independent transaction.
+	executionContext, afterCommit := idempotency.WithAfterCommit(context.Background())
+	err = db.Transaction(func(tx *gorm.DB) error {
+		txContext := idempotency.WithTransaction(executionContext, tx)
+		_, isNew, createErr := svc.FindOrCreateForWechat(txContext, "wxapp-3", "oZ1", "")
+		if createErr != nil {
+			return createErr
+		}
+		if !isNew {
+			t.Fatal("expected outer transaction to create a user")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = afterCommit.Run(executionContext); err != nil {
+		t.Fatal(err)
 	}
 }

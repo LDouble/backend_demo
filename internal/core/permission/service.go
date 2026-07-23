@@ -620,7 +620,13 @@ func (s *Service) EnsureGuestForUser(ctx context.Context, userID uint64) error {
 // callers can compose it with other writes (e.g. provisioning a brand-new
 // account) without a window where the user exists but their role does not.
 func (s *Service) EnsureGuestForUserTx(ctx context.Context, tx *gorm.DB, userID uint64) error {
-	return s.ensureBaseRole(ctx, tx, userID, model.GuestRole, "平台访客", s.guestPolicies)
+	if err := s.ensureBaseRole(ctx, tx, userID, model.GuestRole, "平台访客", s.guestPolicies); err != nil {
+		return err
+	}
+	if tx == nil {
+		return nil
+	}
+	return s.reloadAfterMutation(ctx)
 }
 
 // EnsureMemberForUser reconciles generated member permissions and selects member as the base role.

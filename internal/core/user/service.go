@@ -80,11 +80,8 @@ func HashPassword(password string) (string, error) {
 	if len(password) < 12 {
 		return "", apperror.New(http.StatusBadRequest, "invalid_password", "密码至少需要 12 位")
 	}
-	// bcrypt silently truncates inputs longer than 72 bytes, which would
-	// collapse two different passwords into the same digest. Truncate
-	// explicitly so the operator-visible behavior is deterministic.
 	if len(password) > 72 {
-		password = password[:72]
+		return "", apperror.New(http.StatusBadRequest, "invalid_password", "密码不能超过 72 字节")
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
@@ -376,31 +373,42 @@ func (s *Service) FindOrCreateForWechat(ctx context.Context, appID, openID, unio
 // single database transaction so a half-applied provisioning can never be
 // observed by a subsequent login.
 func (s *Service) createWithGuestRoleInTx(ctx context.Context, u *model.User) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(u).Error; err != nil {
-			return err
-		}
-		assigner, ok := s.guard.(interface {
-			EnsureGuestForUserTx(context.Context, *gorm.DB, uint64) error
-			EnsureGuestForUser(context.Context, uint64) error
-		})
-		if !ok {
-			return nil
-		}
-		if txAssigner, hasTx := assigner.(interface {
-			EnsureGuestForUserTx(context.Context, *gorm.DB, uint64) error
-		}); hasTx {
-			return txAssigner.EnsureGuestForUserTx(ctx, tx, u.ID)
-		}
-		return assigner.EnsureGuestForUser(ctx, u.ID)
+	if idempotency.InTransaction(ctx) {
+		return s.createWithGuestRole(ctx, idempotency.DB(ctx, s.db), u)
+	}
+	executionContext, afterCommit := idempotency.WithAfterCommit(ctx)
+	err := s.db.WithContext(executionContext).Transaction(func(tx *gorm.DB) error {
+		txContext := idempotency.WithTransaction(executionContext, tx)
+		return s.createWithGuestRole(txContext, tx, u)
 	})
+	if err != nil {
+		return err
+	}
+	return afterCommit.Run(executionContext)
 }
 
-// ensureGuestRole assigns the guest role outside of any transaction. It is
-// safe to call when the role is already present (idempotent at the data
-// layer), so we use it both on the post-create reconciliation path and when
-// loading an existing WeChat user.
+func (s *Service) createWithGuestRole(ctx context.Context, tx *gorm.DB, u *model.User) error {
+	if err := tx.WithContext(ctx).Create(u).Error; err != nil {
+		return err
+	}
+	assigner, ok := s.guard.(interface {
+		EnsureGuestForUserTx(context.Context, *gorm.DB, uint64) error
+		EnsureGuestForUser(context.Context, uint64) error
+	})
+	if !ok {
+		return nil
+	}
+	return assigner.EnsureGuestForUserTx(ctx, tx, u.ID)
+}
+
+// ensureGuestRole reconciles an existing account without replacing a member
+// role acquired through academic verification.
 func (s *Service) ensureGuestRole(ctx context.Context, userID uint64) error {
+	if reconciler, ok := s.guard.(interface {
+		EnsureCurrentBaseRoleForUser(context.Context, uint64) error
+	}); ok {
+		return reconciler.EnsureCurrentBaseRoleForUser(ctx, userID)
+	}
 	assigner, ok := s.guard.(interface {
 		EnsureGuestForUser(context.Context, uint64) error
 	})
@@ -430,7 +438,7 @@ func randomLockedSecret() (string, error) {
 // lockedSecretGenerator is the production source of entropy for
 // randomLockedSecret. Tests swap it to inject entropy-source failures.
 var lockedSecretGenerator = func() (string, error) {
-	buf := make([]byte, 48)
+	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
 		return "", fmt.Errorf("read random secret: %w", err)
 	}

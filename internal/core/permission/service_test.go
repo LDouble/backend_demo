@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
+	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/permission"
 	"github.com/weouc-plus/campus-platform/internal/infrastructure/mysql"
@@ -38,6 +39,12 @@ func (permissionPolicyOutbox) TableName() string { return "permission_policy_out
 
 func testService(t *testing.T) *permission.Service {
 	t.Helper()
+	service, _ := testServiceWithDB(t)
+	return service
+}
+
+func testServiceWithDB(t *testing.T) (*permission.Service, *gorm.DB) {
+	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{TranslateError: true})
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +68,7 @@ func testService(t *testing.T) *permission.Service {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return svc
+	return svc, db
 }
 
 func TestPolicyLoadingHonorsContextCancellation(t *testing.T) {
@@ -310,6 +317,32 @@ func TestGuestReadsPublicContentAndOnlyMemberGetsBusinessWrites(t *testing.T) {
 	roles, err := svc.GetUserRoles(ctx, 42)
 	if err != nil || len(roles) != 1 || roles[0] != model.MemberRole {
 		t.Fatalf("base roles=%v err=%v", roles, err)
+	}
+}
+
+func TestGuestRoleReloadsOnlyAfterOuterTransactionCommits(t *testing.T) {
+	svc, db := testServiceWithDB(t)
+	executionContext, afterCommit := idempotency.WithAfterCommit(context.Background())
+	err := db.Transaction(func(tx *gorm.DB) error {
+		txContext := idempotency.WithTransaction(executionContext, tx)
+		return svc.EnsureGuestForUserTx(txContext, tx, 42)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allowed, err := svc.Enforce(context.Background(), 42, "/api/v1/activities", "GET")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allowed {
+		t.Fatal("permission became visible before the post-commit callback ran")
+	}
+	if err = afterCommit.Run(executionContext); err != nil {
+		t.Fatal(err)
+	}
+	allowed, err = svc.Enforce(context.Background(), 42, "/api/v1/activities", "GET")
+	if err != nil || !allowed {
+		t.Fatalf("guest permission was not reloaded after commit: allowed=%v err=%v", allowed, err)
 	}
 }
 
