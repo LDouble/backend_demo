@@ -256,11 +256,11 @@ func (s *Service) SetStatus(ctx context.Context, id uint64, status string) (*mod
 
 // wechatSyntheticUsername derives a stable, non-guessable username for a
 // WeChat account. The hash makes the username safe to log while staying
-// unique per (appID, openID) pair. If a collision is detected (vanishingly
-// unlikely with 96 bits of entropy) the function appends a short salt.
+// unique per (appID, openID) pair. It uses the first 96 bits of SHA-256,
+// making a username collision impractical while fitting the username limit.
 func wechatSyntheticUsername(appID, openID string) string {
 	sum := sha256.Sum256([]byte(appID + ":" + openID))
-	candidate := "wx_" + hex.EncodeToString(sum[:])[:12]
+	candidate := "wx_" + hex.EncodeToString(sum[:])[:24]
 	if usernamePattern.MatchString(candidate) {
 		return candidate
 	}

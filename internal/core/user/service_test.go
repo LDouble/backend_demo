@@ -439,6 +439,19 @@ func TestFindOrCreateForWechatRejectsEmptyInput(t *testing.T) {
 	}
 }
 
+func TestWechatSyntheticUsernameUses96BitSuffix(t *testing.T) {
+	username := wechatSyntheticUsername("wxapp-1", "oX1")
+	if len(username) != len("wx_")+24 {
+		t.Fatalf("username length=%d, want %d", len(username), len("wx_")+24)
+	}
+	if !usernamePattern.MatchString(username) {
+		t.Fatalf("synthetic username does not match username policy: %q", username)
+	}
+	if username == wechatSyntheticUsername("wxapp-1", "oX2") {
+		t.Fatal("different WeChat identities produced the same username")
+	}
+}
+
 // TestFindOrCreateForWechatReconcilesGuestRole guards the fix for Codex P1:
 // a half-applied provisioning from a previous failure must self-heal on the
 // next successful load, so every WeChat login that resolves an existing
