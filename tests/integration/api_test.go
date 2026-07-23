@@ -258,6 +258,11 @@ func TestManualAcademicVerificationAdminLifecycle(t *testing.T) {
 	if revokedIdentity.Status != "revoked" {
 		t.Fatalf("revoked identity=%+v", revokedIdentity)
 	}
+	revokedRequest := academicRequest{}
+	decodeData(t, request(t, client, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/academic-verification/requests/%d", base, createdRequest.ID), adminToken, nil), &revokedRequest)
+	if revokedRequest.Status != "revoked" {
+		t.Fatalf("revoked request=%+v", revokedRequest)
+	}
 
 	rejectedToken, rejectedRequest := createManualAcademicRequest(t, client, base, adminToken, suffix+"_reject")
 	rejected := academicRequest{}
