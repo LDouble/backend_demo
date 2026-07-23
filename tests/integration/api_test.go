@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -28,6 +29,23 @@ type tokens struct {
 type resource struct {
 	ID      uint64 `json:"id"`
 	Version uint64 `json:"version"`
+}
+
+type academicRequest struct {
+	ID         uint64 `json:"id"`
+	MaterialID uint64 `json:"material_id"`
+	Status     string `json:"status"`
+	Version    uint64 `json:"version"`
+}
+
+type academicIdentity struct {
+	ID      uint64 `json:"id"`
+	Status  string `json:"status"`
+	Version uint64 `json:"version"`
+}
+
+type academicStatus struct {
+	Identity *academicIdentity `json:"identity"`
 }
 
 var (
@@ -157,6 +175,108 @@ func TestGuestBecomesMemberAfterAcademicVerification(t *testing.T) {
 		"contact_type": "wechat", "contact": "member-test",
 	})
 	assertStatus(t, memberWrite, http.StatusCreated)
+}
+
+func TestManualAcademicVerificationAdminLifecycle(t *testing.T) {
+	base, adminToken := integrationAdmin(t)
+	client := http.Client{Timeout: 10 * time.Second}
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	username := "manual_" + suffix
+	createdUser := resource{}
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{
+		"username": username,
+		"password": integrationPassword,
+	}), &createdUser)
+	userToken := loginWithCredentials(t, base, username, integrationPassword)
+
+	materialID := uploadAcademicMaterial(t, client, base, userToken)
+	createdRequest := academicRequest{}
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/academic-verification/student-card", userToken, map[string]any{
+		"real_name":   "集成测试学生",
+		"student_no":  "manual_" + suffix,
+		"material_id": materialID,
+	}), &createdRequest)
+	if createdRequest.Status != "pending" || createdRequest.MaterialID != materialID {
+		t.Fatalf("manual request=%+v", createdRequest)
+	}
+
+	adminPage := struct {
+		Items []academicRequest `json:"items"`
+	}{}
+	decodeData(t, request(t, client, http.MethodGet, base+"/api/v1/admin/academic-verification/requests?status=pending&page=1&page_size=100", adminToken, nil), &adminPage)
+	if !containsAcademicRequest(adminPage.Items, createdRequest.ID) {
+		t.Fatalf("pending request %d is missing from administrator list", createdRequest.ID)
+	}
+	requestDetail := academicRequest{}
+	decodeData(t, request(t, client, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/academic-verification/requests/%d", base, createdRequest.ID), adminToken, nil), &requestDetail)
+	if requestDetail.ID != createdRequest.ID || requestDetail.Status != "pending" {
+		t.Fatalf("request detail=%+v", requestDetail)
+	}
+
+	materialResponse := request(t, client, http.MethodGet, fmt.Sprintf("%s/api/v1/admin/academic-verification/materials/%d", base, materialID), adminToken, nil)
+	if materialResponse.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(materialResponse.Body)
+		t.Fatalf("material read status=%d body=%s", materialResponse.StatusCode, raw)
+	}
+	if contentType := materialResponse.Header.Get("Content-Type"); contentType != "image/png" {
+		t.Fatalf("material content type=%q", contentType)
+	}
+	if cacheControl := materialResponse.Header.Get("Cache-Control"); cacheControl != "no-store" {
+		t.Fatalf("material cache control=%q", cacheControl)
+	}
+	if _, err := io.ReadAll(materialResponse.Body); err != nil {
+		t.Fatal(err)
+	}
+	_ = materialResponse.Body.Close()
+
+	approvedRequest := academicRequest{}
+	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/academic-verification/requests/%d/approve", base, createdRequest.ID), adminToken, map[string]any{
+		"expected_version": createdRequest.Version,
+	}), &approvedRequest)
+	if approvedRequest.Status != "approved" {
+		t.Fatalf("approved request=%+v", approvedRequest)
+	}
+
+	status := academicStatus{}
+	decodeData(t, request(t, client, http.MethodGet, base+"/api/v1/academic-verification", userToken, nil), &status)
+	if status.Identity == nil || status.Identity.Status != "verified" {
+		t.Fatalf("verified identity=%+v", status.Identity)
+	}
+	memberWrite := request(t, client, http.MethodPost, base+"/api/v1/errands", userToken, map[string]any{
+		"title": "人工认证成员写入", "description": "批准后允许", "reward_cents": 300,
+		"pickup_location": "东门", "dropoff_location": "图书馆",
+		"deadline":     time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		"contact_type": "wechat", "contact": "manual-member",
+	})
+	assertStatus(t, memberWrite, http.StatusCreated)
+
+	revokedIdentity := academicIdentity{}
+	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/academic-verification/identities/%d/revoke", base, status.Identity.ID), adminToken, map[string]any{
+		"expected_version": status.Identity.Version,
+		"reason":           "集成测试撤销",
+	}), &revokedIdentity)
+	if revokedIdentity.Status != "revoked" {
+		t.Fatalf("revoked identity=%+v", revokedIdentity)
+	}
+
+	rejectedToken, rejectedRequest := createManualAcademicRequest(t, client, base, adminToken, suffix+"_reject")
+	rejected := academicRequest{}
+	decodeData(t, request(t, client, http.MethodPost, fmt.Sprintf("%s/api/v1/admin/academic-verification/requests/%d/reject", base, rejectedRequest.ID), adminToken, map[string]any{
+		"expected_version": rejectedRequest.Version,
+		"reason":           "集成测试驳回",
+	}), &rejected)
+	if rejected.Status != "rejected" {
+		t.Fatalf("rejected request=%+v", rejected)
+	}
+	assertStatus(t, request(t, client, http.MethodGet, base+"/api/v1/academic-verification", rejectedToken, nil), http.StatusOK)
+
+	guestWrite := request(t, client, http.MethodPost, base+"/api/v1/errands", userToken, map[string]any{
+		"title": "撤销后写入", "description": "必须拒绝", "reward_cents": 300,
+		"pickup_location": "东门", "dropoff_location": "图书馆",
+		"deadline":     time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		"contact_type": "wechat", "contact": "manual-guest",
+	})
+	assertStatus(t, guestWrite, http.StatusForbidden)
 }
 
 func TestNoticeLifecycleThroughWorker(t *testing.T) {
@@ -330,4 +450,77 @@ func verifyAcademicCredentials(t *testing.T, client http.Client, base, token str
 		"password":   "password",
 	}), http.StatusOK)
 	return studentNo
+}
+
+func uploadAcademicMaterial(t *testing.T, client http.Client, base, token string) uint64 {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	file, err := writer.CreateFormFile("file", "student-card.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	png := append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 512)...)
+	if _, err = file.Write(png); err != nil {
+		t.Fatal(err)
+	}
+	if err = writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPost, base+"/api/v1/academic-verification/materials", &body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	response, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = response.Body.Close() })
+	if response.StatusCode != http.StatusCreated {
+		raw, _ := io.ReadAll(response.Body)
+		t.Fatalf("upload material status=%d body=%s", response.StatusCode, raw)
+	}
+	var result struct {
+		MaterialID uint64 `json:"material_id"`
+	}
+	decodeData(t, response, &result)
+	if result.MaterialID == 0 {
+		t.Fatal("upload returned an empty material id")
+	}
+	return result.MaterialID
+}
+
+func createManualAcademicRequest(
+	t *testing.T,
+	client http.Client,
+	base string,
+	adminToken string,
+	suffix string,
+) (string, academicRequest) {
+	t.Helper()
+	username := "r_" + suffix
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{
+		"username": username,
+		"password": integrationPassword,
+	}), &resource{})
+	userToken := loginWithCredentials(t, base, username, integrationPassword)
+	materialID := uploadAcademicMaterial(t, client, base, userToken)
+	created := academicRequest{}
+	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/academic-verification/student-card", userToken, map[string]any{
+		"real_name":   "驳回测试学生",
+		"student_no":  "reject_" + suffix,
+		"material_id": materialID,
+	}), &created)
+	return userToken, created
+}
+
+func containsAcademicRequest(requests []academicRequest, id uint64) bool {
+	for _, request := range requests {
+		if request.ID == id {
+			return true
+		}
+	}
+	return false
 }
