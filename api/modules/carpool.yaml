@@ -46,7 +46,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripPageResponse"
   /api/v1/admin/carpool/trips/{id}/review:
     post:
       operationId: ReviewCarpoolTrip
@@ -180,7 +180,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripPageResponse"
     post:
       operationId: CreateCarpoolTrip
       tags: [carpool]
@@ -235,7 +235,7 @@ paths:
                   maxLength: 200
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
   /api/v1/carpool/trips/mine:
     get:
       operationId: ListMyCarpoolTrips
@@ -277,7 +277,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripPageResponse"
   /api/v1/carpool/trips/{id}:
     get:
       operationId: GetCarpoolTrip
@@ -290,7 +290,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
     patch:
       operationId: UpdateCarpoolTrip
       tags: [carpool]
@@ -349,7 +349,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CarpoolTripResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/carpool/trips/{id}/cancel:

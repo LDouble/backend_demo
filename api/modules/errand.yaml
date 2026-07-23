@@ -46,7 +46,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandPageResponse"
   /api/v1/admin/errands/{id}/review:
     post:
       operationId: ReviewErrand
@@ -157,7 +157,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandPageResponse"
     post:
       operationId: CreateErrand
       tags: [errand]
@@ -210,7 +210,7 @@ paths:
                   type: string
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "400":
           $ref: "#/components/responses/Error"
   /api/v1/errands/mine:
@@ -270,7 +270,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandPageResponse"
   /api/v1/errands/{id}:
     get:
       operationId: GetErrand
@@ -283,7 +283,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "404":
           $ref: "#/components/responses/Error"
     patch:
@@ -342,7 +342,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ErrandResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/errands/{id}/accept:

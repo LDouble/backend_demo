@@ -369,6 +369,10 @@ func (h *Handler) errandView(c *gin.Context, task *erraddomain.Task) (errandView
 		return errandView{}, err
 	}
 	relation, actions := h.errands.ViewerContext(task, viewerID)
+	actions, err = h.availableActionsForViewer(c, actions, erraddomain.ActionAccept)
+	if err != nil {
+		return errandView{}, err
+	}
 	return errandViewOf(task, contact, relation, actions), nil
 }
 func (h *Handler) errandViews(c *gin.Context, tasks []erraddomain.Task) ([]errandView, error) {

@@ -54,7 +54,7 @@ operations:
     query:
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: ErrandPageResponse}]
   - operation_id: ListMyErrands
     default_roles: [member]
     method: GET
@@ -67,7 +67,7 @@ operations:
       - {name: review_status, type: string, enum: [draft, pending_review, approved, rejected]}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: ErrandPageResponse}]
   - operation_id: CreateErrand
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -87,14 +87,14 @@ operations:
         - {name: deadline, type: string, format: date-time, required: true}
         - {name: contact_type, type: string, required: true}
         - {name: contact, type: string, required: true}
-    responses: [{status: 201, kind: success}, {status: 400, kind: error}]
+    responses: [{status: 201, kind: success, ref: ErrandResponse}, {status: 400, kind: error}]
   - operation_id: GetErrand
     default_roles: [guest, member]
     method: GET
     path: /api/v1/errands/{id}
     permission: errand:read_item
     summary: 查询跑腿任务详情
-    responses: [{status: 200, kind: success}, {status: 404, kind: error}]
+    responses: [{status: 200, kind: success, ref: ErrandResponse}, {status: 404, kind: error}]
   - operation_id: ListAdminErrands
     method: GET
     path: /api/v1/admin/errands
@@ -106,7 +106,7 @@ operations:
       - {name: keyword, type: string}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: ErrandPageResponse}]
   - operation_id: UpdateErrand
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -127,7 +127,7 @@ operations:
         - {name: contact_type, type: string}
         - {name: contact, type: string}
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: ErrandResponse}, {status: 409, kind: error}]
   - operation_id: AcceptErrand
     default_roles: [member]
     method: POST

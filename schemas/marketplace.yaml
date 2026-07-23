@@ -59,7 +59,7 @@ operations:
         - {name: contact_type, type: string, required: true}
         - {name: contact, type: string, required: true}
         - {name: image_urls, type: array, items: string}
-    responses: [{status: 201, kind: success}, {status: 400, kind: error}]
+    responses: [{status: 201, kind: success, ref: MarketplaceListingResponse}, {status: 400, kind: error}]
   - operation_id: ListMarketplaceListings
     default_roles: [guest, member]
     method: GET
@@ -72,6 +72,7 @@ operations:
       - {name: max_price_cents, type: integer, format: int64, minimum: 0}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: MarketplaceListingPageResponse}]
   - operation_id: ListMyMarketplaceListings
     default_roles: [member]
     method: GET
@@ -82,12 +83,14 @@ operations:
       - {name: status, type: string}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: MarketplaceListingPageResponse}]
   - operation_id: GetMarketplaceListing
     default_roles: [guest, member]
     method: GET
     path: /api/v1/marketplace/listings/{id}
     permission: marketplace:read_item
     summary: 查询二手商品详情
+    responses: [{status: 200, kind: success, ref: MarketplaceListingResponse}, {status: 404, kind: error}]
   - operation_id: UpdateMarketplaceListing
     default_roles: [member]
     method: PATCH
@@ -105,6 +108,7 @@ operations:
         - {name: contact_type, type: string}
         - {name: contact, type: string}
         - {name: image_urls, type: array, items: string}
+    responses: [{status: 200, kind: success, ref: MarketplaceListingResponse}, {status: 409, kind: error}]
   - operation_id: SubmitMarketplaceListing
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -164,6 +168,7 @@ operations:
       - {name: max_price_cents, type: integer, format: int64, minimum: 0}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: MarketplaceListingPageResponse}]
   - operation_id: RemoveMarketplaceListing
     method: DELETE
     idempotency: required

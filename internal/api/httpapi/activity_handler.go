@@ -395,6 +395,10 @@ func (h *Handler) activityViewWithAccess(c *gin.Context, activity *activitydomai
 		return activityView{}, err
 	}
 	relation, actions := h.activities.ViewerContext(activity, viewerID, registered)
+	actions, err = h.availableActionsForViewer(c, actions, activitydomain.ActionRegister)
+	if err != nil {
+		return activityView{}, err
+	}
 	return h.assembleActivityView(activity, contact, relation, actions), nil
 }
 
@@ -409,6 +413,10 @@ func (h *Handler) activityView(c *gin.Context, activity *activitydomain.Activity
 		return activityView{}, err
 	}
 	relation, actions := h.activities.ViewerContext(activity, viewerID, registered)
+	actions, err = h.availableActionsForViewer(c, actions, activitydomain.ActionRegister)
+	if err != nil {
+		return activityView{}, err
+	}
 	return h.assembleActivityView(activity, contact, relation, actions), nil
 }
 

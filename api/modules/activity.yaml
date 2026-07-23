@@ -107,7 +107,7 @@ paths:
                   type: string
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "400":
           $ref: "#/components/responses/Error"
   /api/v1/activities/mine:
@@ -157,7 +157,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityPageResponse"
   /api/v1/activities/registrations/mine:
     get:
       operationId: ListMyActivityRegistrations
@@ -268,7 +268,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/activities/{id}/cancel:
@@ -303,7 +303,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/activities/{id}/registrations:
@@ -395,7 +395,7 @@ paths:
                   minimum: 1
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "409":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities:
@@ -445,7 +445,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityPageResponse"
     post:
       operationId: CreateAdminActivity
       tags: [activity]
@@ -510,7 +510,7 @@ paths:
                   type: string
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "400":
           $ref: "#/components/responses/Error"
   /api/v1/admin/activities/{id}:
@@ -525,7 +525,7 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/ActivityResponse"
         "404":
           $ref: "#/components/responses/Error"
     patch:

@@ -360,11 +360,19 @@ func (h *Handler) marketplaceListingViews(c *gin.Context, rows []marketplacedoma
 	}
 	views := make([]marketplaceListingView, 0, len(rows))
 	for _, row := range rows {
+		availableActions, actionErr := h.availableActionsForViewer(
+			c,
+			actions[row.ID],
+			marketplacedomain.ActionPurchase,
+		)
+		if actionErr != nil {
+			return nil, actionErr
+		}
 		views = append(views, marketplaceListingViewOf(
 			row,
 			contacts[row.ID],
 			relations[row.ID],
-			actions[row.ID],
+			availableActions,
 		))
 	}
 	return views, nil
@@ -384,7 +392,15 @@ func (h *Handler) marketplaceListingView(c *gin.Context, details marketplacedoma
 	if err != nil {
 		return marketplaceListingView{}, err
 	}
-	return marketplaceListingViewOf(details, contact, relations[details.ID], actions[details.ID]), nil
+	availableActions, err := h.availableActionsForViewer(
+		c,
+		actions[details.ID],
+		marketplacedomain.ActionPurchase,
+	)
+	if err != nil {
+		return marketplaceListingView{}, err
+	}
+	return marketplaceListingViewOf(details, contact, relations[details.ID], availableActions), nil
 }
 
 func marketplaceListingViewOf(

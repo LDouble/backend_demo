@@ -264,7 +264,15 @@ func (h *Handler) carpoolViews(c *gin.Context, trips []carpool.Trip, full bool) 
 	}
 	views := make([]carpoolView, len(trips))
 	for i := range trips {
-		views[i] = h.carpoolViewOf(&trips[i], full, relations[trips[i].ID], actions[trips[i].ID])
+		availableActions, actionErr := h.availableActionsForViewer(
+			c,
+			actions[trips[i].ID],
+			carpool.ActionJoin,
+		)
+		if actionErr != nil {
+			return nil, actionErr
+		}
+		views[i] = h.carpoolViewOf(&trips[i], full, relations[trips[i].ID], availableActions)
 	}
 	return views, nil
 }
@@ -278,7 +286,11 @@ func (h *Handler) carpoolView(c *gin.Context, trip *carpool.Trip, full bool) (ca
 	if err != nil {
 		return carpoolView{}, err
 	}
-	return h.carpoolViewOf(trip, full, relations[trip.ID], actions[trip.ID]), nil
+	availableActions, err := h.availableActionsForViewer(c, actions[trip.ID], carpool.ActionJoin)
+	if err != nil {
+		return carpoolView{}, err
+	}
+	return h.carpoolViewOf(trip, full, relations[trip.ID], availableActions), nil
 }
 
 func (h *Handler) carpoolViewOf(trip *carpool.Trip, full bool, relation string, actions []string) carpoolView {

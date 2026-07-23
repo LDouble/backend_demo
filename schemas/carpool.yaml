@@ -46,7 +46,7 @@ operations:
       - {name: keyword, type: string}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: CarpoolTripPageResponse}]
   - operation_id: ListCarpoolTrips
     default_roles: [guest, member]
     method: GET
@@ -60,7 +60,7 @@ operations:
       - {name: seats_needed, type: integer, format: int64, minimum: 1}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: CarpoolTripPageResponse}]
   - operation_id: CreateCarpoolTrip
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -71,14 +71,14 @@ operations:
     permission: carpool:create
     summary: 发起拼车行程
     body: {fields: [{name: title, type: string, required: true, max_length: 200}, {name: origin, type: string, required: true, max_length: 500}, {name: destination, type: string, required: true, max_length: 500}, {name: departure_at, type: string, format: date-time, required: true}, {name: total_seats, type: integer, format: int64, required: true, minimum: 1}, {name: contact_type, type: string, required: true, max_length: 16}, {name: contact, type: string, required: true, max_length: 200}]}
-    responses: [{status: 201, kind: success}]
+    responses: [{status: 201, kind: success, ref: CarpoolTripResponse}]
   - operation_id: GetCarpoolTrip
     default_roles: [guest, member]
     method: GET
     path: /api/v1/carpool/trips/{id}
     permission: carpool:read_item
     summary: 查看拼车行程
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: CarpoolTripResponse}]
   - operation_id: UpdateCarpoolTrip
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -98,7 +98,7 @@ operations:
         - {name: contact_type, type: string, max_length: 16}
         - {name: contact, type: string, max_length: 200}
         - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
-    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+    responses: [{status: 200, kind: success, ref: CarpoolTripResponse}, {status: 409, kind: error}]
   - operation_id: ListAdminCarpoolTrips
     method: GET
     path: /api/v1/admin/carpool/trips
@@ -110,7 +110,7 @@ operations:
       - {name: keyword, type: string}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
-    responses: [{status: 200, kind: success}]
+    responses: [{status: 200, kind: success, ref: CarpoolTripPageResponse}]
   - operation_id: JoinCarpoolTrip
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]

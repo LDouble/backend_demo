@@ -55,7 +55,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingPageResponse"
   /api/v1/admin/marketplace/listings/{id}:
     delete:
       operationId: RemoveMarketplaceListing
@@ -171,7 +171,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingPageResponse"
     post:
       operationId: CreateMarketplaceListing
       tags: [marketplace]
@@ -217,7 +217,7 @@ paths:
                   items: {type: string}
       responses:
         "201":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingResponse"
         "400":
           $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings/mine:
@@ -251,7 +251,7 @@ paths:
             maximum: 100
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingPageResponse"
   /api/v1/marketplace/listings/{id}:
     get:
       operationId: GetMarketplaceListing
@@ -264,7 +264,9 @@ paths:
         - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingResponse"
+        "404":
+          $ref: "#/components/responses/Error"
     patch:
       operationId: UpdateMarketplaceListing
       tags: [marketplace]
@@ -314,7 +316,9 @@ paths:
                   items: {type: string}
       responses:
         "200":
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/MarketplaceListingResponse"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/marketplace/listings/{id}/submit:
     post:
       operationId: SubmitMarketplaceListing
