@@ -108,6 +108,14 @@ func (h *Handler) listMyActivities(c *gin.Context) {
 }
 
 func (h *Handler) createAdminActivity(c *gin.Context) {
+	h.createOwnedActivity(c)
+}
+
+func (h *Handler) createActivity(c *gin.Context) {
+	h.createOwnedActivity(c)
+}
+
+func (h *Handler) createOwnedActivity(c *gin.Context) {
 	var req activityRequest
 	if !bind(c, &req) {
 		return
@@ -134,6 +142,14 @@ func (h *Handler) getAdminActivity(c *gin.Context) {
 }
 
 func (h *Handler) updateAdminActivity(c *gin.Context) {
+	h.updateOwnedActivity(c)
+}
+
+func (h *Handler) updateActivity(c *gin.Context) {
+	h.updateOwnedActivity(c)
+}
+
+func (h *Handler) updateOwnedActivity(c *gin.Context) {
 	id, ok := idParam(c)
 	if !ok {
 		return
@@ -151,13 +167,17 @@ func (h *Handler) updateAdminActivity(c *gin.Context) {
 }
 
 func (h *Handler) submitAdminActivityReview(c *gin.Context) {
-	h.changeAdminActivity(c, h.activities.SubmitReview)
+	h.changeActivity(c, h.activities.SubmitReview)
+}
+func (h *Handler) submitActivityReview(c *gin.Context) {
+	h.changeActivity(c, h.activities.SubmitReview)
 }
 func (h *Handler) publishAdminActivity(c *gin.Context) {
-	h.changeAdminActivity(c, h.activities.Publish)
+	h.changeActivity(c, h.activities.Publish)
 }
-func (h *Handler) cancelAdminActivity(c *gin.Context) { h.changeAdminActivity(c, h.activities.Cancel) }
-func (h *Handler) finishAdminActivity(c *gin.Context) { h.changeAdminActivity(c, h.activities.Finish) }
+func (h *Handler) cancelAdminActivity(c *gin.Context) { h.changeActivity(c, h.activities.Cancel) }
+func (h *Handler) cancelActivity(c *gin.Context)      { h.changeActivity(c, h.activities.Cancel) }
+func (h *Handler) finishAdminActivity(c *gin.Context) { h.changeActivity(c, h.activities.Finish) }
 
 func (h *Handler) approveAdminActivity(c *gin.Context) {
 	id, ok := idParam(c)
@@ -312,7 +332,10 @@ func (h *Handler) listMyActivityRegistrations(c *gin.Context) {
 	success(c, http.StatusOK, pageData(views, p, s, total))
 }
 
-func (h *Handler) changeAdminActivity(c *gin.Context, change func(context.Context, uint64, uint64, uint64) (*activitydomain.Activity, error)) {
+func (h *Handler) changeActivity(
+	c *gin.Context,
+	change func(context.Context, uint64, uint64, uint64) (*activitydomain.Activity, error),
+) {
 	id, ok := idParam(c)
 	if !ok {
 		return

@@ -72,6 +72,26 @@
       ]
     },
     {
+      "name": "activity:cancel",
+      "path_pattern": "/api/v1/activities/:id/cancel",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "activity:create",
+      "path_pattern": "/api/v1/activities",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
       "name": "activity:list",
       "path_pattern": "/api/v1/activities",
       "methods": [
@@ -128,6 +148,26 @@
       "path_pattern": "/api/v1/activities/registrations/mine",
       "methods": [
         "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "activity:submit_review",
+      "path_pattern": "/api/v1/activities/:id/submit-review",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "activity:update",
+      "path_pattern": "/api/v1/activities/:id",
+      "methods": [
+        "PATCH"
       ],
       "default_roles": [
         "member"

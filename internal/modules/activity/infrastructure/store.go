@@ -349,7 +349,7 @@ func (s *Store) Publish(ctx context.Context, id, actorID, version uint64, now ti
 	return &activity, err
 }
 
-// Cancel marks a published activity cancelled.
+// Cancel marks an owned draft or published activity cancelled.
 func (s *Store) Cancel(ctx context.Context, id, actorID, version uint64, _ time.Time) (*domain.Activity, error) {
 	return s.mutateActivityWithEvent(ctx, id, version, "activity.cancelled", func(tx *gorm.DB, activity *domain.Activity) error {
 		if activity.CreatedBy != actorID {

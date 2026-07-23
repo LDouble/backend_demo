@@ -116,6 +116,37 @@ func TestApproveRejectsExpiredActivity(t *testing.T) {
 	}
 }
 
+func TestCancelDraftRequiresOwnership(t *testing.T) {
+	db := newActivityStoreTestDB(t)
+	store := NewStore(db)
+	activity := domain.Activity{
+		Title: "待取消草稿", Status: domain.ActivityStatusDraft,
+		ReviewStatus: domain.ReviewStatusPendingReview, CreatedBy: 7, UpdatedBy: 7,
+		EndAt: time.Now().UTC().Add(time.Hour), Version: 1,
+	}
+	if err := db.Create(&activity).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.Cancel(context.Background(), activity.ID, 8, activity.Version, time.Now().UTC()); err == nil {
+		t.Fatal("Cancel() by non-owner error=nil")
+	}
+	cancelled, err := store.Cancel(context.Background(), activity.ID, 7, activity.Version, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cancelled.Status != domain.ActivityStatusCancelled || cancelled.Version != activity.Version+1 {
+		t.Fatalf("cancelled=%+v", cancelled)
+	}
+	var eventCount int64
+	if err := db.Model(&domainevent.Event{}).Where("event_type = ?", "activity.cancelled").Count(&eventCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if eventCount != 1 {
+		t.Fatalf("cancel events=%d want=1", eventCount)
+	}
+}
+
 func TestListMineScopesFiltersAndPaginatesActivities(t *testing.T) {
 	db := newActivityStoreTestDB(t)
 	store := NewStore(db)

@@ -43,6 +43,73 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Success"
+    post:
+      operationId: CreateActivity
+      tags: [activity]
+      summary: "创建活动草稿"
+      x-generated-module: activity
+      x-permission: activity:create
+      x-academic-verification: required
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - summary
+                - body
+                - location
+                - signup_start_at
+                - signup_end_at
+                - start_at
+                - end_at
+                - capacity
+                - contact_type
+                - contact
+              properties:
+                title:
+                  type: string
+                summary:
+                  type: string
+                body:
+                  type: string
+                location:
+                  type: string
+                signup_start_at:
+                  type: string
+                  format: date-time
+                signup_end_at:
+                  type: string
+                  format: date-time
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                capacity:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                contact_type:
+                  type: string
+                contact:
+                  type: string
+      responses:
+        "201":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/Error"
   /api/v1/activities/mine:
     get:
       operationId: ListMyActivities
@@ -133,6 +200,112 @@ paths:
           $ref: "#/components/responses/Success"
         "404":
           $ref: "#/components/responses/Error"
+    patch:
+      operationId: UpdateActivity
+      tags: [activity]
+      summary: "修改我的活动草稿"
+      x-generated-module: activity
+      x-permission: activity:update
+      x-academic-verification: required
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - summary
+                - body
+                - location
+                - signup_start_at
+                - signup_end_at
+                - start_at
+                - end_at
+                - capacity
+                - expected_version
+              properties:
+                title:
+                  type: string
+                summary:
+                  type: string
+                body:
+                  type: string
+                location:
+                  type: string
+                signup_start_at:
+                  type: string
+                  format: date-time
+                signup_end_at:
+                  type: string
+                  format: date-time
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                capacity:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                contact_type:
+                  type: string
+                contact:
+                  type: string
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/activities/{id}/cancel:
+    post:
+      operationId: CancelActivity
+      tags: [activity]
+      summary: "取消我的活动"
+      x-generated-module: activity
+      x-permission: activity:cancel
+      x-academic-verification: required
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/activities/{id}/registrations:
     post:
       operationId: CreateActivityRegistration
@@ -162,6 +335,41 @@ paths:
       summary: "取消我的活动报名"
       x-generated-module: activity
       x-permission: activity:registration_cancel
+      x-academic-verification: required
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expected_version
+              properties:
+                expected_version:
+                  type: integer
+                  format: uint64
+                  minimum: 1
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/activities/{id}/submit-review:
+    post:
+      operationId: SubmitActivityReview
+      tags: [activity]
+      summary: "提交或重新提交我的活动审核"
+      x-generated-module: activity
+      x-permission: activity:submit_review
       x-academic-verification: required
       security: [{bearerAuth: []}]
       parameters:
