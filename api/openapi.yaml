@@ -1998,6 +1998,37 @@ paths:
       x-permission: errand:read_mine
       security: [{bearerAuth: []}]
       parameters:
+        - name: relation
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "all"
+              - "published"
+              - "accepted"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "open"
+              - "accepted"
+              - "picked_up"
+              - "delivered"
+              - "completed"
+              - "cancelled"
+        - name: review_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "draft"
+              - "pending_review"
+              - "approved"
+              - "rejected"
         - name: page
           in: query
           required: false

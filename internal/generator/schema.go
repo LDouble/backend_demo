@@ -112,13 +112,14 @@ type APIOperation struct {
 
 // APIParameter declares a generated header or query parameter.
 type APIParameter struct {
-	Name      string `yaml:"name"`
-	Type      string `yaml:"type"`
-	Required  bool   `yaml:"required,omitempty"`
-	Format    string `yaml:"format,omitempty"`
-	Minimum   *int64 `yaml:"minimum,omitempty"`
-	Maximum   *int64 `yaml:"maximum,omitempty"`
-	MaxLength *int64 `yaml:"max_length,omitempty"`
+	Name      string   `yaml:"name"`
+	Type      string   `yaml:"type"`
+	Required  bool     `yaml:"required,omitempty"`
+	Format    string   `yaml:"format,omitempty"`
+	Enum      []string `yaml:"enum,omitempty"`
+	Minimum   *int64   `yaml:"minimum,omitempty"`
+	Maximum   *int64   `yaml:"maximum,omitempty"`
+	MaxLength *int64   `yaml:"max_length,omitempty"`
 }
 
 // APIObject declares an inline JSON request object.
@@ -545,6 +546,23 @@ func normalizeAPIParameter(parameter *APIParameter, location string) error {
 	}
 	if !validAPIFormat(parameter.Type, parameter.Format) {
 		return fmt.Errorf("parameter %q has invalid format %q", parameter.Name, parameter.Format)
+	}
+	if len(parameter.Enum) > 0 {
+		if parameter.Type != "string" {
+			return fmt.Errorf("parameter %q has enum values for non-string type", parameter.Name)
+		}
+		seen := make(map[string]struct{}, len(parameter.Enum))
+		for i, value := range parameter.Enum {
+			value = strings.TrimSpace(value)
+			if value == "" {
+				return fmt.Errorf("parameter %q has an empty enum value", parameter.Name)
+			}
+			if _, exists := seen[value]; exists {
+				return fmt.Errorf("parameter %q has duplicate enum value %q", parameter.Name, value)
+			}
+			seen[value] = struct{}{}
+			parameter.Enum[i] = value
+		}
 	}
 	if (parameter.Minimum != nil || parameter.Maximum != nil) && parameter.Type != "integer" {
 		return fmt.Errorf("parameter %q has numeric bounds for non-integer type", parameter.Name)

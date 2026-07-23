@@ -35,6 +35,12 @@ paths:{{if and (not .OperationRoutes) (not .Routes)}} {}{{end}}
 {{- if .Format}}
             format: {{.Format}}
 {{- end}}
+{{- if .Enum}}
+            enum:
+{{- range .Enum}}
+              - {{printf "%q" .}}
+{{- end}}
+{{- end}}
 {{- if .Minimum}}
             minimum: {{.Minimum}}
 {{- end}}
@@ -53,6 +59,12 @@ paths:{{if and (not .OperationRoutes) (not .Routes)}} {}{{end}}
             type: {{.Type}}
 {{- if .Format}}
             format: {{.Format}}
+{{- end}}
+{{- if .Enum}}
+            enum:
+{{- range .Enum}}
+              - {{printf "%q" .}}
+{{- end}}
 {{- end}}
 {{- if .Minimum}}
             minimum: {{.Minimum}}

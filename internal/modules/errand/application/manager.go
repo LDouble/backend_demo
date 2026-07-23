@@ -17,7 +17,7 @@ type Store interface {
 	Update(context.Context, uint64, uint64, uint64, domain.TaskInput, time.Time) (*domain.Task, error)
 	GetVisible(context.Context, uint64, uint64) (*domain.Task, error)
 	ListOpen(context.Context, int, int, time.Time) ([]domain.Task, int64, error)
-	ListMine(context.Context, uint64, int, int) ([]domain.Task, int64, error)
+	ListMine(context.Context, uint64, domain.MineSearch, int, int) ([]domain.Task, int64, error)
 	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Task, int64, error)
 	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Task, error)
 	Review(context.Context, uint64, uint64, uint64, bool, string, time.Time) (*domain.Task, error)
@@ -110,9 +110,30 @@ func (m *Manager) ListOpen(ctx context.Context, page, size int) ([]domain.Task, 
 	return m.store.ListOpen(ctx, page, size, m.now().UTC())
 }
 
-// ListMine returns tasks related to the user.
-func (m *Manager) ListMine(ctx context.Context, user uint64, page, size int) ([]domain.Task, int64, error) {
-	return m.store.ListMine(ctx, user, page, size)
+// ListMine returns tasks related to the user after validating list filters.
+func (m *Manager) ListMine(
+	ctx context.Context,
+	user uint64,
+	search domain.MineSearch,
+	page,
+	size int,
+) ([]domain.Task, int64, error) {
+	search, err := domain.NormalizeMineSearch(search)
+	if err != nil {
+		return nil, 0, apperror.Wrap(
+			http.StatusBadRequest,
+			"invalid_errand_filter",
+			err.Error(),
+			err,
+		)
+	}
+	return m.store.ListMine(ctx, user, search, page, size)
+}
+
+// ViewerContext returns the viewer relation and currently available lifecycle actions.
+func (m *Manager) ViewerContext(task *domain.Task, viewerID uint64) (string, []string) {
+	return domain.ViewerRelation(task, viewerID),
+		domain.AvailableActions(task, viewerID, m.now().UTC())
 }
 
 // Accept atomically accepts a task and creates the trade order.

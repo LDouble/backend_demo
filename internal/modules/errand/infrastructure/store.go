@@ -18,6 +18,7 @@ import (
 	platformquery "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
 	"github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -94,16 +95,43 @@ func (s *Store) ListOpen(ctx context.Context, page, size int, now time.Time) ([]
 	return rows, total, err
 }
 
-// ListMine returns tasks related to the supplied user.
-func (s *Store) ListMine(ctx context.Context, user uint64, page, size int) ([]domain.Task, int64, error) {
-	var rows []domain.Task
-	base := idempotency.DB(ctx, s.db).Model(&domain.Task{}).Where("requester_id = ? OR runner_id = ?", user, user)
-	var total int64
-	if err := base.Count(&total).Error; err != nil {
+// ListMine returns filtered tasks published or accepted by the supplied user.
+func (s *Store) ListMine(
+	ctx context.Context,
+	user uint64,
+	search domain.MineSearch,
+	page,
+	size int,
+) ([]domain.Task, int64, error) {
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Task
+	dao := q.WithContext(ctx)
+	switch search.Relation {
+	case domain.MineRelationPublished:
+		dao = dao.Where(q.RequesterId.Eq(user))
+	case domain.MineRelationAccepted:
+		dao = dao.Where(q.RunnerId.Eq(user))
+	default:
+		dao = dao.Where(field.Or(q.RequesterId.Eq(user), q.RunnerId.Eq(user)))
+	}
+	if search.Status != "" {
+		dao = dao.Where(q.Status.Eq(search.Status))
+	}
+	if search.ReviewStatus != "" {
+		dao = dao.Where(q.ReviewStatus.Eq(search.ReviewStatus))
+	}
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	err := base.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&rows).Error
-	return rows, total, err
+	values, err := dao.Order(q.ID.Desc()).Offset((page - 1) * size).Limit(size).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows := make([]domain.Task, 0, len(values))
+	for _, value := range values {
+		rows = append(rows, *value)
+	}
+	return rows, total, nil
 }
 
 // ListAdmin returns tasks matching moderation filters.
@@ -151,6 +179,9 @@ func (s *Store) ListAdmin(
 // Update changes an editable open task and requires it to be reviewed again.
 func (s *Store) Update(ctx context.Context, id, requester, version uint64, input domain.TaskInput, _ time.Time) (*domain.Task, error) {
 	return s.mutate(ctx, id, requester, version, domain.TaskOpen, func(tx *gorm.DB, task *domain.Task) error {
+		if !domain.CanEdit(task.Status, task.ReviewStatus) {
+			return apperror.New(409, "invalid_errand_review_state", "当前审核状态不允许修改任务")
+		}
 		task.Title, task.Description, task.RewardCents = strings.TrimSpace(input.Title), strings.TrimSpace(input.Description), input.RewardCents
 		task.PickupLocation, task.DropoffLocation, task.Deadline, task.Version = strings.TrimSpace(input.PickupLocation), strings.TrimSpace(input.DropoffLocation), input.Deadline.UTC(), task.Version+1
 		if input.Contact.Provided {

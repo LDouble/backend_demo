@@ -30,6 +30,32 @@ const (
 	ReviewRejected = "rejected"
 	// ReviewDraft means a rejected task has been edited but not resubmitted.
 	ReviewDraft = "draft"
+	// MineRelationAll includes tasks published or accepted by the viewer.
+	MineRelationAll = "all"
+	// MineRelationPublished includes tasks published by the viewer.
+	MineRelationPublished = "published"
+	// MineRelationAccepted includes tasks accepted by the viewer.
+	MineRelationAccepted = "accepted"
+	// ViewerRelationPublisher identifies the task publisher.
+	ViewerRelationPublisher = "publisher"
+	// ViewerRelationRunner identifies the active task runner.
+	ViewerRelationRunner = "runner"
+	// ViewerRelationNone identifies a viewer unrelated to the task.
+	ViewerRelationNone = "none"
+	// ActionAccept allows an unrelated member to accept an approved open task.
+	ActionAccept = "accept"
+	// ActionEdit allows the publisher to change editable task content.
+	ActionEdit = "edit"
+	// ActionSubmitReview allows the publisher to submit a draft or rejected task.
+	ActionSubmitReview = "submit_review"
+	// ActionPickup allows the runner to confirm pickup.
+	ActionPickup = "pickup"
+	// ActionDeliver allows the runner to confirm delivery.
+	ActionDeliver = "deliver"
+	// ActionComplete allows the publisher to confirm completion.
+	ActionComplete = "complete"
+	// ActionCancel allows an eligible task participant to cancel.
+	ActionCancel = "cancel"
 )
 
 // AdminSearch contains moderation-list filters.
@@ -37,6 +63,13 @@ type AdminSearch struct {
 	Status       string
 	ReviewStatus string
 	Keyword      string
+}
+
+// MineSearch contains owner and runner list filters.
+type MineSearch struct {
+	Relation     string
+	Status       string
+	ReviewStatus string
 }
 
 // TaskInput contains the user-controlled mutable task content.
@@ -117,6 +150,94 @@ func ValidateContactInput(input ContactInput, required bool) error {
 	return nil
 }
 
+// NormalizeMineSearch trims and validates filters from the authenticated list endpoint.
+func NormalizeMineSearch(search MineSearch) (MineSearch, error) {
+	search.Relation = strings.TrimSpace(search.Relation)
+	search.Status = strings.TrimSpace(search.Status)
+	search.ReviewStatus = strings.TrimSpace(search.ReviewStatus)
+	if search.Relation == "" {
+		search.Relation = MineRelationAll
+	}
+	if !validMineRelation(search.Relation) {
+		return MineSearch{}, fmt.Errorf("我的跑腿关系筛选无效")
+	}
+	if search.Status != "" && !validTaskStatus(search.Status) {
+		return MineSearch{}, fmt.Errorf("跑腿任务状态筛选无效")
+	}
+	if search.ReviewStatus != "" && !validReviewStatus(search.ReviewStatus) {
+		return MineSearch{}, fmt.Errorf("跑腿审核状态筛选无效")
+	}
+	return search, nil
+}
+
+// ViewerRelation returns how the viewer participates in a task.
+func ViewerRelation(task *Task, viewerID uint64) string {
+	if viewerID == 0 {
+		return ViewerRelationNone
+	}
+	if task.RequesterId == viewerID {
+		return ViewerRelationPublisher
+	}
+	if task.RunnerId != nil && *task.RunnerId == viewerID {
+		return ViewerRelationRunner
+	}
+	return ViewerRelationNone
+}
+
+// AvailableActions returns lifecycle actions allowed by task state and viewer relation.
+func AvailableActions(task *Task, viewerID uint64, now time.Time) []string {
+	actions := []string{}
+	relation := ViewerRelation(task, viewerID)
+	switch task.Status {
+	case TaskOpen:
+		if relation == ViewerRelationPublisher {
+			if CanEdit(task.Status, task.ReviewStatus) {
+				actions = append(actions, ActionEdit)
+			}
+			if task.ReviewStatus == ReviewDraft || task.ReviewStatus == ReviewRejected {
+				actions = append(actions, ActionSubmitReview)
+			}
+			return append(actions, ActionCancel)
+		}
+		canAccept := relation == ViewerRelationNone &&
+			viewerID != 0 &&
+			task.ReviewStatus == ReviewApproved &&
+			task.Deadline.After(now)
+		if canAccept {
+			return append(actions, ActionAccept)
+		}
+	case TaskAccepted:
+		if relation == ViewerRelationPublisher {
+			return append(actions, ActionCancel)
+		}
+		if relation == ViewerRelationRunner {
+			return append(actions, ActionPickup, ActionCancel)
+		}
+	case TaskPickedUp:
+		if relation == ViewerRelationRunner {
+			return append(actions, ActionDeliver)
+		}
+	case TaskDelivered:
+		if relation == ViewerRelationPublisher {
+			return append(actions, ActionComplete)
+		}
+	}
+	return actions
+}
+
+// CanEdit reports whether publisher-controlled content may be changed.
+func CanEdit(status, reviewStatus string) bool {
+	if status != TaskOpen {
+		return false
+	}
+	switch reviewStatus {
+	case ReviewDraft, ReviewRejected, ReviewApproved:
+		return true
+	default:
+		return false
+	}
+}
+
 // CanTransition reports whether a task state transition is legal.
 func CanTransition(from, to string) bool {
 	return map[string]map[string]bool{
@@ -125,4 +246,31 @@ func CanTransition(from, to string) bool {
 		TaskPickedUp:  {TaskDelivered: true},
 		TaskDelivered: {TaskCompleted: true},
 	}[from][to]
+}
+
+func validMineRelation(relation string) bool {
+	switch relation {
+	case MineRelationAll, MineRelationPublished, MineRelationAccepted:
+		return true
+	default:
+		return false
+	}
+}
+
+func validTaskStatus(status string) bool {
+	switch status {
+	case TaskOpen, TaskAccepted, TaskPickedUp, TaskDelivered, TaskCompleted, TaskCancelled:
+		return true
+	default:
+		return false
+	}
+}
+
+func validReviewStatus(status string) bool {
+	switch status {
+	case ReviewDraft, ReviewPending, ReviewApproved, ReviewRejected:
+		return true
+	default:
+		return false
+	}
 }

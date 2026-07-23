@@ -41,8 +41,28 @@ func (h *Handler) listErrands(c *gin.Context) {
 	success(c, http.StatusOK, pageData(views, p, s, total))
 }
 func (h *Handler) listMyErrands(c *gin.Context) {
+	params, ok := generatedParams[generated.ListMyErrandsParams](c, "ListMyErrands")
+	if !ok {
+		return
+	}
+	search := erraddomain.MineSearch{}
+	if params.Relation != nil {
+		search.Relation = string(*params.Relation)
+	}
+	if params.Status != nil {
+		search.Status = string(*params.Status)
+	}
+	if params.ReviewStatus != nil {
+		search.ReviewStatus = string(*params.ReviewStatus)
+	}
 	p, s := paging(c)
-	rows, total, err := h.errands.ListMine(c.Request.Context(), c.GetUint64(userIDKey), p, s)
+	rows, total, err := h.errands.ListMine(
+		c.Request.Context(),
+		c.GetUint64(userIDKey),
+		search,
+		p,
+		s,
+	)
 	if err != nil {
 		failure(c, err)
 		return
@@ -291,43 +311,65 @@ func errandInput(req errandRequest) erraddomain.TaskInput {
 }
 
 type errandView struct {
-	ID              uint64     `json:"id"`
-	Title           string     `json:"title"`
-	Description     string     `json:"description"`
-	RewardCents     int64      `json:"reward_cents"`
-	Currency        string     `json:"currency"`
-	PickupLocation  string     `json:"pickup_location"`
-	DropoffLocation string     `json:"dropoff_location"`
-	Deadline        time.Time  `json:"deadline"`
-	Status          string     `json:"status"`
-	ReviewStatus    string     `json:"review_status"`
-	ReviewReason    *string    `json:"review_reason"`
-	ReviewedBy      *uint64    `json:"reviewed_by"`
-	ReviewedAt      *time.Time `json:"reviewed_at"`
-	RequesterID     uint64     `json:"requester_id"`
-	ContactType     string     `json:"contact_type"`
-	Contact         string     `json:"contact"`
-	RunnerID        *uint64    `json:"runner_id"`
-	TradeOrderID    *uint64    `json:"trade_order_id"`
-	AcceptedAt      *time.Time `json:"accepted_at"`
-	PickedUpAt      *time.Time `json:"picked_up_at"`
-	DeliveredAt     *time.Time `json:"delivered_at"`
-	CompletedAt     *time.Time `json:"completed_at"`
-	CancelledAt     *time.Time `json:"cancelled_at"`
-	Version         uint64     `json:"version"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID               uint64     `json:"id"`
+	Title            string     `json:"title"`
+	Description      string     `json:"description"`
+	RewardCents      int64      `json:"reward_cents"`
+	Currency         string     `json:"currency"`
+	PickupLocation   string     `json:"pickup_location"`
+	DropoffLocation  string     `json:"dropoff_location"`
+	Deadline         time.Time  `json:"deadline"`
+	Status           string     `json:"status"`
+	ReviewStatus     string     `json:"review_status"`
+	ReviewReason     *string    `json:"review_reason"`
+	ReviewedBy       *uint64    `json:"reviewed_by"`
+	ReviewedAt       *time.Time `json:"reviewed_at"`
+	RequesterID      uint64     `json:"requester_id"`
+	ContactType      string     `json:"contact_type"`
+	Contact          string     `json:"contact"`
+	RunnerID         *uint64    `json:"runner_id"`
+	TradeOrderID     *uint64    `json:"trade_order_id"`
+	AcceptedAt       *time.Time `json:"accepted_at"`
+	PickedUpAt       *time.Time `json:"picked_up_at"`
+	DeliveredAt      *time.Time `json:"delivered_at"`
+	CompletedAt      *time.Time `json:"completed_at"`
+	CancelledAt      *time.Time `json:"cancelled_at"`
+	Version          uint64     `json:"version"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	ViewerRelation   string     `json:"viewer_relation"`
+	AvailableActions []string   `json:"available_actions"`
 }
 
-func errandViewOf(task *erraddomain.Task, contact erraddomain.ContactDetails) errandView {
-	return errandView{ID: task.ID, Title: task.Title, Description: task.Description, RewardCents: task.RewardCents, Currency: task.Currency, PickupLocation: task.PickupLocation, DropoffLocation: task.DropoffLocation, Deadline: task.Deadline, Status: task.Status, ReviewStatus: task.ReviewStatus, ReviewReason: task.ReviewReason, ReviewedBy: task.ReviewedBy, ReviewedAt: task.ReviewedAt, RequesterID: task.RequesterId, ContactType: contact.Type, Contact: contact.Value, RunnerID: task.RunnerId, TradeOrderID: task.TradeOrderId, AcceptedAt: task.AcceptedAt, PickedUpAt: task.PickedUpAt, DeliveredAt: task.DeliveredAt, CompletedAt: task.CompletedAt, CancelledAt: task.CancelledAt, Version: task.Version, CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt}
+func errandViewOf(
+	task *erraddomain.Task,
+	contact erraddomain.ContactDetails,
+	relation string,
+	actions []string,
+) errandView {
+	return errandView{
+		ID: task.ID, Title: task.Title, Description: task.Description,
+		RewardCents: task.RewardCents, Currency: task.Currency,
+		PickupLocation: task.PickupLocation, DropoffLocation: task.DropoffLocation,
+		Deadline: task.Deadline, Status: task.Status, ReviewStatus: task.ReviewStatus,
+		ReviewReason: task.ReviewReason, ReviewedBy: task.ReviewedBy,
+		ReviewedAt: task.ReviewedAt, RequesterID: task.RequesterId,
+		ContactType: contact.Type, Contact: contact.Value, RunnerID: task.RunnerId,
+		TradeOrderID: task.TradeOrderId, AcceptedAt: task.AcceptedAt,
+		PickedUpAt: task.PickedUpAt, DeliveredAt: task.DeliveredAt,
+		CompletedAt: task.CompletedAt, CancelledAt: task.CancelledAt,
+		Version: task.Version, CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt,
+		ViewerRelation: relation, AvailableActions: actions,
+	}
 }
 func (h *Handler) errandView(c *gin.Context, task *erraddomain.Task) (errandView, error) {
-	contact, err := h.errands.Contact(c.Request.Context(), task, c.GetUint64(userIDKey))
+	viewerID := c.GetUint64(userIDKey)
+	contact, err := h.errands.Contact(c.Request.Context(), task, viewerID)
 	if err != nil {
 		return errandView{}, err
 	}
-	return errandViewOf(task, contact), nil
+	relation, actions := h.errands.ViewerContext(task, viewerID)
+	return errandViewOf(task, contact, relation, actions), nil
 }
 func (h *Handler) errandViews(c *gin.Context, tasks []erraddomain.Task) ([]errandView, error) {
 	out := make([]errandView, len(tasks))
