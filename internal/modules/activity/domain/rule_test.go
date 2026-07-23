@@ -51,6 +51,12 @@ func TestTransitionsAndVisibility(t *testing.T) {
 	if CanPublish(ActivityStatusDraft, ReviewStatusPendingReview) {
 		t.Fatal("CanPublish() = true, want false")
 	}
+	if !CanCancel(ActivityStatusDraft) || !CanCancel(ActivityStatusPublished) {
+		t.Fatal("CanCancel() = false for cancellable activity")
+	}
+	if CanCancel(ActivityStatusCancelled) || CanCancel(ActivityStatusFinished) {
+		t.Fatal("CanCancel() = true for terminal activity")
+	}
 	if !IsPubliclyVisible(ActivityStatusPublished, ReviewStatusApproved) {
 		t.Fatal("IsPubliclyVisible() = false, want true")
 	}

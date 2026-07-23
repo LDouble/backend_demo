@@ -774,9 +774,10 @@ func mustJSON(t *testing.T, value any) []byte {
 func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 	fixture := newHandlerFixture(t)
 	ownerToken, _, _ := fixture.createUserWithPermissions(t, "activity_editor", activityAdminPermissions(), activityUserPermissions())
+	outsiderToken, _, _ := fixture.createUserWithPermissions(t, "activity_outsider", activityUserPermissions())
 
-	startDate := time.Date(2026, 7, 23, 14, 0, 0, 0, time.UTC)
-	created := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities", ownerToken, map[string]any{
+	startDate := time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second)
+	created := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/activities", ownerToken, map[string]any{
 		"title":           "Rejected Draft",
 		"summary":         "Needs review",
 		"body":            "Initial copy",
@@ -789,10 +790,22 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 		"contact_type":    "qq",
 		"contact":         "998877",
 	}))
+	draftPath := "/api/v1/activities/" + strconv.FormatUint(created.ID, 10)
+	assertErrorEnvelope(t, perform(t, fixture.router, http.MethodGet, draftPath, outsiderToken, nil), http.StatusNotFound, "activity_not_found")
+	assertErrorEnvelope(t, performJSON(t, fixture.router, http.MethodPost, draftPath+"/submit-review", outsiderToken, map[string]any{
+		"expected_version": created.Version,
+	}), http.StatusForbidden, "not_activity_owner")
 
-	submitted := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/submit-review", ownerToken, map[string]any{
+	submitted := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, draftPath+"/submit-review", ownerToken, map[string]any{
 		"expected_version": created.Version,
 	}))
+	ownerPendingResponse := perform(t, fixture.router, http.MethodGet, draftPath, ownerToken, nil)
+	assertStatusCode(t, ownerPendingResponse, http.StatusOK)
+	ownerPending := decodeActivityView(t, ownerPendingResponse)
+	if ownerPending.ReviewStatus != activitydomain.ReviewStatusPendingReview {
+		t.Fatalf("owner pending activity=%+v", ownerPending)
+	}
+	assertErrorEnvelope(t, perform(t, fixture.router, http.MethodGet, draftPath, outsiderToken, nil), http.StatusNotFound, "activity_not_found")
 	rejected := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/reject", fixture.adminToken, map[string]any{
 		"expected_version": submitted.Version,
 		"review_comment":   "need clearer agenda",
@@ -801,7 +814,7 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 		t.Fatalf("rejected activity=%+v", rejected)
 	}
 
-	updated := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPatch, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10), ownerToken, map[string]any{
+	updated := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPatch, "/api/v1/activities/"+strconv.FormatUint(created.ID, 10), ownerToken, map[string]any{
 		"title":            "Rejected Draft Revised",
 		"summary":          "Updated summary",
 		"body":             "Rewritten agenda",
@@ -819,7 +832,7 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 		t.Fatalf("updated review state=%+v", updated)
 	}
 
-	submittedAgain := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/submit-review", ownerToken, map[string]any{
+	submittedAgain := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/activities/"+strconv.FormatUint(created.ID, 10)+"/submit-review", ownerToken, map[string]any{
 		"expected_version": updated.Version,
 	}))
 	approved := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/approve", fixture.adminToken, map[string]any{
@@ -832,14 +845,14 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 		"expected_version": published.Version,
 	})
 	assertStatusCode(t, earlyFinish, http.StatusConflict)
-	earlyCancelled := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(created.ID, 10)+"/cancel", ownerToken, map[string]any{
+	earlyCancelled := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/activities/"+strconv.FormatUint(created.ID, 10)+"/cancel", ownerToken, map[string]any{
 		"expected_version": published.Version,
 	}))
 	if earlyCancelled.Status != activitydomain.ActivityStatusCancelled || earlyCancelled.Contact == "99887766" {
 		t.Fatalf("cancelled activity=%+v", earlyCancelled)
 	}
 
-	second := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities", ownerToken, map[string]any{
+	second := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/activities", ownerToken, map[string]any{
 		"title":           "Cancel Flow",
 		"summary":         "Cancel summary",
 		"body":            "Cancel body",
@@ -852,7 +865,7 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 		"contact_type":    "phone",
 		"contact":         "13800138000",
 	}))
-	second = decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/submit-review", ownerToken, map[string]any{
+	second = decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/activities/"+strconv.FormatUint(second.ID, 10)+"/submit-review", ownerToken, map[string]any{
 		"expected_version": second.Version,
 	}))
 	second = decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/approve", fixture.adminToken, map[string]any{
@@ -861,7 +874,7 @@ func TestActivityReviewEditAndTerminalMasking(t *testing.T) {
 	second = decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/publish", ownerToken, map[string]any{
 		"expected_version": second.Version,
 	}))
-	cancelled := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/admin/activities/"+strconv.FormatUint(second.ID, 10)+"/cancel", ownerToken, map[string]any{
+	cancelled := decodeActivityView(t, performJSON(t, fixture.router, http.MethodPost, "/api/v1/activities/"+strconv.FormatUint(second.ID, 10)+"/cancel", ownerToken, map[string]any{
 		"expected_version": second.Version,
 	}))
 	if cancelled.Status != activitydomain.ActivityStatusCancelled || cancelled.Contact == "13800138000" {
@@ -1112,9 +1125,11 @@ func activityAdminPermissions() []permission.Permission {
 
 func activityUserPermissions() []permission.Permission {
 	return []permission.Permission{
-		{PathPattern: "/api/v1/activities", Methods: []string{"GET"}},
+		{PathPattern: "/api/v1/activities", Methods: []string{"GET", "POST"}},
 		{PathPattern: "/api/v1/activities/mine", Methods: []string{"GET"}},
-		{PathPattern: "/api/v1/activities/:id", Methods: []string{"GET"}},
+		{PathPattern: "/api/v1/activities/:id", Methods: []string{"GET", "PATCH"}},
+		{PathPattern: "/api/v1/activities/:id/submit-review", Methods: []string{"POST"}},
+		{PathPattern: "/api/v1/activities/:id/cancel", Methods: []string{"POST"}},
 		{PathPattern: "/api/v1/activities/:id/registrations", Methods: []string{"POST"}},
 		{PathPattern: "/api/v1/activities/:id/registrations/me", Methods: []string{"DELETE"}},
 		{PathPattern: "/api/v1/activities/registrations/mine", Methods: []string{"GET"}},

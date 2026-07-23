@@ -154,9 +154,9 @@ func CanPublish(status, reviewStatus string) bool {
 	return status == ActivityStatusDraft && reviewStatus == ReviewStatusApproved
 }
 
-// CanCancel reports whether an activity may be cancelled.
+// CanCancel reports whether a draft or published activity may be cancelled.
 func CanCancel(status string) bool {
-	return status == ActivityStatusPublished
+	return status == ActivityStatusDraft || status == ActivityStatusPublished
 }
 
 // CanFinish reports whether an activity may be finished.

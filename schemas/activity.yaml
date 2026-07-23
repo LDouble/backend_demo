@@ -44,6 +44,75 @@ entities:
       - {field: activity_id, references: activities.id, on_delete: CASCADE}
 crud: [create, get, list, update]
 operations:
+  - operation_id: CreateActivity
+    default_roles: [member]
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    path: /api/v1/activities
+    permission: activity:create
+    summary: 创建活动草稿
+    body:
+      fields:
+        - {name: title, type: string, required: true}
+        - {name: summary, type: string, required: true}
+        - {name: body, type: string, required: true}
+        - {name: location, type: string, required: true}
+        - {name: signup_start_at, type: string, format: date-time, required: true}
+        - {name: signup_end_at, type: string, format: date-time, required: true}
+        - {name: start_at, type: string, format: date-time, required: true}
+        - {name: end_at, type: string, format: date-time, required: true}
+        - {name: capacity, type: integer, format: int64, required: true, minimum: 1}
+        - {name: contact_type, type: string, required: true}
+        - {name: contact, type: string, required: true}
+    responses: [{status: 201, kind: success}, {status: 400, kind: error}]
+  - operation_id: UpdateActivity
+    default_roles: [member]
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: PATCH
+    idempotency: required
+    academic_verification: required
+    path: /api/v1/activities/{id}
+    permission: activity:update
+    summary: 修改我的活动草稿
+    body:
+      fields:
+        - {name: title, type: string, required: true}
+        - {name: summary, type: string, required: true}
+        - {name: body, type: string, required: true}
+        - {name: location, type: string, required: true}
+        - {name: signup_start_at, type: string, format: date-time, required: true}
+        - {name: signup_end_at, type: string, format: date-time, required: true}
+        - {name: start_at, type: string, format: date-time, required: true}
+        - {name: end_at, type: string, format: date-time, required: true}
+        - {name: capacity, type: integer, format: int64, required: true, minimum: 1}
+        - {name: contact_type, type: string}
+        - {name: contact, type: string}
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: SubmitActivityReview
+    default_roles: [member]
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    path: /api/v1/activities/{id}/submit-review
+    permission: activity:submit_review
+    summary: 提交或重新提交我的活动审核
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: CancelActivity
+    default_roles: [member]
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    path: /api/v1/activities/{id}/cancel
+    permission: activity:cancel
+    summary: 取消我的活动
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
   - operation_id: ListMyActivities
     default_roles: [member]
     method: GET

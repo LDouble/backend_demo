@@ -14,6 +14,17 @@ func (h *Handler) ListActivities(c *gin.Context, params generated.ListActivities
 	h.listActivities(c)
 }
 
+// CreateActivity adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) CreateActivity(c *gin.Context, params generated.CreateActivityParams) {
+	setGeneratedParams(c, "CreateActivity", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	h.idempotent(c, "CreateActivity", func() {
+		h.createActivity(c)
+	})
+}
+
 // ListMyActivities adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) ListMyActivities(c *gin.Context, params generated.ListMyActivitiesParams) {
 	setGeneratedParams(c, "ListMyActivities", params)
@@ -30,6 +41,30 @@ func (h *Handler) ListMyActivityRegistrations(c *gin.Context, params generated.L
 func (h *Handler) GetActivity(c *gin.Context, id uint64) {
 	setGeneratedPathParam(c, "id", id)
 	h.getActivity(c)
+}
+
+// UpdateActivity adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) UpdateActivity(c *gin.Context, id uint64, params generated.UpdateActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "UpdateActivity", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	h.idempotent(c, "UpdateActivity", func() {
+		h.updateActivity(c)
+	})
+}
+
+// CancelActivity adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) CancelActivity(c *gin.Context, id uint64, params generated.CancelActivityParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "CancelActivity", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	h.idempotent(c, "CancelActivity", func() {
+		h.cancelActivity(c)
+	})
 }
 
 // CreateActivityRegistration adapts the generated OpenAPI operation to handwritten business handling.
@@ -53,6 +88,18 @@ func (h *Handler) CancelMyActivityRegistration(c *gin.Context, id uint64, params
 	}
 	h.idempotent(c, "CancelMyActivityRegistration", func() {
 		h.cancelMyActivityRegistration(c)
+	})
+}
+
+// SubmitActivityReview adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) SubmitActivityReview(c *gin.Context, id uint64, params generated.SubmitActivityReviewParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "SubmitActivityReview", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	h.idempotent(c, "SubmitActivityReview", func() {
+		h.submitActivityReview(c)
 	})
 }
 
