@@ -36,6 +36,21 @@ entity:
           required: true
           size: 24
           index: true
+        - name: review_status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_reason
+          type: string
+          required: false
+          size: 500
+        - name: reviewed_by
+          type: uint64
+          required: false
+        - name: reviewed_at
+          type: datetime
+          required: false
         - name: requester_id
           type: uint64
           required: true
@@ -115,6 +130,21 @@ entities:
           required: true
           size: 24
           index: true
+        - name: review_status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_reason
+          type: string
+          required: false
+          size: 500
+        - name: reviewed_by
+          type: uint64
+          required: false
+        - name: reviewed_at
+          type: datetime
+          required: false
         - name: requester_id
           type: uint64
           required: true
@@ -202,47 +232,180 @@ permissions:
       path: /api/v1/errands/:id/accept
       methods:
         - POST
+      default_roles:
+        - member
+    - name: errand:admin_read
+      path: /api/v1/admin/errands
+      methods:
+        - GET
     - name: errand:cancel
       path: /api/v1/errands/:id/cancel
       methods:
         - POST
+      default_roles:
+        - member
     - name: errand:complete
       path: /api/v1/errands/:id/complete
       methods:
         - POST
+      default_roles:
+        - member
     - name: errand:create
       path: /api/v1/errands
       methods:
         - POST
+      default_roles:
+        - member
     - name: errand:deliver
       path: /api/v1/errands/:id/deliver
       methods:
         - POST
+      default_roles:
+        - member
     - name: errand:pickup
       path: /api/v1/errands/:id/pickup
       methods:
         - POST
+      default_roles:
+        - member
     - name: errand:read
       path: /api/v1/errands
       methods:
         - GET
+      default_roles:
+        - guest
+        - member
     - name: errand:read_item
       path: /api/v1/errands/:id
       methods:
         - GET
+      default_roles:
+        - guest
+        - member
     - name: errand:read_mine
       path: /api/v1/errands/mine
       methods:
         - GET
+      default_roles:
+        - member
+    - name: errand:review
+      path: /api/v1/admin/errands/:id/review
+      methods:
+        - POST
+    - name: errand:review_revoke
+      path: /api/v1/admin/errands/:id/revoke-review
+      methods:
+        - POST
+    - name: errand:submit_review
+      path: /api/v1/errands/:id/submit-review
+      methods:
+        - POST
+      default_roles:
+        - member
     - name: errand:update
       path: /api/v1/errands/:id
       methods:
         - PATCH
+      default_roles:
+        - member
 operations:
+    - operation_id: ListAdminErrands
+      method: GET
+      path: /api/v1/admin/errands
+      permission: errand:admin_read
+      request_content: application/json
+      summary: 管理端查询跑腿任务
+      query:
+        - name: status
+          type: string
+        - name: review_status
+          type: string
+        - name: keyword
+          type: string
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: ReviewErrand
+      method: POST
+      path: /api/v1/admin/errands/{id}/review
+      permission: errand:review
+      idempotency: required
+      academic_verification: none
+      request_content: application/json
+      summary: 审核跑腿任务
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+            - name: approved
+              type: boolean
+              required: true
+            - name: reason
+              type: string
+              max_length: 500
+      responses:
+        - status: 200
+          kind: success
+        - status: 400
+          kind: error
+        - status: 409
+          kind: error
+    - operation_id: RevokeErrandReview
+      method: POST
+      path: /api/v1/admin/errands/{id}/revoke-review
+      permission: errand:review_revoke
+      idempotency: required
+      academic_verification: none
+      request_content: application/json
+      summary: 撤销跑腿任务审核结果
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+            - name: reason
+              type: string
+              required: true
+              max_length: 500
+      responses:
+        - status: 200
+          kind: success
+        - status: 400
+          kind: error
+        - status: 409
+          kind: error
     - operation_id: ListErrands
       method: GET
       path: /api/v1/errands
       permission: errand:read
+      default_roles:
+        - guest
+        - member
+      request_content: application/json
       summary: 浏览待接跑腿任务
       query:
         - name: page
@@ -261,7 +424,11 @@ operations:
       method: POST
       path: /api/v1/errands
       permission: errand:create
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 发布跑腿任务
       headers:
         - name: Idempotency-Key
@@ -306,6 +473,9 @@ operations:
       method: GET
       path: /api/v1/errands/mine
       permission: errand:read_mine
+      default_roles:
+        - member
+      request_content: application/json
       summary: 查询我的跑腿任务
       query:
         - name: page
@@ -324,6 +494,10 @@ operations:
       method: GET
       path: /api/v1/errands/{id}
       permission: errand:read_item
+      default_roles:
+        - guest
+        - member
+      request_content: application/json
       summary: 查询跑腿任务详情
       responses:
         - status: 200
@@ -334,7 +508,11 @@ operations:
       method: PATCH
       path: /api/v1/errands/{id}
       permission: errand:update
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 修改未接单的跑腿任务
       headers:
         - name: Idempotency-Key
@@ -382,7 +560,11 @@ operations:
       method: POST
       path: /api/v1/errands/{id}/accept
       permission: errand:accept
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 原子接单并创建交易订单
       headers:
         - name: Idempotency-Key
@@ -405,7 +587,11 @@ operations:
       method: POST
       path: /api/v1/errands/{id}/cancel
       permission: errand:cancel
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 取消跑腿任务
       headers:
         - name: Idempotency-Key
@@ -428,7 +614,11 @@ operations:
       method: POST
       path: /api/v1/errands/{id}/complete
       permission: errand:complete
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 发布者确认跑腿完成
       headers:
         - name: Idempotency-Key
@@ -451,7 +641,11 @@ operations:
       method: POST
       path: /api/v1/errands/{id}/deliver
       permission: errand:deliver
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 跑腿员确认送达
       headers:
         - name: Idempotency-Key
@@ -474,8 +668,39 @@ operations:
       method: POST
       path: /api/v1/errands/{id}/pickup
       permission: errand:pickup
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 跑腿员确认取件
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
+    - operation_id: SubmitErrandReview
+      method: POST
+      path: /api/v1/errands/{id}/submit-review
+      permission: errand:submit_review
+      default_roles:
+        - member
+      idempotency: required
+      academic_verification: required
+      request_content: application/json
+      summary: 重新提交跑腿任务审核
       headers:
         - name: Idempotency-Key
           type: string

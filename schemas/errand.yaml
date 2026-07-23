@@ -13,6 +13,10 @@ entities:
       - {name: dropoff_location, type: string, size: 500, required: true}
       - {name: deadline, type: datetime, required: true, index: true}
       - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: review_status, type: string, size: 24, required: true, index: true}
+      - {name: review_reason, type: string, size: 500}
+      - {name: reviewed_by, type: uint64}
+      - {name: reviewed_at, type: datetime}
       - {name: requester_id, type: uint64, required: true, index: true}
       - {name: contact_type, type: string, size: 16, required: true}
       - {name: contact_ciphertext, type: string, size: 4096, required: true}
@@ -88,6 +92,18 @@ operations:
     permission: errand:read_item
     summary: 查询跑腿任务详情
     responses: [{status: 200, kind: success}, {status: 404, kind: error}]
+  - operation_id: ListAdminErrands
+    method: GET
+    path: /api/v1/admin/errands
+    permission: errand:admin_read
+    summary: 管理端查询跑腿任务
+    query:
+      - {name: status, type: string}
+      - {name: review_status, type: string}
+      - {name: keyword, type: string}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success}]
   - operation_id: UpdateErrand
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]
@@ -120,6 +136,44 @@ operations:
     headers: [{name: Idempotency-Key, type: string, required: true}]
     body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
     responses: [{status: 201, kind: success}, {status: 409, kind: error}]
+  - operation_id: SubmitErrandReview
+    default_roles: [member]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    path: /api/v1/errands/{id}/submit-review
+    permission: errand:submit_review
+    summary: 重新提交跑腿任务审核
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success}, {status: 409, kind: error}]
+  - operation_id: ReviewErrand
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/admin/errands/{id}/review
+    permission: errand:review
+    summary: 审核跑腿任务
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: approved, type: boolean, required: true}
+        - {name: reason, type: string, max_length: 500}
+    responses: [{status: 200, kind: success}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: RevokeErrandReview
+    method: POST
+    idempotency: required
+    academic_verification: none
+    path: /api/v1/admin/errands/{id}/revoke-review
+    permission: errand:review_revoke
+    summary: 撤销跑腿任务审核结果
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: reason, type: string, required: true, max_length: 500}
+    responses: [{status: 200, kind: success}, {status: 400, kind: error}, {status: 409, kind: error}]
   - operation_id: PickupErrand
     default_roles: [member]
     headers: [{name: Idempotency-Key, type: string, required: true}]

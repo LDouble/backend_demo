@@ -22,7 +22,22 @@ const (
 	TaskCompleted = "completed"
 	// TaskCancelled means the workflow has been cancelled.
 	TaskCancelled = "cancelled"
+	// ReviewPending means a newly published task is waiting for moderation.
+	ReviewPending = "pending_review"
+	// ReviewApproved means a task may appear in public listings.
+	ReviewApproved = "approved"
+	// ReviewRejected means the requester must edit and resubmit the task.
+	ReviewRejected = "rejected"
+	// ReviewDraft means a rejected task has been edited but not resubmitted.
+	ReviewDraft = "draft"
 )
+
+// AdminSearch contains moderation-list filters.
+type AdminSearch struct {
+	Status       string
+	ReviewStatus string
+	Keyword      string
+}
 
 // TaskInput contains the user-controlled mutable task content.
 type TaskInput struct {

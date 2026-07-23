@@ -53,6 +53,7 @@ var (
 	adminLoginBase             string
 	adminLoginToken            string
 	adminLoginErr              error
+	integrationRequestPrefix   = time.Now().UTC().UnixNano()
 	integrationRequestSequence atomic.Uint64
 	integrationStudentSequence atomic.Uint64
 )
@@ -408,7 +409,14 @@ func request(t *testing.T, client http.Client, method, url, token string, body a
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 		if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch || method == http.MethodDelete {
-			req.Header.Set("Idempotency-Key", fmt.Sprintf("integration-%d", integrationRequestSequence.Add(1)))
+			req.Header.Set(
+				"Idempotency-Key",
+				fmt.Sprintf(
+					"integration-%d-%d",
+					integrationRequestPrefix,
+					integrationRequestSequence.Add(1),
+				),
+			)
 		}
 	}
 	res, err := client.Do(req)

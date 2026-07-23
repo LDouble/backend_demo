@@ -37,6 +37,10 @@ func newTask(db *gorm.DB, opts ...gen.DOOption) task {
 	_task.DropoffLocation = field.NewString(tableName, "dropoff_location")
 	_task.Deadline = field.NewTime(tableName, "deadline")
 	_task.Status = field.NewString(tableName, "status")
+	_task.ReviewStatus = field.NewString(tableName, "review_status")
+	_task.ReviewReason = field.NewString(tableName, "review_reason")
+	_task.ReviewedBy = field.NewUint64(tableName, "reviewed_by")
+	_task.ReviewedAt = field.NewTime(tableName, "reviewed_at")
 	_task.RequesterId = field.NewUint64(tableName, "requester_id")
 	_task.ContactType = field.NewString(tableName, "contact_type")
 	_task.ContactCiphertext = field.NewString(tableName, "contact_ciphertext")
@@ -69,6 +73,10 @@ type task struct {
 	DropoffLocation   field.String
 	Deadline          field.Time
 	Status            field.String
+	ReviewStatus      field.String
+	ReviewReason      field.String
+	ReviewedBy        field.Uint64
+	ReviewedAt        field.Time
 	RequesterId       field.Uint64
 	ContactType       field.String
 	ContactCiphertext field.String
@@ -107,6 +115,10 @@ func (t *task) updateTableName(table string) *task {
 	t.DropoffLocation = field.NewString(table, "dropoff_location")
 	t.Deadline = field.NewTime(table, "deadline")
 	t.Status = field.NewString(table, "status")
+	t.ReviewStatus = field.NewString(table, "review_status")
+	t.ReviewReason = field.NewString(table, "review_reason")
+	t.ReviewedBy = field.NewUint64(table, "reviewed_by")
+	t.ReviewedAt = field.NewTime(table, "reviewed_at")
 	t.RequesterId = field.NewUint64(table, "requester_id")
 	t.ContactType = field.NewString(table, "contact_type")
 	t.ContactCiphertext = field.NewString(table, "contact_ciphertext")
@@ -144,7 +156,7 @@ func (t *task) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (t *task) fillFieldMap() {
-	t.fieldMap = make(map[string]field.Expr, 22)
+	t.fieldMap = make(map[string]field.Expr, 26)
 	t.fieldMap["id"] = t.ID
 	t.fieldMap["title"] = t.Title
 	t.fieldMap["description"] = t.Description
@@ -154,6 +166,10 @@ func (t *task) fillFieldMap() {
 	t.fieldMap["dropoff_location"] = t.DropoffLocation
 	t.fieldMap["deadline"] = t.Deadline
 	t.fieldMap["status"] = t.Status
+	t.fieldMap["review_status"] = t.ReviewStatus
+	t.fieldMap["review_reason"] = t.ReviewReason
+	t.fieldMap["reviewed_by"] = t.ReviewedBy
+	t.fieldMap["reviewed_at"] = t.ReviewedAt
 	t.fieldMap["requester_id"] = t.RequesterId
 	t.fieldMap["contact_type"] = t.ContactType
 	t.fieldMap["contact_ciphertext"] = t.ContactCiphertext

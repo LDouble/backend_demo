@@ -8,6 +8,30 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/api/generated"
 )
 
+// ListAdminErrands adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListAdminErrands(c *gin.Context, params generated.ListAdminErrandsParams) {
+	setGeneratedParams(c, "ListAdminErrands", params)
+	h.listAdminErrands(c)
+}
+
+// ReviewErrand adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ReviewErrand(c *gin.Context, id uint64, params generated.ReviewErrandParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "ReviewErrand", params)
+	h.idempotent(c, "ReviewErrand", func() {
+		h.reviewErrand(c)
+	})
+}
+
+// RevokeErrandReview adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) RevokeErrandReview(c *gin.Context, id uint64, params generated.RevokeErrandReviewParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "RevokeErrandReview", params)
+	h.idempotent(c, "RevokeErrandReview", func() {
+		h.revokeErrandReview(c)
+	})
+}
+
 // ListErrands adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) ListErrands(c *gin.Context, params generated.ListErrandsParams) {
 	setGeneratedParams(c, "ListErrands", params)
@@ -106,5 +130,17 @@ func (h *Handler) PickupErrand(c *gin.Context, id uint64, params generated.Picku
 	}
 	h.idempotent(c, "PickupErrand", func() {
 		h.pickupErrand(c)
+	})
+}
+
+// SubmitErrandReview adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) SubmitErrandReview(c *gin.Context, id uint64, params generated.SubmitErrandReviewParams) {
+	setGeneratedPathParam(c, "id", id)
+	setGeneratedParams(c, "SubmitErrandReview", params)
+	if !h.requireAcademicVerification(c) {
+		return
+	}
+	h.idempotent(c, "SubmitErrandReview", func() {
+		h.submitErrandReview(c)
 	})
 }

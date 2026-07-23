@@ -15,6 +15,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
 	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
 	"github.com/weouc-plus/campus-platform/internal/core/privacy"
+	platformquery "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
 	"github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
 	tradedomain "github.com/weouc-plus/campus-platform/internal/modules/trade/domain"
 	"gorm.io/gorm"
@@ -38,7 +39,7 @@ func NewStore(db *gorm.DB, ciphers ...*configcenter.Cipher) *Store {
 
 // Create inserts a new errand task and encrypts its contact details.
 func (s *Store) Create(ctx context.Context, requester uint64, input domain.TaskInput) (*domain.Task, error) {
-	task := &domain.Task{Title: strings.TrimSpace(input.Title), Description: strings.TrimSpace(input.Description), RewardCents: input.RewardCents, Currency: domain.CurrencyCNY, PickupLocation: strings.TrimSpace(input.PickupLocation), DropoffLocation: strings.TrimSpace(input.DropoffLocation), Deadline: input.Deadline.UTC(), Status: domain.TaskOpen, RequesterId: requester, ContactType: strings.TrimSpace(input.Contact.Type), Version: 1}
+	task := &domain.Task{Title: strings.TrimSpace(input.Title), Description: strings.TrimSpace(input.Description), RewardCents: input.RewardCents, Currency: domain.CurrencyCNY, PickupLocation: strings.TrimSpace(input.PickupLocation), DropoffLocation: strings.TrimSpace(input.DropoffLocation), Deadline: input.Deadline.UTC(), Status: domain.TaskOpen, ReviewStatus: domain.ReviewPending, RequesterId: requester, ContactType: strings.TrimSpace(input.Contact.Type), Version: 1}
 	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(task).Error; err != nil {
 			return err
@@ -56,22 +57,40 @@ func (s *Store) Create(ctx context.Context, requester uint64, input domain.TaskI
 	return task, err
 }
 
-// Get returns one task by ID.
-func (s *Store) Get(ctx context.Context, id uint64) (*domain.Task, error) {
+// GetVisible returns one approved task, or any task owned by the viewer.
+func (s *Store) GetVisible(ctx context.Context, id, viewerID uint64) (*domain.Task, error) {
 	var task domain.Task
-	err := idempotency.DB(ctx, s.db).First(&task, id).Error
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Task
+	dao := q.WithContext(ctx).Where(q.ID.Eq(id))
+	if viewerID == 0 {
+		dao = dao.Where(q.ReviewStatus.Eq(domain.ReviewApproved))
+	} else {
+		dao = dao.Where(q.ReviewStatus.Eq(domain.ReviewApproved)).Or(q.RequesterId.Eq(viewerID))
+	}
+	value, err := dao.First()
+	if err == nil {
+		task = *value
+	}
 	return &task, taskNotFound(err)
 }
 
 // ListOpen returns currently open tasks before their deadlines.
 func (s *Store) ListOpen(ctx context.Context, page, size int, now time.Time) ([]domain.Task, int64, error) {
 	var rows []domain.Task
-	base := idempotency.DB(ctx, s.db).Model(&domain.Task{}).Where("status = ? AND deadline > ?", domain.TaskOpen, now)
-	var total int64
-	if err := base.Count(&total).Error; err != nil {
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Task
+	dao := q.WithContext(ctx).Where(
+		q.Status.Eq(domain.TaskOpen),
+		q.ReviewStatus.Eq(domain.ReviewApproved),
+		q.Deadline.Gt(now),
+	)
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	err := base.Order("deadline ASC, id DESC").Offset((page - 1) * size).Limit(size).Find(&rows).Error
+	values, err := dao.Order(q.Deadline, q.ID.Desc()).Offset((page - 1) * size).Limit(size).Find()
+	for _, value := range values {
+		rows = append(rows, *value)
+	}
 	return rows, total, err
 }
 
@@ -87,7 +106,49 @@ func (s *Store) ListMine(ctx context.Context, user uint64, page, size int) ([]do
 	return rows, total, err
 }
 
-// Update changes an editable open task.
+// ListAdmin returns tasks matching moderation filters.
+func (s *Store) ListAdmin(
+	ctx context.Context,
+	search domain.AdminSearch,
+	page,
+	size int,
+) ([]domain.Task, int64, error) {
+	db := idempotency.DB(ctx, s.db)
+	if keyword := strings.TrimSpace(search.Keyword); keyword != "" {
+		pattern := "%" + keyword + "%"
+		// GORM Gen cannot group this OR expression with the generated filters.
+		db = db.Where(
+			"(title LIKE ? OR description LIKE ? OR pickup_location LIKE ? OR dropoff_location LIKE ?)",
+			pattern,
+			pattern,
+			pattern,
+			pattern,
+		)
+	}
+	q := platformquery.Use(db).Task
+	dao := q.WithContext(ctx)
+	if status := strings.TrimSpace(search.Status); status != "" {
+		dao = dao.Where(q.Status.Eq(status))
+	}
+	if reviewStatus := strings.TrimSpace(search.ReviewStatus); reviewStatus != "" {
+		dao = dao.Where(q.ReviewStatus.Eq(reviewStatus))
+	}
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	values, err := dao.Order(q.ID.Desc()).Offset((page - 1) * size).Limit(size).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows := make([]domain.Task, 0, len(values))
+	for _, value := range values {
+		rows = append(rows, *value)
+	}
+	return rows, total, nil
+}
+
+// Update changes an editable open task and requires it to be reviewed again.
 func (s *Store) Update(ctx context.Context, id, requester, version uint64, input domain.TaskInput, _ time.Time) (*domain.Task, error) {
 	return s.mutate(ctx, id, requester, version, domain.TaskOpen, func(tx *gorm.DB, task *domain.Task) error {
 		task.Title, task.Description, task.RewardCents = strings.TrimSpace(input.Title), strings.TrimSpace(input.Description), input.RewardCents
@@ -99,10 +160,110 @@ func (s *Store) Update(ctx context.Context, id, requester, version uint64, input
 			}
 			task.ContactType, task.ContactCiphertext = strings.TrimSpace(input.Contact.Type), ciphertext
 		}
+		task.ReviewStatus = domain.ReviewDraft
+		task.ReviewReason = nil
+		task.ReviewedBy = nil
+		task.ReviewedAt = nil
 		if err := tx.Save(task).Error; err != nil {
 			return err
 		}
 		return taskEvent(tx, task, "errand.updated", fmt.Sprintf("errand.updated:%d:%d", task.ID, task.Version))
+	})
+}
+
+// SubmitReview moves an edited task back into moderation.
+func (s *Store) SubmitReview(ctx context.Context, id, requester, version uint64) (*domain.Task, error) {
+	return s.mutate(ctx, id, requester, version, domain.TaskOpen, func(tx *gorm.DB, task *domain.Task) error {
+		if task.ReviewStatus != domain.ReviewDraft && task.ReviewStatus != domain.ReviewRejected {
+			return apperror.New(409, "invalid_errand_review_state", "当前任务不可重新提交审核")
+		}
+		task.ReviewStatus = domain.ReviewPending
+		task.ReviewReason = nil
+		task.ReviewedBy = nil
+		task.ReviewedAt = nil
+		task.Version++
+		if err := tx.Save(task).Error; err != nil {
+			return err
+		}
+		return taskEvent(
+			tx,
+			task,
+			"errand.review_submitted",
+			fmt.Sprintf("errand.review_submitted:%d:%d", task.ID, task.Version),
+		)
+	})
+}
+
+// Review records an administrator moderation decision.
+func (s *Store) Review(
+	ctx context.Context,
+	id,
+	adminID,
+	version uint64,
+	approved bool,
+	reason string,
+	now time.Time,
+) (*domain.Task, error) {
+	return s.mutate(ctx, id, 0, version, domain.TaskOpen, func(tx *gorm.DB, task *domain.Task) error {
+		if task.ReviewStatus != domain.ReviewPending {
+			return apperror.New(409, "invalid_errand_review_state", "任务当前不在待审核状态")
+		}
+		trimmedReason := strings.TrimSpace(reason)
+		if !approved && trimmedReason == "" {
+			return apperror.New(400, "rejection_reason_required", "驳回原因不能为空")
+		}
+		task.ReviewStatus = domain.ReviewApproved
+		task.ReviewReason = nil
+		if !approved {
+			task.ReviewStatus = domain.ReviewRejected
+			task.ReviewReason = &trimmedReason
+		}
+		task.ReviewedBy = &adminID
+		task.ReviewedAt = &now
+		task.Version++
+		if err := tx.Save(task).Error; err != nil {
+			return err
+		}
+		return taskEvent(
+			tx,
+			task,
+			"errand.reviewed",
+			fmt.Sprintf("errand.reviewed:%d:%d", task.ID, task.Version),
+		)
+	})
+}
+
+// RevokeReview hides an approved, unaccepted task and returns it to moderation.
+func (s *Store) RevokeReview(
+	ctx context.Context,
+	id,
+	adminID,
+	version uint64,
+	reason string,
+	now time.Time,
+) (*domain.Task, error) {
+	return s.mutate(ctx, id, 0, version, domain.TaskOpen, func(tx *gorm.DB, task *domain.Task) error {
+		trimmedReason := strings.TrimSpace(reason)
+		if trimmedReason == "" {
+			return apperror.New(400, "revoke_reason_required", "撤销原因不能为空")
+		}
+		if task.ReviewStatus != domain.ReviewApproved {
+			return apperror.New(409, "invalid_errand_review_state", "仅可撤销已通过的审核结果")
+		}
+		task.ReviewStatus = domain.ReviewPending
+		task.ReviewReason = &trimmedReason
+		task.ReviewedBy = &adminID
+		task.ReviewedAt = &now
+		task.Version++
+		if err := tx.Save(task).Error; err != nil {
+			return err
+		}
+		return taskEvent(
+			tx,
+			task,
+			"errand.review_revoked",
+			fmt.Sprintf("errand.review_revoked:%d:%d", task.ID, task.Version),
+		)
 	})
 }
 
@@ -169,6 +330,9 @@ func (s *Store) Accept(ctx context.Context, id, runner, version uint64, key stri
 		}
 		if task.Status != domain.TaskOpen {
 			return apperror.New(409, "errand_unavailable", "任务当前不可接单")
+		}
+		if task.ReviewStatus != domain.ReviewApproved {
+			return apperror.New(409, "errand_unavailable", "任务尚未通过审核")
 		}
 		if !task.Deadline.After(now) {
 			return apperror.New(409, "errand_expired", "任务已超过接单截止时间")
