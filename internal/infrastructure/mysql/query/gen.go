@@ -22,6 +22,8 @@ var (
 	AcademicVerificationRequest  *academicVerificationRequest
 	Activity                     *activity
 	ActivityRegistration         *activityRegistration
+	Comment                      *comment
+	CommentPin                   *commentPin
 	Config                       *config
 	Listing                      *listing
 	ListingImage                 *listingImage
@@ -52,6 +54,8 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	AcademicVerificationRequest = &Q.AcademicVerificationRequest
 	Activity = &Q.Activity
 	ActivityRegistration = &Q.ActivityRegistration
+	Comment = &Q.Comment
+	CommentPin = &Q.CommentPin
 	Config = &Q.Config
 	Listing = &Q.Listing
 	ListingImage = &Q.ListingImage
@@ -83,6 +87,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		AcademicVerificationRequest:  newAcademicVerificationRequest(db, opts...),
 		Activity:                     newActivity(db, opts...),
 		ActivityRegistration:         newActivityRegistration(db, opts...),
+		Comment:                      newComment(db, opts...),
+		CommentPin:                   newCommentPin(db, opts...),
 		Config:                       newConfig(db, opts...),
 		Listing:                      newListing(db, opts...),
 		ListingImage:                 newListingImage(db, opts...),
@@ -115,6 +121,8 @@ type Query struct {
 	AcademicVerificationRequest  academicVerificationRequest
 	Activity                     activity
 	ActivityRegistration         activityRegistration
+	Comment                      comment
+	CommentPin                   commentPin
 	Config                       config
 	Listing                      listing
 	ListingImage                 listingImage
@@ -150,6 +158,8 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		AcademicVerificationRequest:  q.AcademicVerificationRequest.clone(db),
 		Activity:                     q.Activity.clone(db),
 		ActivityRegistration:         q.ActivityRegistration.clone(db),
+		Comment:                      q.Comment.clone(db),
+		CommentPin:                   q.CommentPin.clone(db),
 		Config:                       q.Config.clone(db),
 		Listing:                      q.Listing.clone(db),
 		ListingImage:                 q.ListingImage.clone(db),
@@ -190,6 +200,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		AcademicVerificationRequest:  q.AcademicVerificationRequest.replaceDB(db),
 		Activity:                     q.Activity.replaceDB(db),
 		ActivityRegistration:         q.ActivityRegistration.replaceDB(db),
+		Comment:                      q.Comment.replaceDB(db),
+		CommentPin:                   q.CommentPin.replaceDB(db),
 		Config:                       q.Config.replaceDB(db),
 		Listing:                      q.Listing.replaceDB(db),
 		ListingImage:                 q.ListingImage.replaceDB(db),
@@ -220,6 +232,8 @@ type queryCtx struct {
 	AcademicVerificationRequest  IAcademicVerificationRequestDo
 	Activity                     IActivityDo
 	ActivityRegistration         IActivityRegistrationDo
+	Comment                      ICommentDo
+	CommentPin                   ICommentPinDo
 	Config                       IConfigDo
 	Listing                      IListingDo
 	ListingImage                 IListingImageDo
@@ -250,6 +264,8 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		AcademicVerificationRequest:  q.AcademicVerificationRequest.WithContext(ctx),
 		Activity:                     q.Activity.WithContext(ctx),
 		ActivityRegistration:         q.ActivityRegistration.WithContext(ctx),
+		Comment:                      q.Comment.WithContext(ctx),
+		CommentPin:                   q.CommentPin.WithContext(ctx),
 		Config:                       q.Config.WithContext(ctx),
 		Listing:                      q.Listing.WithContext(ctx),
 		ListingImage:                 q.ListingImage.WithContext(ctx),

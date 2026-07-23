@@ -6,6 +6,7 @@ import (
 	academic_verificationdomain "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/domain"
 	activitydomain "github.com/weouc-plus/campus-platform/internal/modules/activity/domain"
 	carpooldomain "github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
+	commentdomain "github.com/weouc-plus/campus-platform/internal/modules/comment/domain"
 	erranddomain "github.com/weouc-plus/campus-platform/internal/modules/errand/domain"
 	marketplacedomain "github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 	noticedomain "github.com/weouc-plus/campus-platform/internal/modules/notice/domain"
@@ -23,6 +24,8 @@ func applyGeneratedModules(generator *gen.Generator) {
 		activitydomain.ActivityRegistration{},
 		carpooldomain.Trip{},
 		carpooldomain.Participant{},
+		commentdomain.Comment{},
+		commentdomain.CommentPin{},
 		erranddomain.Task{},
 		erranddomain.Transition{},
 		marketplacedomain.Listing{},

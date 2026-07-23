@@ -23,6 +23,7 @@ import (
 	academicapp "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/application"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
+	commentapp "github.com/weouc-plus/campus-platform/internal/modules/comment/application"
 	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
 	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
 	noticeapp "github.com/weouc-plus/campus-platform/internal/modules/notice/application"
@@ -42,6 +43,7 @@ type Handler struct {
 	marketplace       *marketplaceapp.Manager
 	errands           *errandapp.Manager
 	carpools          *carpoolapp.Manager
+	comments          *commentapp.Manager
 	trades            *tradeapp.Manager
 	academic          *academicapp.Manager
 	academicGate      AcademicVerificationGate
@@ -93,6 +95,12 @@ func (h *Handler) WithErrands(manager *errandapp.Manager) *Handler {
 // WithCarpools attaches the carpool domain service.
 func (h *Handler) WithCarpools(manager *carpoolapp.Manager) *Handler {
 	h.carpools = manager
+	return h
+}
+
+// WithComments attaches the moderated comment service.
+func (h *Handler) WithComments(manager *commentapp.Manager) *Handler {
+	h.comments = manager
 	return h
 }
 

@@ -30,6 +30,15 @@
       "schema": "schemas/carpool.yaml"
     },
     {
+      "name": "comment",
+      "entity": "Comment",
+      "entities": [
+        "Comment",
+        "CommentPin"
+      ],
+      "schema": "schemas/comment.yaml"
+    },
+    {
       "name": "errand",
       "entity": "Task",
       "entities": [

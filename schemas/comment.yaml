@@ -1,0 +1,237 @@
+version: 2
+module: comment
+entities:
+  - name: Comment
+    table: comments
+    primary: true
+    fields:
+      - {name: target_type, type: string, size: 32, required: true, index: true}
+      - {name: target_id, type: uint64, required: true, index: true}
+      - {name: author_id, type: uint64, required: true, index: true}
+      - {name: parent_id, type: uint64, index: true}
+      - {name: root_id, type: uint64, index: true}
+      - {name: depth, type: int64, required: true}
+      - {name: reply_to_user_id, type: uint64}
+      - {name: content, type: text, required: true}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: review_reason, type: string, size: 500}
+      - {name: reviewed_by, type: uint64}
+      - {name: reviewed_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: idx_comment_target_roots, fields: [target_type, target_id, parent_id, status]}
+      - {name: idx_comment_root_tree, fields: [root_id, depth]}
+      - {name: idx_comment_author_status, fields: [author_id, status]}
+    foreign_keys:
+      - {field: parent_id, references: comments.id, on_delete: CASCADE}
+      - {field: root_id, references: comments.id, on_delete: CASCADE}
+  - name: CommentPin
+    table: comment_pins
+    fields:
+      - {name: target_type, type: string, size: 32, required: true}
+      - {name: target_id, type: uint64, required: true}
+      - {name: comment_id, type: uint64, required: true}
+      - {name: pinned_by, type: uint64, required: true}
+      - {name: pinned_at, type: datetime, required: true}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: uk_comment_pin_target, fields: [target_type, target_id], unique: true}
+    foreign_keys:
+      - {field: comment_id, references: comments.id, on_delete: CASCADE}
+crud: [create, get, list, update]
+components:
+  responses:
+    CommentResponse: {description: 评论, content: {application/json: {schema: {$ref: "#/components/schemas/CommentResponseBody"}}}}
+    CommentPageResponse: {description: 根评论分页, content: {application/json: {schema: {$ref: "#/components/schemas/CommentPageResponseBody"}}}}
+    CommentThreadResponse: {description: 评论树, content: {application/json: {schema: {$ref: "#/components/schemas/CommentThreadResponseBody"}}}}
+  schemas:
+    CommentTargetType:
+      type: string
+      enum: [activity, marketplace, errand, carpool]
+    CommentViewerAction:
+      type: string
+      enum: [edit, withdraw, submit_review, reply, pin_comment, unpin_comment, verify_academic]
+    CommentView:
+      type: object
+      required: [id, target_type, target_id, author_id, root_id, depth, content, status, version, created_at, updated_at, viewer_relation, available_actions, pinned, reply_count]
+      properties:
+        id: {type: integer, format: uint64}
+        target_type: {$ref: "#/components/schemas/CommentTargetType"}
+        target_id: {type: integer, format: uint64}
+        author_id: {type: integer, format: uint64}
+        parent_id: {type: integer, format: uint64, nullable: true}
+        root_id: {type: integer, format: uint64}
+        depth: {type: integer, format: int64}
+        reply_to_user_id: {type: integer, format: uint64, nullable: true}
+        content: {type: string}
+        status: {type: string, enum: [pending_review, approved, rejected, withdrawn]}
+        review_reason: {type: string, nullable: true}
+        reviewed_by: {type: integer, format: uint64, nullable: true}
+        reviewed_at: {type: string, format: date-time, nullable: true}
+        version: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        viewer_relation: {type: string}
+        available_actions: {type: array, items: {$ref: "#/components/schemas/CommentViewerAction"}}
+        pinned: {type: boolean}
+        reply_count: {type: integer, format: int64}
+    CommentPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/CommentView"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    CommentThread:
+      type: object
+      required: [root, descendants]
+      properties:
+        root: {$ref: "#/components/schemas/CommentView"}
+        descendants: {type: array, items: {$ref: "#/components/schemas/CommentView"}}
+    CommentResponseBody: {type: object, required: [data, request_id], properties: {data: {$ref: "#/components/schemas/CommentView"}, request_id: {type: string}}}
+    CommentPageResponseBody: {type: object, required: [data, request_id], properties: {data: {$ref: "#/components/schemas/CommentPage"}, request_id: {type: string}}}
+    CommentThreadResponseBody: {type: object, required: [data, request_id], properties: {data: {$ref: "#/components/schemas/CommentThread"}, request_id: {type: string}}}
+operations:
+  - operation_id: ListComments
+    default_roles: [guest, member]
+    method: GET
+    path: /api/v1/comments
+    permission: comment:read
+    summary: 查询目标资源根评论
+    query:
+      - {name: target_type, type: string, required: true, max_length: 32, enum: [activity, marketplace, errand, carpool]}
+      - {name: target_id, type: integer, format: uint64, required: true, minimum: 1}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: CommentPageResponse}]
+  - operation_id: ListMyComments
+    default_roles: [member]
+    method: GET
+    path: /api/v1/comments/mine
+    permission: comment:read_mine
+    summary: 查询我的评论
+    query:
+      - {name: status, type: string, enum: [pending_review, approved, rejected, withdrawn]}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: CommentPageResponse}]
+  - operation_id: GetCommentThread
+    default_roles: [guest, member]
+    method: GET
+    path: /api/v1/comments/{id}/thread
+    permission: comment:read_thread
+    summary: 查询完整评论树
+    responses: [{status: 200, kind: success, ref: CommentThreadResponse}, {status: 404, kind: error}]
+  - operation_id: CreateComment
+    default_roles: [member]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/comments
+    permission: comment:create
+    summary: 创建评论或多级回复
+    body:
+      fields:
+        - {name: target_type, type: string, required: true, max_length: 32}
+        - {name: target_id, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: parent_id, type: integer, format: uint64, minimum: 1}
+        - {name: content, type: string, required: true, max_length: 2000}
+    responses: [{status: 201, kind: success, ref: CommentResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: UpdateComment
+    default_roles: [member]
+    method: PATCH
+    idempotency: required
+    academic_verification: required
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/comments/{id}
+    permission: comment:update
+    summary: 修改评论并重新进入待审核
+    body: {fields: [{name: content, type: string, required: true, max_length: 2000}, {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CommentResponse}, {status: 409, kind: error}]
+  - operation_id: WithdrawComment
+    default_roles: [member]
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/comments/{id}/withdraw
+    permission: comment:withdraw
+    summary: 撤回评论
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CommentResponse}, {status: 409, kind: error}]
+  - operation_id: SubmitCommentReview
+    default_roles: [member]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/comments/{id}/submit-review
+    permission: comment:submit_review
+    summary: 重新提交被驳回评论
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CommentResponse}, {status: 409, kind: error}]
+  - operation_id: PinComment
+    default_roles: [member]
+    method: PUT
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/comments/{id}/pin
+    permission: comment:pin
+    summary: 资源发布者置顶根评论
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CommentResponse}, {status: 409, kind: error}]
+  - operation_id: UnpinComment
+    default_roles: [member]
+    method: DELETE
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/comments/{id}/pin
+    permission: comment:unpin
+    summary: 取消置顶评论
+    query: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]
+    responses: [{status: 200, kind: success, ref: CommentResponse}, {status: 409, kind: error}]
+  - operation_id: ListAdminComments
+    method: GET
+    path: /api/v1/admin/comments
+    permission: comment:admin_read
+    summary: 管理端查询评论
+    query:
+      - {name: target_type, type: string, enum: [activity, marketplace, errand, carpool]}
+      - {name: target_id, type: integer, format: uint64, minimum: 1}
+      - {name: author_id, type: integer, format: uint64, minimum: 1}
+      - {name: status, type: string, enum: [pending_review, approved, rejected, withdrawn]}
+      - {name: keyword, type: string}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: CommentPageResponse}]
+  - operation_id: ReviewComment
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/comments/{id}/review
+    permission: comment:review
+    summary: 审核评论
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: approved, type: boolean, required: true}
+        - {name: reason, type: string, max_length: 500}
+    responses: [{status: 200, kind: success, ref: CommentResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: RevokeCommentReview
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/comments/{id}/revoke-review
+    permission: comment:review_revoke
+    summary: 撤销评论审核结果
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: reason, type: string, required: true, max_length: 500}
+    responses: [{status: 200, kind: success, ref: CommentResponse}, {status: 400, kind: error}, {status: 409, kind: error}]

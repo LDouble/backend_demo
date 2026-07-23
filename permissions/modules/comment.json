@@ -1,0 +1,118 @@
+{
+  "module": "comment",
+  "permissions": [
+    {
+      "name": "comment:admin_read",
+      "path_pattern": "/api/v1/admin/comments",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "comment:create",
+      "path_pattern": "/api/v1/comments",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "comment:pin",
+      "path_pattern": "/api/v1/comments/:id/pin",
+      "methods": [
+        "PUT"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "comment:read",
+      "path_pattern": "/api/v1/comments",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "comment:read_mine",
+      "path_pattern": "/api/v1/comments/mine",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "comment:read_thread",
+      "path_pattern": "/api/v1/comments/:id/thread",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "comment:review",
+      "path_pattern": "/api/v1/admin/comments/:id/review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "comment:review_revoke",
+      "path_pattern": "/api/v1/admin/comments/:id/revoke-review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "comment:submit_review",
+      "path_pattern": "/api/v1/comments/:id/submit-review",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "comment:unpin",
+      "path_pattern": "/api/v1/comments/:id/pin",
+      "methods": [
+        "DELETE"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "comment:update",
+      "path_pattern": "/api/v1/comments/:id",
+      "methods": [
+        "PATCH"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "comment:withdraw",
+      "path_pattern": "/api/v1/comments/:id/withdraw",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    }
+  ]
+}
