@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/weouc-plus/campus-platform/internal/api/generated"
+	marketplacedomain "github.com/weouc-plus/campus-platform/internal/modules/marketplace/domain"
 )
 
 func TestMarketplaceListingUpdateInputPreservesImageOmission(t *testing.T) {
@@ -20,6 +21,20 @@ func TestMarketplaceListingUpdateInputPreservesImageOmission(t *testing.T) {
 	cleared := marketplaceListingUpdateInput(base)
 	if !cleared.ImageURLsProvided || len(cleared.ImageURLs) != 0 {
 		t.Fatalf("explicit empty images = %#v", cleared)
+	}
+}
+
+func TestMarketplaceListingViewIncludesViewerContext(t *testing.T) {
+	view := marketplaceListingViewOf(
+		marketplacedomain.ListingDetails{Listing: marketplacedomain.Listing{ID: 3}},
+		marketplacedomain.ContactDetails{},
+		marketplacedomain.ViewerRelationNone,
+		[]string{marketplacedomain.ActionPurchase},
+	)
+	if view.ViewerRelation != marketplacedomain.ViewerRelationNone ||
+		len(view.AvailableActions) != 1 ||
+		view.AvailableActions[0] != marketplacedomain.ActionPurchase {
+		t.Fatalf("view=%+v", view)
 	}
 }
 

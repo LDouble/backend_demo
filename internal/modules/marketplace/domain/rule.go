@@ -27,6 +27,22 @@ const (
 	ReservationCompleted = "completed"
 	ReservationCancelled = "cancelled"
 	ReservationExpired   = "expired"
+
+	// ViewerRelationOwner means the viewer published the listing.
+	ViewerRelationOwner = "owner"
+	// ViewerRelationBuyer means the viewer owns the active marketplace order.
+	ViewerRelationBuyer = "buyer"
+	// ViewerRelationNone means the viewer has no active listing relationship.
+	ViewerRelationNone = "none"
+
+	// ActionEdit updates an editable listing.
+	ActionEdit = "edit"
+	// ActionSubmitReview submits a draft or rejected listing for moderation.
+	ActionSubmitReview = "submit_review"
+	// ActionWithdraw closes an owner-controlled listing before sale.
+	ActionWithdraw = "withdraw"
+	// ActionPurchase reserves a published listing for the viewer.
+	ActionPurchase = "purchase"
 )
 
 // ListingInput is the user-controlled mutable portion of a listing.
@@ -135,4 +151,37 @@ func CanListingTransition(from, to string) bool {
 		ListingRejected:      {ListingDraft: true, ListingWithdrawn: true},
 	}
 	return allowed[from][to]
+}
+
+// ViewerRelation returns how the viewer participates in a listing.
+func ViewerRelation(listing *Listing, viewerID uint64, hasActiveOrder bool) string {
+	if viewerID == 0 {
+		return ViewerRelationNone
+	}
+	if listing.OwnerId == viewerID {
+		return ViewerRelationOwner
+	}
+	if hasActiveOrder {
+		return ViewerRelationBuyer
+	}
+	return ViewerRelationNone
+}
+
+// AvailableActions returns member actions allowed by listing state and relation.
+func AvailableActions(listing *Listing, viewerID uint64, hasActiveOrder bool) []string {
+	actions := []string{}
+	relation := ViewerRelation(listing, viewerID, hasActiveOrder)
+	if relation == ViewerRelationOwner {
+		switch listing.Status {
+		case ListingDraft, ListingRejected:
+			return append(actions, ActionEdit, ActionSubmitReview, ActionWithdraw)
+		case ListingPendingReview, ListingPublished:
+			return append(actions, ActionWithdraw)
+		}
+		return actions
+	}
+	if relation == ViewerRelationNone && viewerID != 0 && listing.Status == ListingPublished {
+		return append(actions, ActionPurchase)
+	}
+	return actions
 }

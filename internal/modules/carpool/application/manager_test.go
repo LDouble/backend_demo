@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 type managerStore struct {
 	calls []string
 	trip  *domain.Trip
+	err   error
 }
 
 func (s *managerStore) called(name string) *domain.Trip {
@@ -25,6 +27,23 @@ func (s *managerStore) UpdateTrip(context.Context, uint64, uint64, uint64, domai
 }
 func (s *managerStore) GetTrip(context.Context, uint64, uint64) (*domain.Trip, bool, error) {
 	return s.called("get"), true, nil
+}
+func (s *managerStore) JoinedTrips(context.Context, uint64, []uint64) (map[uint64]bool, error) {
+	s.called("joined-trips")
+	return map[uint64]bool{1: true}, s.err
+}
+
+func TestViewerContextsPreservesStoreError(t *testing.T) {
+	want := errors.New("participants unavailable")
+	manager := NewManager(&managerStore{trip: &domain.Trip{}, err: want})
+	relations, actions, err := manager.ViewerContexts(
+		context.Background(),
+		[]domain.Trip{{ID: 1}},
+		9,
+	)
+	if !errors.Is(err, want) || relations != nil || actions != nil {
+		t.Fatalf("relations=%v actions=%v err=%v", relations, actions, err)
+	}
 }
 func (s *managerStore) SearchTrips(context.Context, domain.Search, int, int, time.Time) ([]domain.Trip, int64, error) {
 	s.called("search")
@@ -100,6 +119,16 @@ func TestManagerValidatesAndDelegatesEveryOperation(t *testing.T) {
 	if _, _, err := manager.Get(ctx, 1, 7); err != nil {
 		t.Fatal(err)
 	}
+	relations, actions, err := manager.ViewerContexts(ctx, []domain.Trip{{
+		ID: 1, OrganizerId: 7, Status: domain.TripOpen,
+		ReviewStatus: domain.ReviewApproved, DepartureAt: now.Add(time.Hour),
+	}}, 9)
+	if err != nil ||
+		relations[1] != domain.ViewerRelationParticipant ||
+		len(actions[1]) != 1 ||
+		actions[1][0] != domain.ActionLeave {
+		t.Fatalf("ViewerContexts() relations=%v actions=%v err=%v", relations, actions, err)
+	}
 	if _, _, err := manager.Search(ctx, domain.Search{}, 1, 20); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +162,7 @@ func TestManagerValidatesAndDelegatesEveryOperation(t *testing.T) {
 	if contact, err := manager.RevealContact(store.trip); err != nil || contact != "contact" {
 		t.Fatalf("RevealContact() contact=%q err=%v", contact, err)
 	}
-	if len(store.calls) != 14 {
+	if len(store.calls) != 15 {
 		t.Fatalf("delegated calls=%v", store.calls)
 	}
 }

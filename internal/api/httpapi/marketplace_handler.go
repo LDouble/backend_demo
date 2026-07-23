@@ -328,47 +328,70 @@ func marketplaceListingUpdateInput(req generated.UpdateMarketplaceListingJSONBod
 }
 
 type marketplaceListingView struct {
-	ID              uint64     `json:"id"`
-	Title           string     `json:"title"`
-	Description     string     `json:"description"`
-	PriceCents      int64      `json:"price_cents"`
-	Currency        string     `json:"currency"`
-	Status          string     `json:"status"`
-	OwnerID         uint64     `json:"owner_id"`
-	ImageURLs       []string   `json:"image_urls"`
-	RejectionReason *string    `json:"rejection_reason,omitempty"`
-	ReviewedBy      *uint64    `json:"reviewed_by,omitempty"`
-	ReviewedAt      *time.Time `json:"reviewed_at,omitempty"`
-	ContactType     string     `json:"contact_type"`
-	Contact         string     `json:"contact"`
-	Version         uint64     `json:"version"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID               uint64     `json:"id"`
+	Title            string     `json:"title"`
+	Description      string     `json:"description"`
+	PriceCents       int64      `json:"price_cents"`
+	Currency         string     `json:"currency"`
+	Status           string     `json:"status"`
+	OwnerID          uint64     `json:"owner_id"`
+	ImageURLs        []string   `json:"image_urls"`
+	RejectionReason  *string    `json:"rejection_reason,omitempty"`
+	ReviewedBy       *uint64    `json:"reviewed_by,omitempty"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
+	ContactType      string     `json:"contact_type"`
+	Contact          string     `json:"contact"`
+	Version          uint64     `json:"version"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	ViewerRelation   string     `json:"viewer_relation"`
+	AvailableActions []string   `json:"available_actions"`
 }
 
 func (h *Handler) marketplaceListingViews(c *gin.Context, rows []marketplacedomain.ListingDetails) ([]marketplaceListingView, error) {
-	contacts, err := h.marketplace.Contacts(c.Request.Context(), rows, c.GetUint64(userIDKey))
+	viewerID := c.GetUint64(userIDKey)
+	contacts, err := h.marketplace.Contacts(c.Request.Context(), rows, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	relations, actions, err := h.marketplace.ViewerContexts(c.Request.Context(), rows, viewerID)
 	if err != nil {
 		return nil, err
 	}
 	views := make([]marketplaceListingView, 0, len(rows))
 	for _, row := range rows {
-		views = append(views, marketplaceListingViewOf(row, contacts[row.ID]))
+		views = append(views, marketplaceListingViewOf(
+			row,
+			contacts[row.ID],
+			relations[row.ID],
+			actions[row.ID],
+		))
 	}
 	return views, nil
 }
 
 func (h *Handler) marketplaceListingView(c *gin.Context, details marketplacedomain.ListingDetails) (marketplaceListingView, error) {
-	contact, err := h.marketplace.Contact(c.Request.Context(), &details.Listing, c.GetUint64(userIDKey))
+	viewerID := c.GetUint64(userIDKey)
+	contact, err := h.marketplace.Contact(c.Request.Context(), &details.Listing, viewerID)
 	if err != nil {
 		return marketplaceListingView{}, err
 	}
-	return marketplaceListingViewOf(details, contact), nil
+	relations, actions, err := h.marketplace.ViewerContexts(
+		c.Request.Context(),
+		[]marketplacedomain.ListingDetails{details},
+		viewerID,
+	)
+	if err != nil {
+		return marketplaceListingView{}, err
+	}
+	return marketplaceListingViewOf(details, contact, relations[details.ID], actions[details.ID]), nil
 }
 
 func marketplaceListingViewOf(
 	details marketplacedomain.ListingDetails,
 	contact marketplacedomain.ContactDetails,
+	relation string,
+	actions []string,
 ) marketplaceListingView {
 	return marketplaceListingView{
 		ID: details.ID, Title: details.Title, Description: details.Description,
@@ -377,5 +400,6 @@ func marketplaceListingViewOf(
 		RejectionReason: details.RejectionReason, ReviewedBy: details.ReviewedBy, ReviewedAt: details.ReviewedAt,
 		ContactType: contact.Type, Contact: contact.Value, Version: details.Version,
 		CreatedAt: details.CreatedAt, UpdatedAt: details.UpdatedAt,
+		ViewerRelation: relation, AvailableActions: actions,
 	}
 }

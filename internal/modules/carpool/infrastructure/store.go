@@ -12,6 +12,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/configcenter"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
 	"github.com/weouc-plus/campus-platform/internal/core/idempotency"
+	platformquery "github.com/weouc-plus/campus-platform/internal/infrastructure/mysql/query"
 	"github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -71,6 +72,27 @@ func (s *Store) GetTrip(ctx context.Context, id, viewer uint64) (*domain.Trip, b
 		visible = err == nil
 	}
 	return &trip, visible, nil
+}
+
+// JoinedTrips returns trips where the viewer currently occupies a seat.
+func (s *Store) JoinedTrips(ctx context.Context, viewerID uint64, tripIDs []uint64) (map[uint64]bool, error) {
+	result := make(map[uint64]bool, len(tripIDs))
+	if viewerID == 0 || len(tripIDs) == 0 {
+		return result, nil
+	}
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).Participant
+	rows, err := q.WithContext(ctx).Where(
+		q.TripId.In(tripIDs...),
+		q.UserId.Eq(viewerID),
+		q.Status.Eq(domain.ParticipantJoined),
+	).Find()
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.TripId] = true
+	}
+	return result, nil
 }
 
 // SearchTrips returns public trips that have not departed.

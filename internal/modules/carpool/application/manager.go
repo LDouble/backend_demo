@@ -15,6 +15,7 @@ type Store interface {
 	CreateTrip(context.Context, uint64, domain.TripInput, time.Time) (*domain.Trip, error)
 	UpdateTrip(context.Context, uint64, uint64, uint64, domain.TripInput, time.Time) (*domain.Trip, error)
 	GetTrip(context.Context, uint64, uint64) (*domain.Trip, bool, error)
+	JoinedTrips(context.Context, uint64, []uint64) (map[uint64]bool, error)
 	SearchTrips(context.Context, domain.Search, int, int, time.Time) ([]domain.Trip, int64, error)
 	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Trip, int64, error)
 	ListMine(context.Context, uint64, domain.AdminSearch, int, int) ([]domain.Trip, int64, error)
@@ -58,6 +59,31 @@ func (m *Manager) Create(ctx context.Context, user uint64, in domain.TripInput) 
 // Get returns a trip and whether the viewer may see full contact details.
 func (m *Manager) Get(ctx context.Context, id, viewer uint64) (*domain.Trip, bool, error) {
 	return m.store.GetTrip(ctx, id, viewer)
+}
+
+// ViewerContexts resolves viewer relation and member actions for a trip page.
+func (m *Manager) ViewerContexts(
+	ctx context.Context,
+	trips []domain.Trip,
+	viewerID uint64,
+) (map[uint64]string, map[uint64][]string, error) {
+	ids := make([]uint64, 0, len(trips))
+	for i := range trips {
+		ids = append(ids, trips[i].ID)
+	}
+	joinedTrips, err := m.store.JoinedTrips(ctx, viewerID, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	relations := make(map[uint64]string, len(trips))
+	actions := make(map[uint64][]string, len(trips))
+	now := m.now().UTC()
+	for i := range trips {
+		joined := joinedTrips[trips[i].ID]
+		relations[trips[i].ID] = domain.ViewerRelation(&trips[i], viewerID, joined)
+		actions[trips[i].ID] = domain.AvailableActions(&trips[i], viewerID, joined, now)
+	}
+	return relations, actions, nil
 }
 
 // Search returns matching trips for the supplied filters.

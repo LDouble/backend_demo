@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -101,6 +102,28 @@ func TestListingQueriesEnforceVisibilityAndReturnImages(t *testing.T) {
 	}
 	if contacts[updated.ID].Value != "13800138000" || contacts[published.ID].Value == "13800138000" {
 		t.Fatalf("batch contacts = %#v", contacts)
+	}
+	active, err := store.ActiveBuyerListings(context.Background(), 2, []uint64{updated.ID, published.ID})
+	if err != nil || !active[updated.ID] || active[published.ID] {
+		t.Fatalf("active buyer listings=%v err=%v", active, err)
+	}
+	anonymous, err := store.ActiveBuyerListings(context.Background(), 0, []uint64{updated.ID})
+	if err != nil || len(anonymous) != 0 {
+		t.Fatalf("anonymous active buyer listings=%v err=%v", anonymous, err)
+	}
+	empty, err := store.ActiveBuyerListings(context.Background(), 2, nil)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty active buyer listings=%v err=%v", empty, err)
+	}
+	want := errors.New("orders unavailable")
+	if err = db.Callback().Query().Before("gorm:query").Register("test:fail-active-orders", func(tx *gorm.DB) {
+		_ = tx.AddError(want)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	active, err = store.ActiveBuyerListings(context.Background(), 2, []uint64{updated.ID})
+	if !errors.Is(err, want) || active != nil {
+		t.Fatalf("failed active buyer listings=%v err=%v", active, err)
 	}
 }
 

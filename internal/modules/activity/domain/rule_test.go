@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -83,5 +84,66 @@ func TestRegistrationRules(t *testing.T) {
 	registration := &ActivityRegistration{Status: RegistrationStatusActive}
 	if err := CancellationAllowed(registration, activity, activity.StartAt); err == nil {
 		t.Fatal("CancellationAllowed() error = nil, want started error")
+	}
+}
+
+func TestViewerRelation(t *testing.T) {
+	activity := &Activity{CreatedBy: 7}
+	tests := []struct {
+		name       string
+		viewerID   uint64
+		registered bool
+		want       string
+	}{
+		{name: "anonymous", want: ViewerRelationNone},
+		{name: "publisher takes precedence", viewerID: 7, registered: true, want: ViewerRelationPublisher},
+		{name: "participant", viewerID: 8, registered: true, want: ViewerRelationParticipant},
+		{name: "unrelated", viewerID: 8, want: ViewerRelationNone},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ViewerRelation(activity, test.viewerID, test.registered); got != test.want {
+				t.Fatalf("ViewerRelation()=%q want=%q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestAvailableActions(t *testing.T) {
+	now := time.Date(2026, 7, 23, 12, 0, 0, 0, time.UTC)
+	base := Activity{
+		CreatedBy: 7, Status: ActivityStatusPublished, ReviewStatus: ReviewStatusApproved,
+		SignupStartAt: now.Add(-time.Hour), SignupEndAt: now.Add(time.Hour),
+		StartAt: now.Add(2 * time.Hour), Capacity: 2,
+	}
+	tests := []struct {
+		name       string
+		mutate     func(*Activity)
+		viewerID   uint64
+		registered bool
+		want       []string
+	}{
+		{name: "anonymous", want: []string{}},
+		{name: "stranger registers", viewerID: 8, want: []string{ActionRegister}},
+		{name: "participant cancels registration", viewerID: 8, registered: true, want: []string{ActionCancelRegistration}},
+		{name: "participant after start", viewerID: 8, registered: true, mutate: func(v *Activity) { v.StartAt = now }, want: []string{}},
+		{name: "publisher published", viewerID: 7, want: []string{ActionCancel}},
+		{name: "publisher draft", viewerID: 7, mutate: func(v *Activity) { v.Status, v.ReviewStatus = ActivityStatusDraft, ReviewStatusDraft }, want: []string{ActionEdit, ActionSubmitReview, ActionCancel}},
+		{name: "publisher rejected", viewerID: 7, mutate: func(v *Activity) { v.Status, v.ReviewStatus = ActivityStatusDraft, ReviewStatusRejected }, want: []string{ActionEdit, ActionCancel}},
+		{name: "publisher terminal", viewerID: 7, mutate: func(v *Activity) { v.Status = ActivityStatusFinished }, want: []string{}},
+		{name: "registration not open", viewerID: 8, mutate: func(v *Activity) { v.SignupStartAt = now.Add(time.Minute) }, want: []string{}},
+		{name: "registration full", viewerID: 8, mutate: func(v *Activity) { v.RegisteredCount = v.Capacity }, want: []string{}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			activity := base
+			if test.mutate != nil {
+				test.mutate(&activity)
+			}
+			got := AvailableActions(&activity, test.viewerID, test.registered, now)
+			if strings.Join(got, ",") != strings.Join(test.want, ",") {
+				t.Fatalf("AvailableActions()=%v want=%v", got, test.want)
+			}
+		})
 	}
 }
