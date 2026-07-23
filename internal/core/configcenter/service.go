@@ -218,6 +218,36 @@ func (s *Service) List(ctx context.Context, group string, args ...any) ([]View, 
 	return out, total, nil
 }
 
+// ListDecrypted returns every entry in the group with its value decrypted.
+//
+// This is a trusted, server-internal API. The HTTP layer must never expose
+// this method: it bypasses the redaction applied by view() and would leak
+// any encrypted secrets held in the configuration center. Callers are
+// expected to use it only at startup or under a scheduled refresh.
+func (s *Service) ListDecrypted(ctx context.Context, group string) (map[string]string, error) {
+	if s.cipher == nil {
+		return nil, fmt.Errorf("config cipher is not configured")
+	}
+	const maxPage = 1000
+	rows, _, err := s.repo.List(ctx, group, 1, maxPage)
+	if err != nil {
+		return nil, fmt.Errorf("list configs: %w", err)
+	}
+	out := make(map[string]string, len(rows))
+	for i := range rows {
+		value := rows[i].Value
+		if rows[i].Encrypted {
+			plain, derr := s.cipher.Decrypt(value, rows[i].Group+"."+rows[i].Key)
+			if derr != nil {
+				return nil, fmt.Errorf("decrypt %s.%s: %w", rows[i].Group, rows[i].Key, derr)
+			}
+			value = plain
+		}
+		out[rows[i].Key] = value
+	}
+	return out, nil
+}
+
 // Runtime returns a public JSON document when its visibility permits exposure.
 func (s *Service) Runtime(ctx context.Context, group, key string) (RuntimeView, uint64, error) {
 	var config *model.Config

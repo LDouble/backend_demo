@@ -37,6 +37,11 @@ func (r *userRepository) GetByUsername(ctx context.Context, name string) (*model
 	return q.WithContext(ctx).Where(q.Username.Eq(name)).First()
 }
 
+func (r *userRepository) GetByAppOpenID(ctx context.Context, appID, openID string) (*model.User, error) {
+	q := query.Use(idempotency.DB(ctx, r.db)).User
+	return q.WithContext(ctx).Where(q.AppID.Eq(appID), q.OpenID.Eq(openID)).First()
+}
+
 func (r *userRepository) List(ctx context.Context, page, size int) ([]model.User, int64, error) {
 	q := query.Use(idempotency.DB(ctx, r.db)).User
 	dao := q.WithContext(ctx)
@@ -62,6 +67,9 @@ func (r *userRepository) UpdateFields(ctx context.Context, id uint64, changes us
 	}
 	if changes.Status != nil {
 		assignments = append(assignments, q.Status.Value(*changes.Status))
+	}
+	if changes.UnionID != nil {
+		assignments = append(assignments, q.UnionID.Value(*changes.UnionID))
 	}
 	if changes.IncrementSessionVersion {
 		assignments = append(assignments, q.SessionVersion.Add(1))

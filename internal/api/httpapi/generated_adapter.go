@@ -17,6 +17,11 @@ func (h *Handler) Login(c *gin.Context) { h.login(c) }
 // Refresh handles the generated token refresh operation.
 func (h *Handler) Refresh(c *gin.Context) { h.refresh(c) }
 
+// WechatLogin handles the generated WeChat Mini Program login operation.
+func (h *Handler) WechatLogin(c *gin.Context, _ generated.WechatLoginParams) {
+	h.idempotent(c, "WechatLogin", func() { h.wechatLogin(c) })
+}
+
 // Logout handles the generated logout operation.
 func (h *Handler) Logout(c *gin.Context) { h.logout(c) }
 

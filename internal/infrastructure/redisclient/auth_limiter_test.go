@@ -36,3 +36,32 @@ func TestAuthLimiterSeparatesIPAndPostVerificationAccountLimits(t *testing.T) {
 		t.Fatalf("cleared account remained limited: allowed=%v err=%v", allowed, err)
 	}
 }
+
+// TestAuthLimiterWeChatAndPasswordShareNoKeyspace locks in the Codex P2 fix:
+// WeChat Mini Program login and password login must use independent Redis
+// keys so a campus NAT or carrier-grade NAT does not exhaust the password
+// limit by being the egress for unrelated WeChat users.
+func TestAuthLimiterWeChatAndPasswordShareNoKeyspace(t *testing.T) {
+	server := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	limiter := NewAuthLimiter(client, true)
+	ctx := context.Background()
+
+	for i := 0; i < 30; i++ {
+		if _, err := limiter.AllowLoginIP(ctx, "192.0.2.1"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Password limiter is now saturated.
+	if allowed, err := limiter.AllowLoginIP(ctx, "192.0.2.1"); err != nil || allowed {
+		t.Fatalf("password limiter did not cap at 30: allowed=%v err=%v", allowed, err)
+	}
+	// WeChat limiter remains usable for the same IP.
+	for i := 0; i < 5; i++ {
+		allowed, err := limiter.AllowWeChatLogin(ctx, "192.0.2.1")
+		if err != nil || !allowed {
+			t.Fatalf("wechat attempt %d unexpectedly limited: allowed=%v err=%v", i+1, allowed, err)
+		}
+	}
+}

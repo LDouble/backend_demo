@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
+	"github.com/weouc-plus/campus-platform/internal/core/auth/wechat"
 	"github.com/weouc-plus/campus-platform/internal/core/model"
 	"github.com/weouc-plus/campus-platform/internal/core/user"
 	"gorm.io/gorm"
@@ -34,6 +35,18 @@ var dummyPasswordHash = func() string {
 type UserRepository interface {
 	GetByID(context.Context, uint64) (*model.User, error)
 	GetByUsername(context.Context, string) (*model.User, error)
+}
+
+// WeChatUserFinder is the minimum surface auth.Service needs to translate a
+// (appid, openid, unionid) tuple into a platform account. user.Service
+// satisfies this interface via FindOrCreateForWechat.
+type WeChatUserFinder interface {
+	FindOrCreateForWechat(ctx context.Context, appID, openID, unionID string) (*model.User, bool, error)
+}
+
+// WeChatClient exchanges a Mini Program js_code for a WeChat session.
+type WeChatClient interface {
+	Code2Session(ctx context.Context, appid, code string) (wechat.Session, error)
 }
 
 // SessionStore persists and atomically rotates sessions.
@@ -65,6 +78,8 @@ type TokenPair struct {
 // Service manages authentication sessions.
 type Service struct {
 	users                 UserRepository
+	wechatUsers           WeChatUserFinder
+	wechat                WeChatClient
 	sessions              SessionStore
 	issuer                string
 	key                   []byte
@@ -73,8 +88,21 @@ type Service struct {
 }
 
 // NewService creates an authentication service.
-func NewService(users UserRepository, sessions SessionStore, issuer string, key []byte, accessTTL, refreshTTL time.Duration) *Service {
-	return &Service{users: users, sessions: sessions, issuer: issuer, key: key, accessTTL: accessTTL, refreshTTL: refreshTTL, now: time.Now}
+//
+// Pass nil for wechatUsers and wechat to disable WeChat Mini Program login
+// (the HTTP handler should also gate the route on a non-nil wechat client).
+func NewService(users UserRepository, sessions SessionStore, issuer string, key []byte, accessTTL, refreshTTL time.Duration, wechatUsers WeChatUserFinder, wechatClient WeChatClient) *Service {
+	return &Service{
+		users:       users,
+		wechatUsers: wechatUsers,
+		wechat:      wechatClient,
+		sessions:    sessions,
+		issuer:      issuer,
+		key:         key,
+		accessTTL:   accessTTL,
+		refreshTTL:  refreshTTL,
+		now:         time.Now,
+	}
 }
 
 // Login authenticates a user and creates a new device session.
@@ -93,6 +121,47 @@ func (s *Service) Login(ctx context.Context, username, password string) (TokenPa
 	}
 	if u.Status != model.UserActive {
 		return TokenPair{}, apperror.New(403, "user_disabled", "用户已禁用")
+	}
+	sid, err := randomID()
+	if err != nil {
+		return TokenPair{}, err
+	}
+	pair, refreshHash, err := s.issue(u.ID, sid, effectiveSessionVersion(u))
+	if err != nil {
+		return TokenPair{}, err
+	}
+	if err = s.sessions.Create(ctx, sid, u.ID, refreshHash, s.refreshTTL); err != nil {
+		return TokenPair{}, fmt.Errorf("create session: %w", err)
+	}
+	return pair, nil
+}
+
+// LoginByWeChat authenticates a Mini Program user via the WeChat jscode2session
+// flow. It exchanges code for openid/unionid, finds or creates the platform
+// account bound to (appid, openid), and issues a standard TokenPair. Login
+// failures from the upstream WeChat API or the local user service are
+// surfaced as 401 invalid_wechat_code so the HTTP layer does not leak
+// upstream details to clients.
+func (s *Service) LoginByWeChat(ctx context.Context, appID, code string) (TokenPair, error) {
+	if s.wechat == nil {
+		return TokenPair{}, apperror.New(http.StatusServiceUnavailable, "wechat_disabled", "微信登录未启用")
+	}
+	if s.wechatUsers == nil {
+		return TokenPair{}, apperror.New(http.StatusServiceUnavailable, "wechat_disabled", "微信登录未启用")
+	}
+	session, err := s.wechat.Code2Session(ctx, appID, code)
+	if err != nil {
+		return TokenPair{}, err
+	}
+	u, _, err := s.wechatUsers.FindOrCreateForWechat(ctx, appID, session.OpenID, session.UnionID)
+	if err != nil {
+		if appErr, ok := apperror.As(err); ok {
+			return TokenPair{}, appErr
+		}
+		return TokenPair{}, apperror.Wrap(http.StatusUnauthorized, "invalid_wechat_code", "微信登录失败", err)
+	}
+	if u.Status != model.UserActive {
+		return TokenPair{}, apperror.New(http.StatusForbidden, "user_disabled", "用户已禁用")
 	}
 	sid, err := randomID()
 	if err != nil {

@@ -7,3 +7,9 @@ generate:
 output: api.gen.go
 output-options:
   skip-prune: false
+  name-normalizer: ToCamelCaseWithInitialisms
+  additional-initialisms:
+    - ID
+    - URL
+    - HTTP
+    - JSON

@@ -612,16 +612,39 @@ func (s *Service) EnsureCurrentBaseRoleForUser(ctx context.Context, userID uint6
 
 // EnsureGuestForUser reconciles generated guest permissions and selects guest as the base role.
 func (s *Service) EnsureGuestForUser(ctx context.Context, userID uint64) error {
-	return s.ensureBaseRole(ctx, userID, model.GuestRole, "平台访客", s.guestPolicies)
+	return s.EnsureGuestForUserTx(ctx, nil, userID)
+}
+
+// EnsureGuestForUserTx is the transaction-aware variant of EnsureGuestForUser.
+// When tx is non-nil, all write SQL is performed through that transaction so
+// callers can compose it with other writes (e.g. provisioning a brand-new
+// account) without a window where the user exists but their role does not.
+func (s *Service) EnsureGuestForUserTx(ctx context.Context, tx *gorm.DB, userID uint64) error {
+	if err := s.ensureBaseRole(ctx, tx, userID, model.GuestRole, "平台访客", s.guestPolicies); err != nil {
+		return err
+	}
+	if tx == nil {
+		return nil
+	}
+	return s.reloadAfterMutation(ctx)
 }
 
 // EnsureMemberForUser reconciles generated member permissions and selects member as the base role.
 func (s *Service) EnsureMemberForUser(ctx context.Context, userID uint64) error {
-	return s.ensureBaseRole(ctx, userID, model.MemberRole, "已认证成员", s.memberPolicies)
+	return s.EnsureMemberForUserTx(ctx, nil, userID)
 }
 
+// EnsureMemberForUserTx is the transaction-aware variant of EnsureMemberForUser.
+func (s *Service) EnsureMemberForUserTx(ctx context.Context, tx *gorm.DB, userID uint64) error {
+	return s.ensureBaseRole(ctx, tx, userID, model.MemberRole, "已认证成员", s.memberPolicies)
+}
+
+// ensureBaseRoleReconciles and selects the named base role. The optional tx
+// argument lets callers compose this operation with their own transaction;
+// when nil a fresh transaction is opened.
 func (s *Service) ensureBaseRole(
 	ctx context.Context,
+	tx *gorm.DB,
 	userID uint64,
 	roleName string,
 	description string,
@@ -630,33 +653,33 @@ func (s *Service) ensureBaseRole(
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	err := idempotency.DB(ctx, s.db).Transaction(func(tx *gorm.DB) error {
+	run := func(handle *gorm.DB) error {
 		var role model.Role
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", roleName).Take(&role).Error
+		err := handle.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ?", roleName).Take(&role).Error
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			role = model.Role{Name: roleName, Description: description, Builtin: true}
-			if err = tx.Create(&role).Error; err != nil {
+			if err = handle.Create(&role).Error; err != nil {
 				return err
 			}
 		case err != nil:
 			return err
 		case !role.Builtin:
-			if err = tx.Model(&role).Update("builtin", true).Error; err != nil {
+			if err = handle.Model(&role).Update("builtin", true).Error; err != nil {
 				return err
 			}
 		}
-		if err = tx.Where("ptype = ? AND v0 = ? AND managed = ?", "p", roleName, true).
+		if err = handle.Where("ptype = ? AND v0 = ? AND managed = ?", "p", roleName, true).
 			Delete(&policyRule{}).Error; err != nil {
 			return err
 		}
 		if len(managedPolicies) > 0 {
 			policies := append([]policyRule(nil), managedPolicies...)
-			if err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&policies).Error; err != nil {
+			if err = handle.Clauses(clause.OnConflict{DoNothing: true}).Create(&policies).Error; err != nil {
 				return err
 			}
 		}
-		if err = tx.Where(
+		if err = handle.Where(
 			"ptype = ? AND v0 = ? AND v1 IN ?",
 			"g",
 			subject(userID),
@@ -665,12 +688,15 @@ func (s *Service) ensureBaseRole(
 			return err
 		}
 		grouping := newPolicyRule("g", []string{subject(userID), roleName})
-		if err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&grouping).Error; err != nil {
+		if err = handle.Clauses(clause.OnConflict{DoNothing: true}).Create(&grouping).Error; err != nil {
 			return err
 		}
-		return recordPolicyChange(tx)
-	})
-	if err != nil {
+		return recordPolicyChange(handle)
+	}
+	if tx != nil {
+		return run(tx.WithContext(ctx))
+	}
+	if err := idempotency.DB(ctx, s.db).Transaction(run); err != nil {
 		return err
 	}
 	return s.reloadAfterMutation(ctx)

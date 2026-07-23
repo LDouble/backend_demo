@@ -221,3 +221,25 @@ func TestPurposeSpecificLoadersRequireOnlyTheirSecrets(t *testing.T) {
 		t.Fatalf("LoadWorker() error = %v", err)
 	}
 }
+
+// TestLoadWeChatEndpointRequiresHTTPSInProduction locks in the Codex P1 fix
+// that refuses to start in production with a plaintext WeChat endpoint,
+// which would otherwise leak appid+secret over the URL query.
+func TestLoadWeChatEndpointRequiresHTTPSInProduction(t *testing.T) {
+	setRequired(t)
+	t.Setenv("CAMPUS_ENV", "production")
+	t.Setenv("CAMPUS_REDIS_TLS", "true")
+	t.Setenv("CAMPUS_TRUSTED_PROXY_CIDRS", "10.0.0.0/8")
+	t.Setenv("CAMPUS_REQUIRE_PROXY_HTTPS", "true")
+	t.Setenv("CAMPUS_REDIS_TLS_FILES_ROOT", t.TempDir())
+	t.Setenv("CAMPUS_REDIS_CLIENT_CERT_FILE", "client.pem")
+	t.Setenv("CAMPUS_REDIS_CLIENT_KEY_FILE", "client.key")
+	t.Setenv("CAMPUS_WECHAT_ENDPOINT", "http://api.weixin.qq.com")
+	if _, err := Load(""); err == nil {
+		t.Fatal("production accepted plaintext WeChat endpoint")
+	}
+	t.Setenv("CAMPUS_WECHAT_ENDPOINT", "https://api.weixin.qq.com")
+	if _, err := Load(""); err != nil {
+		t.Fatalf("production rejected https WeChat endpoint: %v", err)
+	}
+}

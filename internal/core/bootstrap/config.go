@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -23,9 +24,21 @@ type Config struct {
 	Redis       RedisConfig    `yaml:"redis"`
 	Worker      WorkerConfig   `yaml:"worker"`
 	Academic    AcademicConfig `yaml:"academic"`
+	WeChat      WeChatConfig   `yaml:"wechat"`
 	JWT         JWTConfig      `yaml:"-"`
 	Secret      SecretConfig   `yaml:"-"`
 	Admin       AdminConfig    `yaml:"-"`
+}
+
+// WeChatConfig contains non-secret WeChat Mini Program endpoint knobs.
+//
+// Secrets are not stored here: each WeChat Mini Program's appid/secret lives
+// in the configuration center (group=wechat, key=<appid>, encrypted=true).
+// Only the upstream endpoint and HTTP timeout live in bootstrap, alongside
+// other infrastructure settings.
+type WeChatConfig struct {
+	Endpoint    string        `yaml:"endpoint"`
+	HTTPTimeout time.Duration `yaml:"http_timeout"`
 }
 
 // ServerConfig contains HTTP listener settings.
@@ -110,13 +123,14 @@ type loadRequirements struct {
 	admin            bool
 	academicMaterial bool
 	academicProvider bool
+	wechat           bool
 }
 
 // Load reads API configuration and applies CAMPUS_ environment overrides.
 func Load(path string) (Config, error) {
 	return load(path, loadRequirements{
 		jwt: true, configKey: true, server: true, redis: true, worker: true,
-		academicMaterial: true, academicProvider: true,
+		academicMaterial: true, academicProvider: true, wechat: true,
 	})
 }
 
@@ -141,6 +155,7 @@ func load(path string, requirements loadRequirements) (Config, error) {
 		Server:      ServerConfig{Address: ":8080", MaxBodyBytes: 6 << 20, MaxHeaderBytes: 64 << 10},
 		Redis:       RedisConfig{Address: "127.0.0.1:6379"},
 		Worker:      WorkerConfig{RedisDB: 1, Concurrency: 10, PollInterval: time.Second},
+		WeChat:      WeChatConfig{Endpoint: "https://api.weixin.qq.com", HTTPTimeout: 3 * time.Second},
 		JWT:         JWTConfig{Issuer: "campus-platform", AccessTTL: 15 * time.Minute, RefreshTTL: 7 * 24 * time.Hour},
 	}
 	if path != "" {
@@ -223,6 +238,27 @@ func load(path string, requirements loadRequirements) (Config, error) {
 	}
 	if requirements.admin && (cfg.Admin.Username == "" || cfg.Admin.Password == "") {
 		return Config{}, fmt.Errorf("CAMPUS_ADMIN_USERNAME and CAMPUS_ADMIN_PASSWORD are required")
+	}
+	if requirements.wechat {
+		if cfg.WeChat.HTTPTimeout <= 0 {
+			cfg.WeChat.HTTPTimeout = 3 * time.Second
+		}
+		if cfg.IsProduction() && cfg.WeChat.HTTPTimeout > 5*time.Second {
+			return Config{}, fmt.Errorf("wechat http_timeout must not exceed 5s in production")
+		}
+		if strings.TrimSpace(cfg.WeChat.Endpoint) == "" {
+			return Config{}, fmt.Errorf("wechat.endpoint must be a non-empty URL")
+		}
+		u, err := url.Parse(cfg.WeChat.Endpoint)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			return Config{}, fmt.Errorf("wechat.endpoint must be a valid absolute URL")
+		}
+		// Code2Session sends appid+secret+code in the URL query, so plaintext
+		// HTTP would expose the application secret on the wire. Production
+		// must use HTTPS; loopback and test mocks can still use http://.
+		if cfg.IsProduction() && !strings.EqualFold(u.Scheme, "https") {
+			return Config{}, fmt.Errorf("wechat.endpoint must use https in production (got scheme %q)", u.Scheme)
+		}
 	}
 	return cfg, nil
 }
@@ -310,6 +346,14 @@ func override(c *Config) error {
 	}
 	if v := os.Getenv("CAMPUS_ACADEMIC_PROVIDER_FILE"); v != "" {
 		c.Academic.ProviderFile = v
+	}
+	if v := os.Getenv("CAMPUS_WECHAT_ENDPOINT"); v != "" {
+		c.WeChat.Endpoint = v
+	}
+	if v := os.Getenv("CAMPUS_WECHAT_HTTP_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			c.WeChat.HTTPTimeout = d
+		}
 	}
 	if v := os.Getenv("CAMPUS_JWT_ISSUER"); v != "" {
 		c.JWT.Issuer = v
