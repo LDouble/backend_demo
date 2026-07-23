@@ -141,6 +141,23 @@ func TestLoginFailuresDoNotLockOutCorrectPassword(t *testing.T) {
 	}
 }
 
+func TestWechatLoginDoesNotRequireIdempotencyKey(t *testing.T) {
+	fixture := newHandlerFixture(t)
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/auth/wechat/login",
+		strings.NewReader(`{"app_id":"wxapp-1","code":"code"}`),
+	)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+
+	fixture.router.ServeHTTP(response, request)
+
+	// The fixture has no WeChat provider, so reaching the handler must report
+	// its normal availability error rather than an idempotency-header error.
+	assertErrorEnvelope(t, response, http.StatusServiceUnavailable, "wechat_disabled")
+}
+
 func TestInfrastructureErrorsAreNotExposed(t *testing.T) {
 	fixture := newHandlerFixture(t)
 	fixture.handler.WithCarpools(carpoolapp.NewManager(failingCarpoolStore{

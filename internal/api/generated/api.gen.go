@@ -1320,11 +1320,6 @@ type ChangeMyPasswordParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
-// WechatLoginParams defines parameters for WechatLogin.
-type WechatLoginParams struct {
-	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
-}
-
 // ListCarpoolTripsParams defines parameters for ListCarpoolTrips.
 type ListCarpoolTripsParams struct {
 	Origin        *string             `form:"origin,omitempty" json:"origin,omitempty"`
@@ -1956,7 +1951,7 @@ type ServerInterface interface {
 	Refresh(c *gin.Context)
 
 	// (POST /api/v1/auth/wechat/login)
-	WechatLogin(c *gin.Context, params WechatLoginParams)
+	WechatLogin(c *gin.Context)
 	// ListCarpoolTrips 搜索开放拼车行程
 	// (GET /api/v1/carpool/trips)
 	ListCarpoolTrips(c *gin.Context, params ListCarpoolTripsParams)
@@ -3916,36 +3911,6 @@ func (siw *ServerInterfaceWrapper) Refresh(c *gin.Context) {
 // WechatLogin operation middleware
 func (siw *ServerInterfaceWrapper) WechatLogin(c *gin.Context) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params WechatLoginParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "Idempotency-Key" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
-		var IdempotencyKey IdempotencyKey
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IdempotencyKey = IdempotencyKey
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -3953,7 +3918,7 @@ func (siw *ServerInterfaceWrapper) WechatLogin(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.WechatLogin(c, params)
+	siw.Handler.WechatLogin(c)
 }
 
 // ListCarpoolTrips operation middleware
@@ -6433,38 +6398,38 @@ var swaggerSpec = []string{
 	"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",
-	"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",
-	"2IvNpmG1gdGxHLL444UfL2jba9v/HwAA//8=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -28,7 +28,9 @@ paths:
   /api/v1/auth/wechat/login:
     post:
       operationId: WechatLogin
-      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      # A successful login returns bearer tokens. Do not snapshot or replay
+      # that response through the database-backed idempotency middleware.
+      x-idempotency: inherent
       requestBody: {$ref: "#/components/requestBodies/WechatLogin"}
       responses: {"200": {$ref: "#/components/responses/TokenPairResponse"}, "401": {$ref: "#/components/responses/Error"}, "503": {$ref: "#/components/responses/Error"}}
   /api/v1/auth/logout:

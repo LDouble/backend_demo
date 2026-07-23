@@ -95,6 +95,9 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init wechat resolver: %w", err)
 	}
+	// Register the resolver before starting its goroutine so the deferred
+	// runtime.Close can stop it if a later initialization step fails.
+	runtime.WeChat = wechatResolver
 	wechatResolver.Start(ctx)
 	wechatClient := wechat.NewHTTPClient(cfg.WeChat.Endpoint, cfg.WeChat.HTTPTimeout, wechatResolver)
 	authService := auth.NewService(userRepo, redisclient.NewSessionStore(rdb), cfg.JWT.Issuer, cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL, userService, wechatClient)
@@ -153,7 +156,6 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	runtime.Carpools = carpoolService
 	runtime.Trades = tradeService
 	runtime.Academic = academicService
-	runtime.WeChat = wechatResolver
 	initialized = true
 	return runtime, nil
 }

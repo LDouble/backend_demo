@@ -102,7 +102,12 @@ func accessLog(log *zap.Logger) gin.HandlerFunc {
 func (h *Handler) security() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
-		if path == "/health/live" || path == "/health/ready" || path == "/api/v1/auth/login" || path == "/api/v1/auth/refresh" || (c.Request.Method == http.MethodGet && strings.HasPrefix(path, "/api/v1/runtime-configs/")) {
+		if path == "/health/live" ||
+			path == "/health/ready" ||
+			path == "/api/v1/auth/login" ||
+			path == "/api/v1/auth/refresh" ||
+			path == "/api/v1/auth/wechat/login" ||
+			(c.Request.Method == http.MethodGet && strings.HasPrefix(path, "/api/v1/runtime-configs/")) {
 			c.Next()
 			return
 		}
