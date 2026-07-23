@@ -19,6 +19,7 @@ import (
 type targetResolver struct {
 	ownerID uint64
 	err     error
+	calls   *int
 }
 
 func (r targetResolver) Resolve(
@@ -27,10 +28,88 @@ func (r targetResolver) Resolve(
 	uint64,
 	uint64,
 ) (commentapp.Target, error) {
+	if r.calls != nil {
+		*r.calls++
+	}
 	if r.err != nil {
 		return commentapp.Target{}, r.err
 	}
 	return commentapp.Target{OwnerID: r.ownerID}, nil
+}
+
+type threadStore struct {
+	commentapp.Store
+	root        commentapp.Item
+	descendants []commentapp.Item
+}
+
+func (s threadStore) Thread(
+	context.Context,
+	uint64,
+	uint64,
+	bool,
+) (commentapp.Item, []commentapp.Item, error) {
+	return s.root, s.descendants, nil
+}
+
+func TestManagerAdminThreadSkipsTargetResolution(t *testing.T) {
+	rootID := uint64(1)
+	root := commentapp.Item{Comment: commentdomain.Comment{
+		ID: 1, RootId: &rootID, TargetType: commentapp.TargetCampusCirclePost,
+		TargetId: 9, Status: commentdomain.StatusPendingReview,
+	}}
+	descendants := []commentapp.Item{{Comment: commentdomain.Comment{
+		ID: 2, ParentId: &rootID, RootId: &rootID,
+		TargetType: commentapp.TargetCampusCirclePost, TargetId: 9,
+		Status: commentdomain.StatusRejected,
+	}}}
+	calls := 0
+	manager := commentapp.NewManager(
+		threadStore{root: root, descendants: descendants},
+		targetResolver{err: errors.New("hidden target"), calls: &calls},
+	)
+
+	thread, err := manager.Thread(context.Background(), rootID, 99, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 0 {
+		t.Fatalf("target resolver calls = %d, want 0", calls)
+	}
+	if thread.Root.Comment.ID != rootID ||
+		len(thread.Descendants) != 1 ||
+		thread.Descendants[0].Comment.ID != 2 {
+		t.Fatalf("thread = %+v", thread)
+	}
+}
+
+func TestManagerAcceptsSupportedTargetTypes(t *testing.T) {
+	targetTypes := []string{
+		commentapp.TargetActivity,
+		commentapp.TargetMarketplace,
+		commentapp.TargetErrand,
+		commentapp.TargetCarpool,
+		commentapp.TargetCampusCirclePost,
+	}
+	for _, targetType := range targetTypes {
+		t.Run(targetType, func(t *testing.T) {
+			manager := commentapp.NewManager(
+				commentinfra.NewStore(commentDB(t)),
+				targetResolver{ownerID: 99},
+			)
+			item, err := manager.Create(context.Background(), 1, commentapp.CreateInput{
+				TargetType: targetType,
+				TargetID:   1,
+				Content:    "comment",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if item.Comment.TargetType != targetType {
+				t.Fatalf("target type = %q, want %q", item.Comment.TargetType, targetType)
+			}
+		})
+	}
 }
 
 func TestManagerModeratedNestedLifecycle(t *testing.T) {

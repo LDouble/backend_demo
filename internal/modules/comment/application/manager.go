@@ -13,10 +13,11 @@ import (
 
 // Supported comment target types.
 const (
-	TargetActivity    = "activity"
-	TargetMarketplace = "marketplace"
-	TargetErrand      = "errand"
-	TargetCarpool     = "carpool"
+	TargetActivity         = "activity"
+	TargetMarketplace      = "marketplace"
+	TargetErrand           = "errand"
+	TargetCarpool          = "carpool"
+	TargetCampusCirclePost = "campus_circle_post"
 )
 
 // Target is a commentable resource resolved by its owning module.
@@ -175,6 +176,10 @@ func (m *Manager) Thread(ctx context.Context, id, viewerID uint64, admin bool) (
 	if err != nil {
 		return Thread{}, err
 	}
+	ordered := depthFirst(root.Comment.ID, descendants)
+	if admin {
+		return Thread{Root: root, Descendants: ordered}, nil
+	}
 	target, err := m.targets.Resolve(
 		ctx,
 		root.Comment.TargetType,
@@ -185,8 +190,8 @@ func (m *Manager) Thread(ctx context.Context, id, viewerID uint64, admin bool) (
 		return Thread{}, err
 	}
 	root.TargetOwnerID = target.OwnerID
-	setTargetOwner(descendants, target.OwnerID)
-	return Thread{Root: root, Descendants: depthFirst(root.Comment.ID, descendants)}, nil
+	setTargetOwner(ordered, target.OwnerID)
+	return Thread{Root: root, Descendants: ordered}, nil
 }
 
 // Update edits an owned comment and returns it to moderation.
@@ -348,7 +353,11 @@ func (m *Manager) ViewerContext(
 func normalizeTargetType(value string) (string, error) {
 	value = strings.ToLower(strings.TrimSpace(value))
 	switch value {
-	case TargetActivity, TargetMarketplace, TargetErrand, TargetCarpool:
+	case TargetActivity,
+		TargetMarketplace,
+		TargetErrand,
+		TargetCarpool,
+		TargetCampusCirclePost:
 		return value, nil
 	default:
 		return "", apperror.New(http.StatusBadRequest, "unsupported_comment_target", "该资源类型暂不支持评论")

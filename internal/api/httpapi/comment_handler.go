@@ -131,7 +131,7 @@ func (h *Handler) createComment(c *gin.Context) {
 		return
 	}
 	item, err := h.comments.Create(c.Request.Context(), c.GetUint64(userIDKey), commentapp.CreateInput{
-		TargetType: request.TargetType,
+		TargetType: string(request.TargetType),
 		TargetID:   request.TargetID,
 		ParentID:   request.ParentID,
 		Content:    request.Content,
@@ -353,23 +353,7 @@ func (h *Handler) commentView(
 }
 
 func (h *Handler) commentActionsForViewer(c *gin.Context, actions []string) ([]string, error) {
-	if c.GetUint64(userIDKey) == 0 || !containsAction(actions, commentdomain.ActionReply) {
-		return actions, nil
-	}
-	verified, err := h.viewerAcademicVerified(c)
-	if err != nil {
-		return nil, err
-	}
-	if verified {
-		return actions, nil
-	}
-	result := make([]string, 0, len(actions))
-	for _, action := range actions {
-		if action != commentdomain.ActionReply {
-			result = append(result, action)
-		}
-	}
-	return append(result, actionVerifyAcademic), nil
+	return h.availableActionsForViewer(c, actions, commentdomain.ActionReply)
 }
 
 func commentStringValue[T ~string](value *T) string {

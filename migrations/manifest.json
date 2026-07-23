@@ -192,6 +192,14 @@
     {
       "path": "migrations/20260723132057_add_comment_moderation.up.sql",
       "sha256": "201e43b686f387a51e849286494148f57f2e6bc2a33a390b0561e02b7dd48bd5"
+    },
+    {
+      "path": "migrations/20260723142252_add_campus_circle.down.sql",
+      "sha256": "cc651237db51eb5dcd214e3c1f00d0bbb1b1356928349a93b9548fd916659566"
+    },
+    {
+      "path": "migrations/20260723142252_add_campus_circle.up.sql",
+      "sha256": "1f4f2bc85809538ec2b76dc415975ba6ca6e266f775c0d681ae1e9ae47cead05"
     }
   ]
 }

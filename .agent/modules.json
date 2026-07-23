@@ -21,6 +21,17 @@
       "schema": "schemas/activity.yaml"
     },
     {
+      "name": "campus_circle",
+      "entity": "CampusCircleSection",
+      "entities": [
+        "CampusCircleSection",
+        "CampusCirclePost",
+        "CampusCirclePostImage",
+        "CampusCirclePostLike"
+      ],
+      "schema": "schemas/campus_circle.yaml"
+    },
+    {
       "name": "carpool",
       "entity": "Trip",
       "entities": [

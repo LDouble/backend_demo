@@ -6,17 +6,24 @@ import (
 
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
+	campuscircleapp "github.com/weouc-plus/campus-platform/internal/modules/campus_circle/application"
+	campuscircledomain "github.com/weouc-plus/campus-platform/internal/modules/campus_circle/domain"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	commentapp "github.com/weouc-plus/campus-platform/internal/modules/comment/application"
 	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
 	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
 )
 
+type campusCircleCommentTarget interface {
+	GetPost(context.Context, uint64, uint64, bool) (campuscircleapp.Item, error)
+}
+
 type commentTargetResolver struct {
-	activities  *activityapp.Manager
-	marketplace *marketplaceapp.Manager
-	errands     *errandapp.Manager
-	carpools    *carpoolapp.Manager
+	activities   *activityapp.Manager
+	campusCircle campusCircleCommentTarget
+	marketplace  *marketplaceapp.Manager
+	errands      *errandapp.Manager
+	carpools     *carpoolapp.Manager
 }
 
 func (r commentTargetResolver) Resolve(
@@ -62,6 +69,15 @@ func (r commentTargetResolver) Resolve(
 			return commentapp.Target{}, commentTargetNotFound()
 		}
 		return commentapp.Target{OwnerID: target.OrganizerId}, nil
+	case commentapp.TargetCampusCirclePost:
+		target, err := r.campusCircle.GetPost(ctx, targetID, viewerID, false)
+		if err != nil {
+			return commentapp.Target{}, err
+		}
+		if target.Post.ID != targetID || target.Post.Status != campuscircledomain.PostStatusApproved {
+			return commentapp.Target{}, commentTargetNotFound()
+		}
+		return commentapp.Target{OwnerID: target.Post.AuthorId}, nil
 	default:
 		return commentapp.Target{}, apperror.New(
 			http.StatusBadRequest,

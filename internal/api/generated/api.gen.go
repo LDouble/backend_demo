@@ -50,6 +50,105 @@ func (e ActivityViewerAction) Valid() bool {
 	}
 }
 
+// Defines values for CampusCirclePostStatus.
+const (
+	CampusCirclePostStatusApproved      CampusCirclePostStatus = "approved"
+	CampusCirclePostStatusPendingReview CampusCirclePostStatus = "pending_review"
+	CampusCirclePostStatusRejected      CampusCirclePostStatus = "rejected"
+	CampusCirclePostStatusWithdrawn     CampusCirclePostStatus = "withdrawn"
+)
+
+// Valid indicates whether the value is a known member of the CampusCirclePostStatus enum.
+func (e CampusCirclePostStatus) Valid() bool {
+	switch e {
+	case CampusCirclePostStatusApproved:
+		return true
+	case CampusCirclePostStatusPendingReview:
+		return true
+	case CampusCirclePostStatusRejected:
+		return true
+	case CampusCirclePostStatusWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CampusCircleSectionStatus.
+const (
+	CampusCircleSectionStatusActive   CampusCircleSectionStatus = "active"
+	CampusCircleSectionStatusArchived CampusCircleSectionStatus = "archived"
+)
+
+// Valid indicates whether the value is a known member of the CampusCircleSectionStatus enum.
+func (e CampusCircleSectionStatus) Valid() bool {
+	switch e {
+	case CampusCircleSectionStatusActive:
+		return true
+	case CampusCircleSectionStatusArchived:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CampusCircleViewerAction.
+const (
+	CampusCircleViewerActionComment        CampusCircleViewerAction = "comment"
+	CampusCircleViewerActionEdit           CampusCircleViewerAction = "edit"
+	CampusCircleViewerActionLike           CampusCircleViewerAction = "like"
+	CampusCircleViewerActionSubmitReview   CampusCircleViewerAction = "submit_review"
+	CampusCircleViewerActionUnlike         CampusCircleViewerAction = "unlike"
+	CampusCircleViewerActionVerifyAcademic CampusCircleViewerAction = "verify_academic"
+	CampusCircleViewerActionWithdraw       CampusCircleViewerAction = "withdraw"
+)
+
+// Valid indicates whether the value is a known member of the CampusCircleViewerAction enum.
+func (e CampusCircleViewerAction) Valid() bool {
+	switch e {
+	case CampusCircleViewerActionComment:
+		return true
+	case CampusCircleViewerActionEdit:
+		return true
+	case CampusCircleViewerActionLike:
+		return true
+	case CampusCircleViewerActionSubmitReview:
+		return true
+	case CampusCircleViewerActionUnlike:
+		return true
+	case CampusCircleViewerActionVerifyAcademic:
+		return true
+	case CampusCircleViewerActionWithdraw:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CampusCircleViewerRelation.
+const (
+	CampusCircleViewerRelationAdmin     CampusCircleViewerRelation = "admin"
+	CampusCircleViewerRelationAnonymous CampusCircleViewerRelation = "anonymous"
+	CampusCircleViewerRelationOther     CampusCircleViewerRelation = "other"
+	CampusCircleViewerRelationOwner     CampusCircleViewerRelation = "owner"
+)
+
+// Valid indicates whether the value is a known member of the CampusCircleViewerRelation enum.
+func (e CampusCircleViewerRelation) Valid() bool {
+	switch e {
+	case CampusCircleViewerRelationAdmin:
+		return true
+	case CampusCircleViewerRelationAnonymous:
+		return true
+	case CampusCircleViewerRelationOther:
+		return true
+	case CampusCircleViewerRelationOwner:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CarpoolViewerAction.
 const (
 	CarpoolViewerActionCancel         CarpoolViewerAction = "cancel"
@@ -82,16 +181,19 @@ func (e CarpoolViewerAction) Valid() bool {
 
 // Defines values for CommentTargetType.
 const (
-	CommentTargetTypeActivity    CommentTargetType = "activity"
-	CommentTargetTypeCarpool     CommentTargetType = "carpool"
-	CommentTargetTypeErrand      CommentTargetType = "errand"
-	CommentTargetTypeMarketplace CommentTargetType = "marketplace"
+	CommentTargetTypeActivity         CommentTargetType = "activity"
+	CommentTargetTypeCampusCirclePost CommentTargetType = "campus_circle_post"
+	CommentTargetTypeCarpool          CommentTargetType = "carpool"
+	CommentTargetTypeErrand           CommentTargetType = "errand"
+	CommentTargetTypeMarketplace      CommentTargetType = "marketplace"
 )
 
 // Valid indicates whether the value is a known member of the CommentTargetType enum.
 func (e CommentTargetType) Valid() bool {
 	switch e {
 	case CommentTargetTypeActivity:
+		return true
+	case CommentTargetTypeCampusCirclePost:
 		return true
 	case CommentTargetTypeCarpool:
 		return true
@@ -572,18 +674,45 @@ func (e ConfigVisibilityQuery) Valid() bool {
 	}
 }
 
+// Defines values for ListAdminCampusCirclePostsParamsStatus.
+const (
+	ListAdminCampusCirclePostsParamsStatusApproved      ListAdminCampusCirclePostsParamsStatus = "approved"
+	ListAdminCampusCirclePostsParamsStatusPendingReview ListAdminCampusCirclePostsParamsStatus = "pending_review"
+	ListAdminCampusCirclePostsParamsStatusRejected      ListAdminCampusCirclePostsParamsStatus = "rejected"
+	ListAdminCampusCirclePostsParamsStatusWithdrawn     ListAdminCampusCirclePostsParamsStatus = "withdrawn"
+)
+
+// Valid indicates whether the value is a known member of the ListAdminCampusCirclePostsParamsStatus enum.
+func (e ListAdminCampusCirclePostsParamsStatus) Valid() bool {
+	switch e {
+	case ListAdminCampusCirclePostsParamsStatusApproved:
+		return true
+	case ListAdminCampusCirclePostsParamsStatusPendingReview:
+		return true
+	case ListAdminCampusCirclePostsParamsStatusRejected:
+		return true
+	case ListAdminCampusCirclePostsParamsStatusWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAdminCommentsParamsTargetType.
 const (
-	ListAdminCommentsParamsTargetTypeActivity    ListAdminCommentsParamsTargetType = "activity"
-	ListAdminCommentsParamsTargetTypeCarpool     ListAdminCommentsParamsTargetType = "carpool"
-	ListAdminCommentsParamsTargetTypeErrand      ListAdminCommentsParamsTargetType = "errand"
-	ListAdminCommentsParamsTargetTypeMarketplace ListAdminCommentsParamsTargetType = "marketplace"
+	ListAdminCommentsParamsTargetTypeActivity         ListAdminCommentsParamsTargetType = "activity"
+	ListAdminCommentsParamsTargetTypeCampusCirclePost ListAdminCommentsParamsTargetType = "campus_circle_post"
+	ListAdminCommentsParamsTargetTypeCarpool          ListAdminCommentsParamsTargetType = "carpool"
+	ListAdminCommentsParamsTargetTypeErrand           ListAdminCommentsParamsTargetType = "errand"
+	ListAdminCommentsParamsTargetTypeMarketplace      ListAdminCommentsParamsTargetType = "marketplace"
 )
 
 // Valid indicates whether the value is a known member of the ListAdminCommentsParamsTargetType enum.
 func (e ListAdminCommentsParamsTargetType) Valid() bool {
 	switch e {
 	case ListAdminCommentsParamsTargetTypeActivity:
+		return true
+	case ListAdminCommentsParamsTargetTypeCampusCirclePost:
 		return true
 	case ListAdminCommentsParamsTargetTypeCarpool:
 		return true
@@ -620,12 +749,37 @@ func (e ListAdminCommentsParamsStatus) Valid() bool {
 	}
 }
 
+// Defines values for ListMyCampusCirclePostsParamsStatus.
+const (
+	ListMyCampusCirclePostsParamsStatusApproved      ListMyCampusCirclePostsParamsStatus = "approved"
+	ListMyCampusCirclePostsParamsStatusPendingReview ListMyCampusCirclePostsParamsStatus = "pending_review"
+	ListMyCampusCirclePostsParamsStatusRejected      ListMyCampusCirclePostsParamsStatus = "rejected"
+	ListMyCampusCirclePostsParamsStatusWithdrawn     ListMyCampusCirclePostsParamsStatus = "withdrawn"
+)
+
+// Valid indicates whether the value is a known member of the ListMyCampusCirclePostsParamsStatus enum.
+func (e ListMyCampusCirclePostsParamsStatus) Valid() bool {
+	switch e {
+	case ListMyCampusCirclePostsParamsStatusApproved:
+		return true
+	case ListMyCampusCirclePostsParamsStatusPendingReview:
+		return true
+	case ListMyCampusCirclePostsParamsStatusRejected:
+		return true
+	case ListMyCampusCirclePostsParamsStatusWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListCommentsParamsTargetType.
 const (
-	ListCommentsParamsTargetTypeActivity    ListCommentsParamsTargetType = "activity"
-	ListCommentsParamsTargetTypeCarpool     ListCommentsParamsTargetType = "carpool"
-	ListCommentsParamsTargetTypeErrand      ListCommentsParamsTargetType = "errand"
-	ListCommentsParamsTargetTypeMarketplace ListCommentsParamsTargetType = "marketplace"
+	ListCommentsParamsTargetTypeActivity         ListCommentsParamsTargetType = "activity"
+	ListCommentsParamsTargetTypeCampusCirclePost ListCommentsParamsTargetType = "campus_circle_post"
+	ListCommentsParamsTargetTypeCarpool          ListCommentsParamsTargetType = "carpool"
+	ListCommentsParamsTargetTypeErrand           ListCommentsParamsTargetType = "errand"
+	ListCommentsParamsTargetTypeMarketplace      ListCommentsParamsTargetType = "marketplace"
 )
 
 // Valid indicates whether the value is a known member of the ListCommentsParamsTargetType enum.
@@ -633,11 +787,40 @@ func (e ListCommentsParamsTargetType) Valid() bool {
 	switch e {
 	case ListCommentsParamsTargetTypeActivity:
 		return true
+	case ListCommentsParamsTargetTypeCampusCirclePost:
+		return true
 	case ListCommentsParamsTargetTypeCarpool:
 		return true
 	case ListCommentsParamsTargetTypeErrand:
 		return true
 	case ListCommentsParamsTargetTypeMarketplace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCommentJSONBodyTargetType.
+const (
+	CreateCommentJSONBodyTargetTypeActivity         CreateCommentJSONBodyTargetType = "activity"
+	CreateCommentJSONBodyTargetTypeCampusCirclePost CreateCommentJSONBodyTargetType = "campus_circle_post"
+	CreateCommentJSONBodyTargetTypeCarpool          CreateCommentJSONBodyTargetType = "carpool"
+	CreateCommentJSONBodyTargetTypeErrand           CreateCommentJSONBodyTargetType = "errand"
+	CreateCommentJSONBodyTargetTypeMarketplace      CreateCommentJSONBodyTargetType = "marketplace"
+)
+
+// Valid indicates whether the value is a known member of the CreateCommentJSONBodyTargetType enum.
+func (e CreateCommentJSONBodyTargetType) Valid() bool {
+	switch e {
+	case CreateCommentJSONBodyTargetTypeActivity:
+		return true
+	case CreateCommentJSONBodyTargetTypeCampusCirclePost:
+		return true
+	case CreateCommentJSONBodyTargetTypeCarpool:
+		return true
+	case CreateCommentJSONBodyTargetTypeErrand:
+		return true
+	case CreateCommentJSONBodyTargetTypeMarketplace:
 		return true
 	default:
 		return false
@@ -876,6 +1059,104 @@ type AdminNoticeEnvelope struct {
 	Data      AdminNotice `json:"data"`
 	RequestID string      `json:"request_id"`
 }
+
+// CampusCirclePostImageView defines model for CampusCirclePostImageView.
+type CampusCirclePostImageView struct {
+	ID        uint64 `json:"id"`
+	SortOrder int64  `json:"sort_order"`
+	URL       string `json:"url"`
+}
+
+// CampusCirclePostPage defines model for CampusCirclePostPage.
+type CampusCirclePostPage struct {
+	Items    []CampusCirclePostView `json:"items"`
+	Page     int                    `json:"page"`
+	PageSize int                    `json:"page_size"`
+	Total    int64                  `json:"total"`
+}
+
+// CampusCirclePostPageResponseBody defines model for CampusCirclePostPageResponseBody.
+type CampusCirclePostPageResponseBody struct {
+	Data      CampusCirclePostPage `json:"data"`
+	RequestID string               `json:"request_id"`
+}
+
+// CampusCirclePostResponseBody defines model for CampusCirclePostResponseBody.
+type CampusCirclePostResponseBody struct {
+	Data      CampusCirclePostView `json:"data"`
+	RequestID string               `json:"request_id"`
+}
+
+// CampusCirclePostStatus defines model for CampusCirclePostStatus.
+type CampusCirclePostStatus string
+
+// CampusCirclePostView defines model for CampusCirclePostView.
+type CampusCirclePostView struct {
+	AuthorID         uint64                     `json:"author_id"`
+	AvailableActions []CampusCircleViewerAction `json:"available_actions"`
+
+	// CommentCount 审核通过且公开可见的根评论数量
+	CommentCount   int64                       `json:"comment_count"`
+	Content        *string                     `json:"content"`
+	CreatedAt      time.Time                   `json:"created_at"`
+	ID             uint64                      `json:"id"`
+	Images         []CampusCirclePostImageView `json:"images"`
+	LikeCount      int64                       `json:"like_count"`
+	Liked          bool                        `json:"liked"`
+	PublishedAt    *time.Time                  `json:"published_at"`
+	ReviewReason   *string                     `json:"review_reason"`
+	ReviewedAt     *time.Time                  `json:"reviewed_at"`
+	ReviewedBy     *uint64                     `json:"reviewed_by"`
+	SectionID      uint64                      `json:"section_id"`
+	Status         CampusCirclePostStatus      `json:"status"`
+	Title          *string                     `json:"title"`
+	UpdatedAt      time.Time                   `json:"updated_at"`
+	Version        uint64                      `json:"version"`
+	ViewerRelation CampusCircleViewerRelation  `json:"viewer_relation"`
+}
+
+// CampusCircleSectionResponseBody defines model for CampusCircleSectionResponseBody.
+type CampusCircleSectionResponseBody struct {
+	Data      CampusCircleSectionView `json:"data"`
+	RequestID string                  `json:"request_id"`
+}
+
+// CampusCircleSectionStatus defines model for CampusCircleSectionStatus.
+type CampusCircleSectionStatus string
+
+// CampusCircleSectionTree defines model for CampusCircleSectionTree.
+type CampusCircleSectionTree struct {
+	Items []CampusCircleSectionView `json:"items"`
+}
+
+// CampusCircleSectionTreeResponseBody defines model for CampusCircleSectionTreeResponseBody.
+type CampusCircleSectionTreeResponseBody struct {
+	Data      CampusCircleSectionTree `json:"data"`
+	RequestID string                  `json:"request_id"`
+}
+
+// CampusCircleSectionView defines model for CampusCircleSectionView.
+type CampusCircleSectionView struct {
+	Children    []CampusCircleSectionView `json:"children"`
+	CoverURL    *string                   `json:"cover_url"`
+	CreatedAt   time.Time                 `json:"created_at"`
+	Description *string                   `json:"description"`
+	IconURL     *string                   `json:"icon_url"`
+	ID          uint64                    `json:"id"`
+	Name        string                    `json:"name"`
+	ParentID    *uint64                   `json:"parent_id"`
+	Slug        string                    `json:"slug"`
+	SortOrder   int64                     `json:"sort_order"`
+	Status      CampusCircleSectionStatus `json:"status"`
+	UpdatedAt   time.Time                 `json:"updated_at"`
+	Version     uint64                    `json:"version"`
+}
+
+// CampusCircleViewerAction defines model for CampusCircleViewerAction.
+type CampusCircleViewerAction string
+
+// CampusCircleViewerRelation defines model for CampusCircleViewerRelation.
+type CampusCircleViewerRelation string
 
 // CarpoolTripPageResponseBody defines model for CarpoolTripPageResponseBody.
 type CarpoolTripPageResponseBody struct {
@@ -1745,6 +2026,18 @@ type ActivityResponse = ActivityResponseBody
 // AdminNoticeResponse defines model for AdminNoticeResponse.
 type AdminNoticeResponse = AdminNoticeEnvelope
 
+// CampusCirclePostPageResponse defines model for CampusCirclePostPageResponse.
+type CampusCirclePostPageResponse = CampusCirclePostPageResponseBody
+
+// CampusCirclePostResponse defines model for CampusCirclePostResponse.
+type CampusCirclePostResponse = CampusCirclePostResponseBody
+
+// CampusCircleSectionResponse defines model for CampusCircleSectionResponse.
+type CampusCircleSectionResponse = CampusCircleSectionResponseBody
+
+// CampusCircleSectionTreeResponse defines model for CampusCircleSectionTreeResponse.
+type CampusCircleSectionTreeResponse = CampusCircleSectionTreeResponseBody
+
 // CarpoolTripPageResponse defines model for CarpoolTripPageResponse.
 type CarpoolTripPageResponse = CarpoolTripPageResponseBody
 
@@ -2151,6 +2444,95 @@ type SubmitAdminActivityReviewParams struct {
 	IdempotencyKey string `json:"Idempotency-Key"`
 }
 
+// ListAdminCampusCirclePostsParams defines parameters for ListAdminCampusCirclePosts.
+type ListAdminCampusCirclePostsParams struct {
+	SectionID   *uint64                                 `form:"section_id,omitempty" json:"section_id,omitempty"`
+	AuthorID    *uint64                                 `form:"author_id,omitempty" json:"author_id,omitempty"`
+	Status      *ListAdminCampusCirclePostsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Keyword     *string                                 `form:"keyword,omitempty" json:"keyword,omitempty"`
+	CreatedFrom *time.Time                              `form:"created_from,omitempty" json:"created_from,omitempty"`
+	CreatedTo   *time.Time                              `form:"created_to,omitempty" json:"created_to,omitempty"`
+	Page        *int32                                  `form:"page,omitempty" json:"page,omitempty"`
+	PageSize    *int32                                  `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// ListAdminCampusCirclePostsParamsStatus defines parameters for ListAdminCampusCirclePosts.
+type ListAdminCampusCirclePostsParamsStatus string
+
+// ReviewCampusCirclePostJSONBody defines parameters for ReviewCampusCirclePost.
+type ReviewCampusCirclePostJSONBody struct {
+	Approved        bool    `json:"approved"`
+	ExpectedVersion uint64  `json:"expected_version"`
+	Reason          *string `json:"reason,omitempty"`
+}
+
+// ReviewCampusCirclePostParams defines parameters for ReviewCampusCirclePost.
+type ReviewCampusCirclePostParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// RevokeCampusCirclePostReviewJSONBody defines parameters for RevokeCampusCirclePostReview.
+type RevokeCampusCirclePostReviewJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+	Reason          string `json:"reason"`
+}
+
+// RevokeCampusCirclePostReviewParams defines parameters for RevokeCampusCirclePostReview.
+type RevokeCampusCirclePostReviewParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// CreateCampusCircleSectionJSONBody defines parameters for CreateCampusCircleSection.
+type CreateCampusCircleSectionJSONBody struct {
+	CoverURL    *string `json:"cover_url,omitempty"`
+	Description *string `json:"description,omitempty"`
+	IconURL     *string `json:"icon_url,omitempty"`
+	Name        string  `json:"name"`
+	ParentID    *uint64 `json:"parent_id,omitempty"`
+	Slug        string  `json:"slug"`
+	SortOrder   int64   `json:"sort_order"`
+}
+
+// CreateCampusCircleSectionParams defines parameters for CreateCampusCircleSection.
+type CreateCampusCircleSectionParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// UpdateCampusCircleSectionJSONBody defines parameters for UpdateCampusCircleSection.
+type UpdateCampusCircleSectionJSONBody struct {
+	CoverURL        *string `json:"cover_url,omitempty"`
+	Description     *string `json:"description,omitempty"`
+	ExpectedVersion uint64  `json:"expected_version"`
+	IconURL         *string `json:"icon_url,omitempty"`
+	Name            string  `json:"name"`
+	SortOrder       int64   `json:"sort_order"`
+}
+
+// UpdateCampusCircleSectionParams defines parameters for UpdateCampusCircleSection.
+type UpdateCampusCircleSectionParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// ActivateCampusCircleSectionJSONBody defines parameters for ActivateCampusCircleSection.
+type ActivateCampusCircleSectionJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// ActivateCampusCircleSectionParams defines parameters for ActivateCampusCircleSection.
+type ActivateCampusCircleSectionParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// ArchiveCampusCircleSectionJSONBody defines parameters for ArchiveCampusCircleSection.
+type ArchiveCampusCircleSectionJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// ArchiveCampusCircleSectionParams defines parameters for ArchiveCampusCircleSection.
+type ArchiveCampusCircleSectionParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // ListAdminCarpoolTripsParams defines parameters for ListAdminCarpoolTrips.
 type ListAdminCarpoolTripsParams struct {
 	Status       *string `form:"status,omitempty" json:"status,omitempty"`
@@ -2335,6 +2717,74 @@ type ChangeMyPasswordParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
+// ListCampusCirclePostsParams defines parameters for ListCampusCirclePosts.
+type ListCampusCirclePostsParams struct {
+	SectionID       *uint64 `form:"section_id,omitempty" json:"section_id,omitempty"`
+	ParentSectionID *uint64 `form:"parent_section_id,omitempty" json:"parent_section_id,omitempty"`
+	Keyword         *string `form:"keyword,omitempty" json:"keyword,omitempty"`
+	Page            *int32  `form:"page,omitempty" json:"page,omitempty"`
+	PageSize        *int32  `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// CreateCampusCirclePostJSONBody defines parameters for CreateCampusCirclePost.
+type CreateCampusCirclePostJSONBody struct {
+	Content   *string   `json:"content,omitempty"`
+	ImageUrls *[]string `json:"image_urls,omitempty"`
+	SectionID uint64    `json:"section_id"`
+	Title     *string   `json:"title,omitempty"`
+}
+
+// CreateCampusCirclePostParams defines parameters for CreateCampusCirclePost.
+type CreateCampusCirclePostParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// ListMyCampusCirclePostsParams defines parameters for ListMyCampusCirclePosts.
+type ListMyCampusCirclePostsParams struct {
+	SectionID *uint64                              `form:"section_id,omitempty" json:"section_id,omitempty"`
+	Status    *ListMyCampusCirclePostsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Keyword   *string                              `form:"keyword,omitempty" json:"keyword,omitempty"`
+	Page      *int32                               `form:"page,omitempty" json:"page,omitempty"`
+	PageSize  *int32                               `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// ListMyCampusCirclePostsParamsStatus defines parameters for ListMyCampusCirclePosts.
+type ListMyCampusCirclePostsParamsStatus string
+
+// UpdateCampusCirclePostJSONBody defines parameters for UpdateCampusCirclePost.
+type UpdateCampusCirclePostJSONBody struct {
+	Content         *string   `json:"content,omitempty"`
+	ExpectedVersion uint64    `json:"expected_version"`
+	ImageUrls       *[]string `json:"image_urls,omitempty"`
+	SectionID       uint64    `json:"section_id"`
+	Title           *string   `json:"title,omitempty"`
+}
+
+// UpdateCampusCirclePostParams defines parameters for UpdateCampusCirclePost.
+type UpdateCampusCirclePostParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// SubmitCampusCirclePostReviewJSONBody defines parameters for SubmitCampusCirclePostReview.
+type SubmitCampusCirclePostReviewJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// SubmitCampusCirclePostReviewParams defines parameters for SubmitCampusCirclePostReview.
+type SubmitCampusCirclePostReviewParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
+// WithdrawCampusCirclePostJSONBody defines parameters for WithdrawCampusCirclePost.
+type WithdrawCampusCirclePostJSONBody struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+}
+
+// WithdrawCampusCirclePostParams defines parameters for WithdrawCampusCirclePost.
+type WithdrawCampusCirclePostParams struct {
+	IdempotencyKey string `json:"Idempotency-Key"`
+}
+
 // ListCarpoolTripsParams defines parameters for ListCarpoolTrips.
 type ListCarpoolTripsParams struct {
 	Origin        *string             `form:"origin,omitempty" json:"origin,omitempty"`
@@ -2440,16 +2890,19 @@ type ListCommentsParamsTargetType string
 
 // CreateCommentJSONBody defines parameters for CreateComment.
 type CreateCommentJSONBody struct {
-	Content    string  `json:"content"`
-	ParentID   *uint64 `json:"parent_id,omitempty"`
-	TargetID   uint64  `json:"target_id"`
-	TargetType string  `json:"target_type"`
+	Content    string                          `json:"content"`
+	ParentID   *uint64                         `json:"parent_id,omitempty"`
+	TargetID   uint64                          `json:"target_id"`
+	TargetType CreateCommentJSONBodyTargetType `json:"target_type"`
 }
 
 // CreateCommentParams defines parameters for CreateComment.
 type CreateCommentParams struct {
 	IdempotencyKey string `json:"Idempotency-Key"`
 }
+
+// CreateCommentJSONBodyTargetType defines parameters for CreateComment.
+type CreateCommentJSONBodyTargetType string
 
 // ListMyCommentsParams defines parameters for ListMyComments.
 type ListMyCommentsParams struct {
@@ -2879,6 +3332,24 @@ type RejectAdminActivityJSONRequestBody RejectAdminActivityJSONBody
 // SubmitAdminActivityReviewJSONRequestBody defines body for SubmitAdminActivityReview for application/json ContentType.
 type SubmitAdminActivityReviewJSONRequestBody SubmitAdminActivityReviewJSONBody
 
+// ReviewCampusCirclePostJSONRequestBody defines body for ReviewCampusCirclePost for application/json ContentType.
+type ReviewCampusCirclePostJSONRequestBody ReviewCampusCirclePostJSONBody
+
+// RevokeCampusCirclePostReviewJSONRequestBody defines body for RevokeCampusCirclePostReview for application/json ContentType.
+type RevokeCampusCirclePostReviewJSONRequestBody RevokeCampusCirclePostReviewJSONBody
+
+// CreateCampusCircleSectionJSONRequestBody defines body for CreateCampusCircleSection for application/json ContentType.
+type CreateCampusCircleSectionJSONRequestBody CreateCampusCircleSectionJSONBody
+
+// UpdateCampusCircleSectionJSONRequestBody defines body for UpdateCampusCircleSection for application/json ContentType.
+type UpdateCampusCircleSectionJSONRequestBody UpdateCampusCircleSectionJSONBody
+
+// ActivateCampusCircleSectionJSONRequestBody defines body for ActivateCampusCircleSection for application/json ContentType.
+type ActivateCampusCircleSectionJSONRequestBody ActivateCampusCircleSectionJSONBody
+
+// ArchiveCampusCircleSectionJSONRequestBody defines body for ArchiveCampusCircleSection for application/json ContentType.
+type ArchiveCampusCircleSectionJSONRequestBody ArchiveCampusCircleSectionJSONBody
+
 // ReviewCarpoolTripJSONRequestBody defines body for ReviewCarpoolTrip for application/json ContentType.
 type ReviewCarpoolTripJSONRequestBody ReviewCarpoolTripJSONBody
 
@@ -2923,6 +3394,18 @@ type RefreshJSONRequestBody = RefreshRequest
 
 // WechatLoginJSONRequestBody defines body for WechatLogin for application/json ContentType.
 type WechatLoginJSONRequestBody = WechatLoginRequest
+
+// CreateCampusCirclePostJSONRequestBody defines body for CreateCampusCirclePost for application/json ContentType.
+type CreateCampusCirclePostJSONRequestBody CreateCampusCirclePostJSONBody
+
+// UpdateCampusCirclePostJSONRequestBody defines body for UpdateCampusCirclePost for application/json ContentType.
+type UpdateCampusCirclePostJSONRequestBody UpdateCampusCirclePostJSONBody
+
+// SubmitCampusCirclePostReviewJSONRequestBody defines body for SubmitCampusCirclePostReview for application/json ContentType.
+type SubmitCampusCirclePostReviewJSONRequestBody SubmitCampusCirclePostReviewJSONBody
+
+// WithdrawCampusCirclePostJSONRequestBody defines body for WithdrawCampusCirclePost for application/json ContentType.
+type WithdrawCampusCirclePostJSONRequestBody WithdrawCampusCirclePostJSONBody
 
 // CreateCarpoolTripJSONRequestBody defines body for CreateCarpoolTrip for application/json ContentType.
 type CreateCarpoolTripJSONRequestBody CreateCarpoolTripJSONBody
@@ -3124,6 +3607,33 @@ type ServerInterface interface {
 	// SubmitAdminActivityReview 提交活动审核
 	// (POST /api/v1/admin/activities/{id}/submit-review)
 	SubmitAdminActivityReview(c *gin.Context, id uint64, params SubmitAdminActivityReviewParams)
+	// ListAdminCampusCirclePosts 管理端查询校园圈帖子
+	// (GET /api/v1/admin/campus-circle/posts)
+	ListAdminCampusCirclePosts(c *gin.Context, params ListAdminCampusCirclePostsParams)
+	// GetAdminCampusCirclePost 管理端查询校园圈帖子详情
+	// (GET /api/v1/admin/campus-circle/posts/{id})
+	GetAdminCampusCirclePost(c *gin.Context, id uint64)
+	// ReviewCampusCirclePost 审核校园圈帖子
+	// (POST /api/v1/admin/campus-circle/posts/{id}/review)
+	ReviewCampusCirclePost(c *gin.Context, id uint64, params ReviewCampusCirclePostParams)
+	// RevokeCampusCirclePostReview 撤销校园圈帖子审核结果
+	// (POST /api/v1/admin/campus-circle/posts/{id}/revoke-review)
+	RevokeCampusCirclePostReview(c *gin.Context, id uint64, params RevokeCampusCirclePostReviewParams)
+	// ListAdminCampusCircleSections 管理端查询全部校园圈子模块
+	// (GET /api/v1/admin/campus-circle/sections)
+	ListAdminCampusCircleSections(c *gin.Context)
+	// CreateCampusCircleSection 创建校园圈子模块
+	// (POST /api/v1/admin/campus-circle/sections)
+	CreateCampusCircleSection(c *gin.Context, params CreateCampusCircleSectionParams)
+	// UpdateCampusCircleSection 修改校园圈子模块
+	// (PATCH /api/v1/admin/campus-circle/sections/{id})
+	UpdateCampusCircleSection(c *gin.Context, id uint64, params UpdateCampusCircleSectionParams)
+	// ActivateCampusCircleSection 启用校园圈子模块
+	// (POST /api/v1/admin/campus-circle/sections/{id}/activate)
+	ActivateCampusCircleSection(c *gin.Context, id uint64, params ActivateCampusCircleSectionParams)
+	// ArchiveCampusCircleSection 归档校园圈子模块
+	// (POST /api/v1/admin/campus-circle/sections/{id}/archive)
+	ArchiveCampusCircleSection(c *gin.Context, id uint64, params ArchiveCampusCircleSectionParams)
 	// ListAdminCarpoolTrips 管理端查询拼车行程
 	// (GET /api/v1/admin/carpool/trips)
 	ListAdminCarpoolTrips(c *gin.Context, params ListAdminCarpoolTripsParams)
@@ -3205,6 +3715,36 @@ type ServerInterface interface {
 
 	// (POST /api/v1/auth/wechat/login)
 	WechatLogin(c *gin.Context)
+	// ListCampusCirclePosts 查询已审核通过的校园圈帖子
+	// (GET /api/v1/campus-circle/posts)
+	ListCampusCirclePosts(c *gin.Context, params ListCampusCirclePostsParams)
+	// CreateCampusCirclePost 发布校园圈帖子并进入待审核
+	// (POST /api/v1/campus-circle/posts)
+	CreateCampusCirclePost(c *gin.Context, params CreateCampusCirclePostParams)
+	// ListMyCampusCirclePosts 查询我发布的校园圈帖子
+	// (GET /api/v1/campus-circle/posts/mine)
+	ListMyCampusCirclePosts(c *gin.Context, params ListMyCampusCirclePostsParams)
+	// GetCampusCirclePost 查询校园圈帖子详情
+	// (GET /api/v1/campus-circle/posts/{id})
+	GetCampusCirclePost(c *gin.Context, id uint64)
+	// UpdateCampusCirclePost 编辑我的校园圈帖子并重新进入待审核
+	// (PATCH /api/v1/campus-circle/posts/{id})
+	UpdateCampusCirclePost(c *gin.Context, id uint64, params UpdateCampusCirclePostParams)
+	// UnlikeCampusCirclePost 取消点赞校园圈帖子
+	// (DELETE /api/v1/campus-circle/posts/{id}/like)
+	UnlikeCampusCirclePost(c *gin.Context, id uint64)
+	// LikeCampusCirclePost 点赞校园圈帖子
+	// (PUT /api/v1/campus-circle/posts/{id}/like)
+	LikeCampusCirclePost(c *gin.Context, id uint64)
+	// SubmitCampusCirclePostReview 重新提交被拒绝的校园圈帖子
+	// (POST /api/v1/campus-circle/posts/{id}/submit-review)
+	SubmitCampusCirclePostReview(c *gin.Context, id uint64, params SubmitCampusCirclePostReviewParams)
+	// WithdrawCampusCirclePost 撤回我的校园圈帖子
+	// (POST /api/v1/campus-circle/posts/{id}/withdraw)
+	WithdrawCampusCirclePost(c *gin.Context, id uint64, params WithdrawCampusCirclePostParams)
+	// ListCampusCircleSections 查询启用的校园圈子模块树
+	// (GET /api/v1/campus-circle/sections)
+	ListCampusCircleSections(c *gin.Context)
 	// ListCarpoolTrips 搜索开放拼车行程
 	// (GET /api/v1/carpool/trips)
 	ListCarpoolTrips(c *gin.Context, params ListCarpoolTripsParams)
@@ -4786,6 +5326,430 @@ func (siw *ServerInterfaceWrapper) SubmitAdminActivityReview(c *gin.Context) {
 	siw.Handler.SubmitAdminActivityReview(c, id, params)
 }
 
+// ListAdminCampusCirclePosts operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminCampusCirclePosts(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminCampusCirclePostsParams
+
+	// ------------- Optional query parameter "section_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "section_id", c.Request.URL.Query(), &params.SectionID, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter section_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "author_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "author_id", c.Request.URL.Query(), &params.AuthorID, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter author_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", c.Request.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", c.Request.URL.Query(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter keyword: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "created_from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "created_from", c.Request.URL.Query(), &params.CreatedFrom, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter created_from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "created_to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "created_to", c.Request.URL.Query(), &params.CreatedTo, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter created_to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAdminCampusCirclePosts(c, params)
+}
+
+// GetAdminCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetAdminCampusCirclePost(c, id)
+}
+
+// ReviewCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) ReviewCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ReviewCampusCirclePostParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ReviewCampusCirclePost(c, id, params)
+}
+
+// RevokeCampusCirclePostReview operation middleware
+func (siw *ServerInterfaceWrapper) RevokeCampusCirclePostReview(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RevokeCampusCirclePostReviewParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RevokeCampusCirclePostReview(c, id, params)
+}
+
+// ListAdminCampusCircleSections operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminCampusCircleSections(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAdminCampusCircleSections(c)
+}
+
+// CreateCampusCircleSection operation middleware
+func (siw *ServerInterfaceWrapper) CreateCampusCircleSection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateCampusCircleSectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateCampusCircleSection(c, params)
+}
+
+// UpdateCampusCircleSection operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCampusCircleSection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateCampusCircleSectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateCampusCircleSection(c, id, params)
+}
+
+// ActivateCampusCircleSection operation middleware
+func (siw *ServerInterfaceWrapper) ActivateCampusCircleSection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ActivateCampusCircleSectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ActivateCampusCircleSection(c, id, params)
+}
+
+// ArchiveCampusCircleSection operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveCampusCircleSection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ArchiveCampusCircleSectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ArchiveCampusCircleSection(c, id, params)
+}
+
 // ListAdminCarpoolTrips operation middleware
 func (siw *ServerInterfaceWrapper) ListAdminCarpoolTrips(c *gin.Context) {
 
@@ -6023,6 +6987,411 @@ func (siw *ServerInterfaceWrapper) WechatLogin(c *gin.Context) {
 	}
 
 	siw.Handler.WechatLogin(c)
+}
+
+// ListCampusCirclePosts operation middleware
+func (siw *ServerInterfaceWrapper) ListCampusCirclePosts(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCampusCirclePostsParams
+
+	// ------------- Optional query parameter "section_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "section_id", c.Request.URL.Query(), &params.SectionID, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter section_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "parent_section_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "parent_section_id", c.Request.URL.Query(), &params.ParentSectionID, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter parent_section_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", c.Request.URL.Query(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter keyword: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListCampusCirclePosts(c, params)
+}
+
+// CreateCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) CreateCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateCampusCirclePostParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateCampusCirclePost(c, params)
+}
+
+// ListMyCampusCirclePosts operation middleware
+func (siw *ServerInterfaceWrapper) ListMyCampusCirclePosts(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMyCampusCirclePostsParams
+
+	// ------------- Optional query parameter "section_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "section_id", c.Request.URL.Query(), &params.SectionID, runtime.BindQueryParameterOptions{Type: "integer", Format: "uint64"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter section_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", c.Request.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", c.Request.URL.Query(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter keyword: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page", c.Request.URL.Query(), &params.Page, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "page_size", c.Request.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter page_size: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListMyCampusCirclePosts(c, params)
+}
+
+// GetCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) GetCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCampusCirclePost(c, id)
+}
+
+// UpdateCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateCampusCirclePostParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateCampusCirclePost(c, id, params)
+}
+
+// UnlikeCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) UnlikeCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UnlikeCampusCirclePost(c, id)
+}
+
+// LikeCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) LikeCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.LikeCampusCirclePost(c, id)
+}
+
+// SubmitCampusCirclePostReview operation middleware
+func (siw *ServerInterfaceWrapper) SubmitCampusCirclePostReview(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SubmitCampusCirclePostReviewParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SubmitCampusCirclePostReview(c, id, params)
+}
+
+// WithdrawCampusCirclePost operation middleware
+func (siw *ServerInterfaceWrapper) WithdrawCampusCirclePost(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id uint64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "uint64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params WithdrawCampusCirclePostParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter Idempotency-Key is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.WithdrawCampusCirclePost(c, id, params)
+}
+
+// ListCampusCircleSections operation middleware
+func (siw *ServerInterfaceWrapper) ListCampusCircleSections(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListCampusCircleSections(c)
 }
 
 // ListCarpoolTrips operation middleware
@@ -9044,6 +10413,25 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/publish", wrapper.PublishAdminActivity)
 	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/reject", wrapper.RejectAdminActivity)
 	router.POST(options.BaseURL+"/api/v1/admin/activities/:id/submit-review", wrapper.SubmitAdminActivityReview)
+	router.GET(options.BaseURL+"/api/v1/admin/campus-circle/posts", wrapper.ListAdminCampusCirclePosts)
+	router.GET(options.BaseURL+"/api/v1/admin/campus-circle/posts/:id", wrapper.GetAdminCampusCirclePost)
+	router.POST(options.BaseURL+"/api/v1/admin/campus-circle/posts/:id/review", wrapper.ReviewCampusCirclePost)
+	router.POST(options.BaseURL+"/api/v1/admin/campus-circle/posts/:id/revoke-review", wrapper.RevokeCampusCirclePostReview)
+	router.GET(options.BaseURL+"/api/v1/admin/campus-circle/sections", wrapper.ListAdminCampusCircleSections)
+	router.POST(options.BaseURL+"/api/v1/admin/campus-circle/sections", wrapper.CreateCampusCircleSection)
+	router.PATCH(options.BaseURL+"/api/v1/admin/campus-circle/sections/:id", wrapper.UpdateCampusCircleSection)
+	router.POST(options.BaseURL+"/api/v1/admin/campus-circle/sections/:id/activate", wrapper.ActivateCampusCircleSection)
+	router.POST(options.BaseURL+"/api/v1/admin/campus-circle/sections/:id/archive", wrapper.ArchiveCampusCircleSection)
+	router.GET(options.BaseURL+"/api/v1/campus-circle/posts", wrapper.ListCampusCirclePosts)
+	router.POST(options.BaseURL+"/api/v1/campus-circle/posts", wrapper.CreateCampusCirclePost)
+	router.GET(options.BaseURL+"/api/v1/campus-circle/posts/mine", wrapper.ListMyCampusCirclePosts)
+	router.GET(options.BaseURL+"/api/v1/campus-circle/posts/:id", wrapper.GetCampusCirclePost)
+	router.PATCH(options.BaseURL+"/api/v1/campus-circle/posts/:id", wrapper.UpdateCampusCirclePost)
+	router.DELETE(options.BaseURL+"/api/v1/campus-circle/posts/:id/like", wrapper.UnlikeCampusCirclePost)
+	router.PUT(options.BaseURL+"/api/v1/campus-circle/posts/:id/like", wrapper.LikeCampusCirclePost)
+	router.POST(options.BaseURL+"/api/v1/campus-circle/posts/:id/submit-review", wrapper.SubmitCampusCirclePostReview)
+	router.POST(options.BaseURL+"/api/v1/campus-circle/posts/:id/withdraw", wrapper.WithdrawCampusCirclePost)
+	router.GET(options.BaseURL+"/api/v1/campus-circle/sections", wrapper.ListCampusCircleSections)
 	router.GET(options.BaseURL+"/api/v1/admin/carpool/trips", wrapper.ListAdminCarpoolTrips)
 	router.POST(options.BaseURL+"/api/v1/admin/carpool/trips/:id/review", wrapper.ReviewCarpoolTrip)
 	router.POST(options.BaseURL+"/api/v1/admin/carpool/trips/:id/revoke-review", wrapper.RevokeCarpoolTripReview)
@@ -9118,173 +10506,197 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"7H1td9XG1ehf8dJ9Ph7XBpKs1t8ooblp8+LHQPohi3uWkMY+CjqSOpJM3CzWIjchOBAKhEBTIATnQsPT",
+	"PkBum0CAJPwZ6/j4XzxLMyNpJM1Io9dzbOtLgo9GM1t79tvsvWfvDyTFHFqmAQzHlhY+kCwZykPgAIj+",
+	"OmQay9rK70w4lJ3/dAFc83/UDGlB+hP6qycZ8hBIC9IyGiL1JFsZgKHsDwOGO5QW3pVsB2rGitST3rNN",
+	"Qzrek5w1y3+F/H76dI8s845mayc0XXPWMpdaDYcxl5PVoWZIPclyT+iawl7v8PsWUBygvgOgrZkGbyVA",
+	"hvVXybieBMGfXA0CVVpwoAvo9QkGFiRXM5xXXpJ60lAztKEP1L4QBs1wwAqACIjXoOlavKVX0EN6/qH8",
+	"/hvAWHEG0sIrL7E+6vVXw8ks2RlEc2lqvYC/roKhZTrAUNb+AKJtGgBZBTBalho264/LgoH6uH37f40g",
+	"CP9mfesfwNopE6o87J0kj7OWSE+6KK8A3oyW/4yeTgXLsqs7CL4cfPnzHtH+nDl33/YHMBfYP9/zgScr",
+	"zM/nrHca4xnYzm9NVQOYjSGQHXDMBtD/SzENBxiO/0/ZsnRNkR3NNOYQey58QIHwHxAsSwvS/5qLRMQc",
+	"fmrPRVMu4dWipaMtPt2T3jBXNKO2VdFs2QsugWUI7EFtS5L5shc9Zql1IziaMnvpPwJlIDv1opmaM2tx",
+	"9IttmYaNyeyg4mirmrPmE/wSeVAbTKzJf2uqaxgyFdgK1CwHSXNp9P1z7/x9b/2T7Y0fpNO9ELAlsKLZ",
+	"DkTLNwokbyEuwOtXtm58jMEenb/nXb6YDXwrgIthGYM7unpx8+dbW8+vjm7figPdGKAiwCFQfIPgLdPR",
+	"lAb2O5r7sLEKdNMCLGDwiBkVOLKmz5zSnMGM7KoaMBTgQ3hIHlqufUiDig4WTdtphDSzFuEi8c6Gd/OB",
+	"d2vd+/G69+ByRJPJyRqHtiCkSRiPAKURtslYIx/SB5dH9ze8r/7KAfYoBKANgOl1xIEe3bmC4YaWaepH",
+	"oWY1RLXM+blwXvhp/PPfxxufbd2/QFNrOEmTABYBDoFlDofAaIjb03Pz9/bp+NHH44fPKITht5uCKg8i",
+	"DA4FyNEBBLLaFDjx2bOBCsgeHVgb2rlg6iyNgke5WFHPoNNJCFZDIImDsyrrLobHhRAYDjZi6wYqmjsT",
+	"MjxsRnadATAcfy2gzrg2gDOyoc6A5WVfCq6CGVlRgG37UL8KdOD4G+vq9bMAPXkW3Gicj0yIhvpwHYZQ",
+	"NtS30QhZfxuqDWA1Yw0uYzy5Mj77YvP5c+/8hnfpvHfp0fijn70HX3q37m/d+Hjz2d3Rl1fHD7/xLl6j",
+	"PqJJ4MsA/eLs6NanbFgb4fL01EKQhhIav98QWEVAIsCYsE4YzEyWRgNmgpOnhJ0Mpls/r+Jps0A5Amzb",
+	"Z1LdXFkB6ozpIkZ9U4YngWPpsgLe0GxHM5rRFNnL8DZv89lno08veNc+8a5+GNFTeq4WwC0CagLIZgQI",
+	"b4FsAJNig5plCQzNVaA2CWhiCRFcbv54YXT7cXRYp2bDXqdGAU4sIQLw1vnHozMfjm5+P7r+XQQ2PlW/",
+	"CnRtFcBmnE7pJYSO+Xh4aJbh3xsEUBCwODwNwZIPhw/CIoBDDcnOQ7Ij62b94ia1QhZgrwEDQGQZWuFr",
+	"M6oGgeKYcE1CbmV0RGjCJIymzgLRH0UZg0vAgWsNbSQ1dzZEDlyjQTL1Zog8mDgTGFOPCBy9EG6k3QxA",
+	"0fz5cEVjA/AagSkXENpoWnINRxuChs6Msdmz4FpEcdoZiMfP/P7I22/NKPRx0of1iItPZ3VBR+bLNO3w",
+	"kGVXj2HtqHkSGIuyVr/xEc6cBdXB6BjriyjHfwfR1DEDAlk9ZLoNuG2oubNgw8NmDKxsFH+4FMbGmgKN",
+	"mjwTNjwuDZwNYCMyK5g4EygbwFBmNeIkyfOOIAho8kZQmDqwGwEFzZzp9UAqF7tnoD8YBdDJFLwQI7Ig",
+	"Fz6QLGhaADok5q3KjnAw6R0NnFok+0CC530NZRekswSiGOi7eI3YK1G6iXniPaA4vABeGl6ZjCILp7My",
+	"kpH+nqTIhgJ0Hah92Ym949P6rC9OpZ5kuLoun9BBkHSR+KKeJL4eRB8AYPaCqQUg9d1hKo3gkrYjO66d",
+	"vxMox4VGYfhqEuwE2jjgie5jkDMS30vNAcP4PzLPRmtMCjkdgiBDKCMj1CKrZSWA9Kh8Epz2Ipg50pMc",
+	"05H12M7wNiaJffSZvSBLhk5owXMWQWd9bJ3aqNbYu5lvWApN7da+AmUg8URVEfGaFARlvj/1abEJI/7P",
+	"+cA6tUazm4FWSKN/VdaQSO/LKIArLmnoeQE8qPDkzAmCm5QoV2RLVsjO5wqJHjIcZMVhT4Wf9fED1gCU",
+	"YVZM1QTvnFgTVTDAKLaCuLbUTSWkdI5ORDoJ26JiCIVgVQOn+goOXPov5ap38gpXkfYkW1sxXKtfFBPk",
+	"NduRoVPsxTJvcIF3h0MZsqnV0RydTVsuPg4UAiJ4R5y2Cto6q4gr+xDoPLphGT34IyNEEO6l6C+9Vck9",
+	"p/Yk5AiK2RnkGjOvaAKL8WAMaQmWj6RDhKgY08d2KY2dHkMO5snSOqy1pPTfEzZaTGFQyfZA1RAtuCeG",
+	"mtPHlBBa2BTdhL/1Eyp7FUBtea0vK7IKhsx0/VgCH0MZBnl0Qs7pg1TWnRHOmP9eCpvk5V60PhN9jPTA",
+	"ciYHhYJGLI5kvt3rQ3kFsM0PcQ1om9Dpm1DFWdEC6s2FuqDU80fGFhD5qDrYPznnnhADubmjpYiauT2t",
+	"UHf9sDd3FkiudCS0hQIhbAFD1YyVSPzKlgXNVYCv/byHrjBJPemU5gxUKJ8ymEKW+UEMaesMTFjARVX+",
+	"rEIDlHdeIfZwZErHvYrew43RnR+3z9wYvzi3+eMX3tn/9n464116NP72w60bH4f5j6Nr322fuyT1RE82",
+	"ohZ4mYOMOIY1X1KXl1+RoGfgVddOgkLnE/8FmvJPmKYOZLRn6D6ePajorCTGJgQycT4LvlHLshnGP2cG",
+	"WhnibOsCvBOdeopsKJEP9PEn9/PKHIeqH26Kcf9S8CbTHqCw26OkVHQ8Chg2ZJj0CYYQVXy34wSUIGOx",
+	"kwvFRUlRFXBM+eNN3g2EytqNTNqOgiOLpXUccu0hexsqA83XbXlKjLrdUKfNl0BHXGIybS3Bb05dw6hr",
+	"5xAG2to5ttmgDDRdhcCoH+M+Q60C2Ccnh0Z0ccyYEFhDU0xDGCBxdYBvCzOcWZYMfYnCm0lANenuCtu5",
+	"VvQAV1xlxTm+DV3EUh8RCgk2CLrjm09tLU13MTxRakVEN4SckcdfOR6YwLhnOGN8DeMva5B/BM5jMedL",
+	"hiKmxbNhGmtDE322ecpAeDCdAfo/LsjAnpt/uauk9AsnbDakz7v1VQfUjUNcd1SJTJ1/SGs5GKQCS4aO",
+	"C0FRae9oBj9yIy6wTUVxLQ2ofRvIuLiKgAQ14YpsaH8GRQ7ZJtTI7f/azktZ8aKpOVHxQeRHfpCTq9CO",
+	"TOZwVCDyQ7Y/TroJ8o9/eIo2M8I5RQ5HMeKdULyHpQMq2/8pAb3L3b1pgV4g6POeiahRBzI6sQlZGQPZ",
+	"WAFvri3Ktn3KhGpQdSR9ksDXOfsWGZio7LP/5Vdyigf1JAOcEn59fy+HEVPwJOZnoje6m12ZMvFUe4Mq",
+	"OVfay9lc1B40Y28xrrpXgbRBy5DcgpfhCnCOEgMs5nfBOQDD6AqX1JMAuimK2B4JC/Qv/6jQV9BZoW+Z",
+	"tsPmdfrWPQMnwFaAocqkHl0dbABN0yk0RTLNzH+/F4MsC5HpcgJVNp7gqcmtn3ysJ4Ij7wRBgi51HRCc",
+	"gaAVKI6Gyu4YSzMMXhQFAktfK5gy5r/hmH3XzjhU5EO1cyMvPvuWCrvUGmB1kHwtAAd5ITgSi4iKSIRP",
+	"9bmF+jAaL/HATbBrAZvSIZxCLjaRg0TIdHEOy5GZ5fxxaAG8Yj/yxblG/G8hqxldk2MYySVkITAUuGY5",
+	"PLkTTCJe1rVHapiyhPVAtvu4SAxzMXEeOQnWJpnfGXxCrhQrzFdhiduClW1TzBYUkj2JKrBiiOnd7kWl",
+	"e2OFdaMtorksns7JYTk218TugZY0iBC5N2QJBVWXqh/JAih3+WksVaaqwqY2eA5DRBpccuZ4FWLCLyy8",
+	"uyzrdsTMTGEYjo3EYQn5mF3aOZRyORWMKXmUfhITKBHUgUgpK2JY0oW/C0G5As4uYGXcR8Wr45/7MsMR",
+	"06uQ+hvcb6FdP/PzhMWyfEeK7IAVE183sGTHAdCQFqT/8648++fj/n/mZ38ze/yD+d4rB07/B/N+ykA2",
+	"DKDHpUmAfM3oy5aFsG8PmBQz1IzX8Vv7GOIFaiZMqAzDp1QdJb1YJnRkbGrAFWCwz+bUbQoa/T5m+D72",
+	"OBbzi3fTBMS9vRBimvowCn85ideY3nCdBQ61JaL6aTchO9yezAP3R/EhoMs3pyCIOSEznY49yT+8BRBR",
+	"+D6wP4buA3noDqfpSdkuyqi4HgNuqpoFTcdpCkn5YXRQ8BWXQJB3s5z5pVKwZC8Gc84HV9RnFOYaUWh0",
+	"AUEWVftPmUZ8cjUyMm+NauiIQdsIPvIqFpYCmz1py9/A3GDidxWCP/CHhhk8+a8chbKKa5+lPoWsnAF/",
+	"rbhvCedTjetgOj789URDok9ozhBnlJasCGuTcFJ7k7ZTh6ZrOH0laJkj4IQ94a4Vyuiop7KHjz0k5KvN",
+	"UuYeNtKCCts5A963NAjsSkAtu/qypusolTojD6RIDo0KYN8wmdPgh9zkJEteQ4AMTRVwMmZs04UK6Bep",
+	"tUJesQ3Zsgc4gCWrqoZ1xCJFkTEURYQczsCF2/ZJrAhZIms9BlHagPMZJ2tLJpLfGe5ubC+TOIpvFMW1",
+	"NKp6cf6naD1BCAlcMGk2hVLWxsc4JsHVqWo2+R5xvtDjxAEVBVhVhUj52GAEWmZocJoEZutVL7KkrQpk",
+	"VdcMUCQsiuqXVsRC3vlahaZlLi/3M8tkFIi6aspJoPZdqxLQ/iyu1c8p3YHsh0KCczenYUJwSoZqIXMI",
+	"uoZRKRhdLvUTiWMs/8svPfXpoPEbC7HdiSurBK0zWJKSHjVliMaYJyNDNKKQ1L71YhopwfkJ6VVdW5ZP",
+	"RE0cqiqGleLHnl0dWmJo/PzsU0wTIVlHhEDRAJ2kKhJfj3ciYLkHTMbxUOGdAobAtsk+5SSVYvMxGH+c",
+	"adyLn3sxnLkH31i7v53krE60aSjlVQg7SDTmb4qtkIIRN5Dom64j4LqlBrNWEugLUQpH6Xmb9RjlNIyo",
+	"8Rvagr/um1fUClN3+yrnUJJ9OChY/qLvQr1gYAndUixgwVtQU0AxIxdlBmqmsSOrVZQxsHeYaUxvacwy",
+	"Di3bkEhidDahi00Z4rdqAWKuUNzVdmZmt5+q2oUO7jSsXFgdgKqCH83ZmEHEXS0FO8SPBSyjYGTOel10",
+	"p4vudNGdLrqzR6I7Oc3XquqKaM42dEV8tRTsBBUCuiIYmbNeQT8UdfHDcqEykG3RO9CcNhC1Vd+fWIOR",
+	"OtqGFG1S0my3kSRowq1HmMDlNC7gVj6Op0un8JdRxD9KYq47QznldmiliH+hY3zlJGlSArBaoLGuapjm",
+	"yYpzpK87qlBeRqJNGQDV1dElIQIvvtEQAi+FIORlk+/s2vyF6u6zM9dDkUCzbSyhPa3bGRX0C2j9xLWH",
+	"tPzQdc4d43Jp2n1Njb+VxmvO6T+rlqIPbZTOHa7H//CgaSvjwx0HDC3h0x3ZotocowU6iMi20w+jTOkb",
+	"Cug7C/kwzVXNt49JZIltoGU6/0oxp13gGMJitehDo8mifaF5K9jZMpxCd/mt6lFLkOBu96RltEkudbhg",
+	"bEgjx4o6WjM02ZUh6u5cD0HuEUKsiwCbI7yoeXAaviFwBqZaUAH75kQ/vJGYB2RsdC9cMRtS0kZb/D5Y",
+	"we7cDktQJgHPucbFmbZIjkYa+YFd/Nrho1JPWnz7CPrfMfTfg0cP/W+pJ716+I3DRw8LnYiGpm9TczyN",
+	"RTYxyBLB8/UqbWo1bknTSMNMY/PTVCrRYnX6wyejnIvO4H0L1YzJdk/kCOT8Q2hOVlASCNb3RK3pWVEZ",
+	"WSwkI6s5c1ejPgrGRshuCSxDYA+4uwnx8z7qxS3iO6KHsxcM2++zVnOgBtQyGjV4NWfNqrsRAd/Mdpg6",
+	"A7QTrqY7sRq41IG2hqLvwqe4bK7l1nAvfq5iHpRYNcsD1BQ7E/lorkgJ/kY1RgJ1GMUBhFNjEofvzTdj",
+	"HgeIq76xzZnGaPa4Fp8qFZ+ArwZUUgs2g1HX8EUIr1oYv0xXndW1gto0FV2v7HJW6QJVPKlGo6Li1sWw",
+	"2sjGHXEVBdj5JNbI4kd9+2RR1iD7RqBtcw2eKKKtGdlibh87gJdtT/kC7iQwwsSH4Hj2WyDD2F15zufH",
+	"oE8uF5s89iGZOKpGShGqG9nJY4Zvgx8KaoYmT8KipURTx09ehURqvWp4oQFvBjNIWuQVB6vhtCZamats",
+	"HS6hwxz+2tTZVNb1t5elhXdz6towKnid7tWPq+Ifdjz8tAr1nlLFcaLBfFROQ3UnDmg8dqfSY4oyfFa+",
+	"DL1oRZ6nwW+G6ZlFreqM5GXLApvf3E7VbPmEzommlw29iRUyC4Nr5AyZaucucmisXj6rubpZ/sx1HBoD",
+	"CPfMoTFAXPWNbe7QiCRxkLaQcJgVzWZIFf/3389ctDpmMOzNoobvwGwUQ7izH3fxctIwAQGZhAXCO9hu",
+	"aNC6K2OK/REoA9nJvnErWxYhg0R92LwapSS2VagtTvKMhNcmk6W/APczdqHmrB3xyZg4YdEJ7KCLExLx",
+	"X78LcPn7Px4lOWVD5J7Fp7Vw5oHjWNJpf2LNWMZ5+jhDjHQgnFnUZcffmJmDi69TR/4Fad+v9v1qHuXx",
+	"W8CQLU1akA78av5XB0hIDEE2J1va3Oq+uSABdxYl5GpRlY8VgHbAxz/67XVVWpBeA85B8sI79HiUxo3y",
+	"p9Hk++fneTwejpsjZ/kY6pDRTSPt3eOnj1Npc9Lo63vjR9+Mbv335rNno2t/885vjB/eHT/6cOv849GZ",
+	"D1Hx/BUb8wwGsx/7ruM96f3ZFWD43wTU2SDyyBntD7aouDR72ALuRnK6l43TOQUCFRiOJuNUUtQNJoVg",
+	"hNW1AMeHqFdQGw15CBwAbYQmzYdoAGTcYxPbNNLrKhhapgMMZW32D2BNookYpztiIStQPdlHPJGkQVI8",
+	"1W5Etiw9+LL3yF3OaOoMwz/Bg4xUK9f/ZnI1JbsQdEroha9mXpCPv+ej5XQlAu5JL83vyx+Piieg0ft/",
+	"U2D0y/MHhEcXYSXv8mejB/e2//HZ+NGHmJW8cw9GFx+KMRFHbkiGiUqj1M9lNPvkM9tQdgDMZrVjlm7K",
+	"KkucvUlelrIYYOjqjmbJ0JnzZfBsYNfweGBZ0+MFp05oBk6SzaZp9F45Et5XkITni5DwvmaIcvPH85s/",
+	"3fEuXvN+uuM9+PvWF1/71PnV5dH1v00pXbqIjARIkkinWUXGkpBNlUfQ7ZkjeOwhGaoJPbtjlUDAkf1y",
+	"PgIIZL3P8AjtY1Zir6BEooV6cYVCf0A7DPmbRlhsdOny5rO7IXNtPnvmPbnnPdwY3flxSlmM3ChDjBPn",
+	"M3RJKIjasQzWNzTbORgNY/PPn1yAJDFhn5NgjTSujGg5RTPsV21Hhk5flVFlpejtmGuKJfLZsxGnBGMe",
+	"zXAO7M89hfFnDXwcWVMLu2KwjChqPQWX8ehKPMUIeeuL+6P1J5u/fDv64dL423Xvyb+8S1e8Hz8aff/c",
+	"O38/RsvRZTIOdYY9HVMEiZ8s6Bpy73OkNo4FHIym2bFiOuOOnCUrJChTMH5ZqdIOMIo5eDMrVdraiuFa",
+	"/aJzktcwdxd6sfgbJW6IiXYQoaoYJr8oiRoK9HALKBrgFnxpTDFGN4EDUVHMZC10Mlq/6T1/hsXI+OKn",
+	"W/dfcIUJTxeGX1xe4uAwA0fhzQ1JAVuu1gsvTwvrvTDAUVjtJetfFp6gU7k7Q+US99v6Faxpt2583Iiy",
+	"hUBW+4jCOdRP3xovwguxQgKCbLEnSILGSyXy2Lp1YbR+JSSM0fl73uWLtZMHVTMgi0w+0NTT2b7sTION",
+	"3EgmO4Z7sHIttIIhkoq7RSvBlxpRgpF1jTcVa8NHfx99dLYBbieXfZQBy0+n5tvWTW5Vr7PfW7Tf60gu",
+	"684ArZwBBAK7NYVa2IKvGf/Y5ouHoy+e0kpscmcAnF2Upd7mSP1urkP5EHreiU8x8TmJ5IcdyCPepeuj",
+	"x+s0j0zkhIxJP4s7YgeFDCaJ+e9i1cZ2McOU98FE+GmD2vAhYnJ0FtQsE6e0ORynwh1FeTKZU96uk9C7",
+	"X0K3yz9paZ1zLG+cl8jZXUCA49jfLKkmmRM2jxBMak92nNTZOvXEy0fr17fPXRxd/y74M2ImRuy8JWaK",
+	"l1qNsZE61AxOIoqG8qhozbVqngR83lpCz4NEqdfx291JonHuQkkvZBUK7JcZGS95jBhO1XwyZCHW+vzu",
+	"9hdnvCf/wkm842f/3Hz+85QmoSCO6hNeEWW1MA0x3xXtz5KTjLgjfNSlCMG79NfRX74dP3ruXbqOaaFI",
+	"zl8zWx3snfBmE7mRk4zE2+el4O2GY7W7OpxVjvjWP9ne+AGHNsltgi/+PX70ZJLEh9ONChJeeSETXLnZ",
+	"zTImvcGMaFbL25y+OiK6zXOyZUFzNcNsO4gHTNd2dwekdg5I5Tjk06feuU+Ki8AJ2WIBB5TjH9yMLuvU",
+	"4z/vuKc7ADXIcdv/9W/v5u0dw3GEZ0QZzrUBJNymBV4DUetkgm6Gtk0SnGnj/XzV+/Ri8YNwMzsd7Bff",
+	"QhG7eoG3tM37F5NKYe3yUNu8+vFwY+vyJ1v/fEQSUrEfdv2v4426U1Hp41jO7Q+K1rsrIN0VkO4KyA6+",
+	"AhIKmBrugmQbZYISiHUbJKGJRd0/Xc6ziFppNueZdv/kZT5PeNe69Ocu/bnTf3sm/TmUgSQPeuKaj5UD",
+	"zdJ84h7xTqC27cVDZ2vFHA4JBJVr9+7EnGmUJrR95sb4xTnv6WOhWgWNMlaW/7zUHYOOr7rku2ZSVyfI",
+	"JawcVSaTLGuGZg/4TPI79Lxjko5JajfZnl8dffX1JJmE0H4+k5AmbXwuIf3iOjbp2KR+XTJpiyug/nw+",
+	"EcxO6Lhkh51kUlPsCs7CaQyVbkPUwl8Z+QlVbhXRXNZdLeo0Ut1XiybON3n3iBRUcH5W0aCigzmfVwTS",
+	"PnCV+kPonUVTPLMdKOhuoKZKNXBLYnLZdQYmbGZuRupI0MDBAoaqGSsBgnsScb1gAfEeomypJ53SnIEK",
+	"5VMGs7+DeLJMTnlc3lRBX5tlaA75OSzc5qvZkzpmbVPu6tyYJNfUlyNzZ8O7+cC7te79eN17cJkSNJi7",
+	"+5i7uUHN+KiURIk9psKbfSwthGSKWAA7iaGdEshOwt12QDtNA6nIdvOUUIAQ5vKsM2yKTQE57CjTLFQ9",
+	"zMbgU5a0HQLbmLmXzZWFWiI0GjcqJL7LGIuFuJocYktwtHkSzAowtnkSpHemO3l1ty52HPviO+4J9sU8",
+	"vfX86uj2relgZe7F9jgzk9NZwePfkeCtqltMJjoKQT1GsXf2/vZH96PNeXB5dH/D++qvrdlEIT5zkssZ",
+	"SNjJKeaKuQpg34V6siXY/Eu/ZmSEJToV50ilnqQppiE+O6OrDKNNDMI2MJyS/Wts3V0RWcQ2odM3oYo7",
+	"8hbtSIxWIV8Um6uxpGwGYU6hCYWTuAuyeeOiF/tGAhkgLHvDY3Jm2rC4xOhsp3akUh2mWTOSrZrQSUub",
+	"NnNjd4QAIrm00yaAcGptOQGEY2qyk5VvS0Z0omgvBdByGbIhHX/50dYX96eOxQIuKctkUBlomTnteEDH",
+	"Yh2LNc9iP38+2vh/08dimAUyOQxapqnPOVCzhFwXaPhRNHoXt87a5YHUcBPri6Fe+Gn889/HG59t3b8Q",
+	"I3q0VIZzCD9n0DF6kF0MLEa8xSJjIQY6XdAFxcrxztTGwwRYsZzmyeHVjCQpFp8WiXdRSO9CXV2oaycx",
+	"JYlyUUzJDXG1w6AZAS2ceS1iBwYjhWxAR4YrIKyGkk4CpLIxhzI8CRxLlxV/KIBQNlR0tzz4tJiBi8Ps",
+	"4imBBJAugbKzn6vYz5j4a7Odx48+Hj98RkuC6AYEm9HJ8zSj4wc5VjPh3UIGc7hip3c7Y7kgo0yroZzN",
+	"d6U0cB5j8k3kJFMWsI4DLHeWcWcZ7xQOxFYx5kCePdwSN/LtYWx+CpjDh8nAziO6My06vH/1GXRProzP",
+	"vth8/tw7v0ERNDnN8Ky68LCToFb8e7ZNRyi1iEl3OFiu0xedRVeMUabWoMvnuzJ6JIcxuTZdkinFTboA",
+	"zZ1F11l0O4QDiUFHcSDHrGuFG/k2HeVgnNM129GMFQED783orTeClxo29irYaqigCtQU0FeIk5ZtW8U5",
+	"Y17cbBvK7ze7wK62NtPEVJvlufnss9GnF7xrn3hXP6R4jvaq88zPuOc9wVzUw2xDlMVeYVY2r+n3Ehia",
+	"qyCNll2q+jjUyVQmk7yWTW0I3iG1vSq73pUvN3+8MLr9WJSiy6gSYZKH6POLkLvgIWzP0Hx3IGvGHKQI",
+	"CF9umdrD2ZQwMuesZpiOpoi0bHqLDBSy/naKGVOygk4B5cawg+mZXhGvmiM7YMVEvzCnYtziKaf98EbX",
+	"Zpltn7mx9fU9ivAxxXHNMfI4Rc3494WhbPi0lXM39q1gkh10HZa1K/ipPUd/VdBrsq7rmsGsZfYa36LE",
+	"W5xqCEBvdBnhJkgJPJGWa32/in7PJJXO4m7H4sZbsQRsV3fKUuKd7b/dnSQl9jUHDH3BlFmqamLkVq7T",
+	"UgRyuW2hdUCqtlQdmiDEeubN513N5A3pHBpzhXTOfLM6Z3Tz+9H176aA0zMVz5wKdM1fOMe2xph4NRo8",
+	"ORrdXTZ8ccO7grVM9q9C+1JaUI7OX9s+83ltgpKiRGGanYPAwf22eF4cB65NEe02Ll+L0gWFoHIEsX3u",
+	"4vjRNe/u/x9/n00QDYg5vPk5xCLat6HTvcV1bwx106R8ccOEzDN9A/TIb5IQo0gS+8zJMejosTg9voPP",
+	"iVNlBn5+17t5u21KZIXXXWcwp5srmsGnvDfQ49TesLETDPHVMH6xFHKPmieBsShrMO4Y3yfu6mZ9pek6",
+	"mZ/pPy8DLX61NKg5hJP6ElwEiXdSfxOUK0voQggM55gNoDhNM0Cbs2TbRg5ofkWvQwPZWAFvri0GQ1Py",
+	"jAVrNGSOkjq+0GnMc5mAs24RcsRVFGDbdRNMrvhIbRsEyxBkmUNLZEAJKRC8Oi1y4BRQBrKTJ/T+iEaV",
+	"Fn3065P58J708vyBIiT1/qwWcRXS/QPgS4QYtRTtnDGNTTNI3ctG16ixjUXXHqKAD8J78i+6L+3WjY9b",
+	"7RNBd4gQL4CbUeZ/h9SZDF+LJ18wa9kOfcpzoY5e1RwwtNmd0fEPMoTymoQJIWDXEukhYZ/1XCaM15+N",
+	"Fm2l4uyUVuzHjQYTJb+fPh6/uOmdvef9cjbV66lA2awQgzVWoE3V8WdV8B9qBsjUXW+uTaP22vFtmTp9",
+	"VkCfjdavYO6biCZDLJLHR3lNjrr+RoU3vf22RlRDo554He6uP1HNxlEtJbV3qIE1qSLb02lzbf10ffzL",
+	"ldH6lbTg954+3j53cXT9u+mzv0gBbiH7C0U9dA3HPHhpbscMf0SnQooY69dHj9e3/u/T8Q+3a2myVS+B",
+	"oP2MNI3LtL27HS8kKqZ0r6mdFhEFhXpYd83U9nCJ8DRjNdQGHmlZ3NR6/M0/Rxc+33r+VdGDWCusxm94",
+	"zWW3wAuQEQIhIzqLv+OyZmsQeDdvMy3dCRfiD1gkT4kJNRGczv6BJGqCeo3E8B/0QhjdudKC5yFqGxhD",
+	"smiXg+INDkyo4chu4TINKrAdzZBJR5ISr1sydFwI+v5Jid9DXrx9vA1kx+4bAKhAFazpsK+r6VBfT4XR",
+	"5Vtb33/j/XRm9MUvTTVUwHUb8iKKee0Rdoy/TFacVEM4lruMjMU1qnNz5HsU88lOiuNmHW3IYLtejONF",
+	"+uIR2SIylOU1Y3+qYzqy3ke8XoK3Y+YEXrQXycC4SIshKb5wAuPhn00GRxlF4gvGLsc/PKnSXSHfUM9h",
+	"XhyU5Ks2sUhk18KnUzecuGCDSocVAky2BckO/k2yZ8/x2vpSFNyhrVsXGt0VoXujXb+kPWR01BE53M2G",
+	"S5s+FE5fm0Zb8d76x2j9si9txPRBY8YOjgDmaIw5RTYUoPNdj4fQ806A7Q2fY2UT//ro8fpkTXxMzzlU",
+	"/56ZdePg92asU2dH8XuL4htM3/3L196Dy975O97ZexPlEkT/OTyiAzmrPfQb/uOOSzq9IBK+PXPGO/ds",
+	"ohSPqTmH5AsmPnRdNTs90Xi6Q7rzZeu8k5HTINLxskqzSz7Z1tf8kmKAA/tL9cLsaihNsh0k9sNu3Xw4",
+	"unNu/MPHo2eXR3ee1t8UUijyl9nncQdnye9nZ8mTC7wlE9VDDir/cuD6a08axP1gMWFFi4QAjc3F46a2",
+	"OSQq5or5b7R+3bt7Y+vZt97N297di0W70+VqrjyeZQX8gk6RIrG+QpprMvcBO90gFKPbuvFxMyqBEZej",
+	"e5Fm1F4hsaGuNXDtaqn2k0aweqvRC5aAbzJyQbqJCtxpakV2s+IXsS6/Fvbh8i8sWWGj/a4u92QD+e2R",
+	"Mrl09fPD7Y3HE2hQ7fpEx71PtbjbCbLzFbVK7Pi0i9OPxmfOYqrPPfw2QvhWMqAQE9XFHKtdQ/aOURq9",
+	"P7b9X//2bt4uxyWV7Zp8byrmGWeAPE5ZKX14/FE8cKck9dFAt1fJw3v42eja98QrEb9JU8spkOwWfzsL",
+	"3PLrTIRO8tV7p28CBkFI73GWMJa1lbxwER5TtBLtIm7oJTTuiPZnobGvQdO1RAb+gSTaCwzF3/c7RKn/",
+	"iQ5uwi+9o9naCU3XnDXyYkkJ7M9VzKeWG/fwp5za4sEUjHW3PQtmLVOnmXCDYIexmnCcT2uHiRwk1dql",
+	"Ontx1SvoMrpkhdgqyx/FeKPYlryKcMp0EQRO4WnmJxrGugtxJ5FfM8FQ3Icjgtm66DAZs6u6lZZiZ4yJ",
+	"CoGYHy6Nv133fjk7+su98ZMr47MvNp8/985vUDYJCdHy7PAwgpswOPDvQuH5w8EUu+FObu51GMZNFlnV",
+	"SdRT+O6LAjUruPuSfg5Ny1xe7uumInMHWZpy0rWyx0BwSoZqXwmSiQpdTqEuweSE68m1FfqzEmunwWV8",
+	"JYXK9i/iYiIuG/cvXm1YgFvL+kpyWJoRvSdCWyR4X0h2Q6CnC0mESSW67s+Cuwehr5EVBVhOrDF5iQ7O",
+	"wfymBQx6UkyDQO27FiI11BgN4KySoeWbVTiRxVCArhcCgn+hOIBFhfIycj2IZCx0WQr16EY6SaEp3ZjO",
+	"Uwh4Ke/mcKbWnDr/Iks8NulYpDcsVR+4hm0TumA8sS3qdcZTs8ZTHbeJd7kB1p7fliVbmr5L/Jd73sVr",
+	"YoqhITOMkYhDq445bLfw4xoH0fNORO3koIbwueRtqALY3l1KzB7e08c463jz2d3Rl1fHD7/xLl5rl0kI",
+	"E3CZROyefcckuzzyR5gEaT5Zb49ZUFbcBE/y6Vv5ce4g59oM/iAjOg7ZGxzSHmcEyXMbD8cP72IW8R5+",
+	"Nlq/3DKLBCzAZRLiCOLzCGmh37HInmCRVhJMMTtc+RJzx/aZD8e//NIuXwRUz2ULfFzkc8Uiet4xRccU",
+	"zTCFd+n65vPH7TIFoXkuTxTKtw4w16VbdwxSf7Y1deZIXSRrgVP42dbU/fA5XbMdzchJTHwzeuGNYLxQ",
+	"cLFCFd6hZvQtqCkg9I6KVJWfFw+hDeX3m11gV0f+0iRRR9tsdCTZfPbZ6NML3rVPvKsfUixDVzXghZXi",
+	"lQ8SfEE9FMqZSX/iHs6fyQ7olO33SPNfy6GXOOu3ncqSpq1W0lqIqzjir/HFT7fuv8jisrLaSZgVGbku",
+	"LAUlkvhSWk+VrzPfCfkSqR5tSfh05geTsvLSQIQVwdSlhOSJmSbTQ2JiJpkeUv9WC2WLTMVO9jqzYQpa",
+	"TbdiejDqUeRbI42dg/OkQaMlVpChMVq/Hl5Czhf/jZsejPwOroIgnqU8l1InYfaQY4nabKxfWnEyYfcS",
+	"Zp+UY6l9JiJ8IcZE4nfBO0bqGKmVG+JToIeYN8ZpJjKhimj+A1GHFcoi2MnuKiI2StVITZAxNVUb/pyW",
+	"8wA3X3y1de1vRBsE2YCpPMD2aRqRbJ/h3DFMR1NATsBh7S0yalfdP+Us5BqkjE3K+3TCNHUgG/xXFdkB",
+	"Kyb6he+6KuU6wBtQj79n+8yNra/vUeSIaYB78iePU/SFf19I1ZshJDXnP5iVdZxsyrpjvgRk9aCuR8RV",
+	"HC9EPx0yXbqMSSG+PXt/+6P7ozvnxg+/8578a/zoOQczZXlUAH19H0ssFGJanFX8z8vyiR1D4zAiES7K",
+	"IRPNUgGXhMpu/WP86Pno2nfb5y7VRmWEK1lIynUYEvG1U9yEGNq6+Dzl7KvO7cS7x9mKuaBcGJfnd9Z2",
+	"LOH6YLHyIYW2BIkWvBmTEDC+GdBPMU9kw2ao/aNQVrEF1ZWesOeOuIoCbLtKoIV5K8TxsczlR/w0tbno",
+	"5wXOtgqIxGhrdwofhuhvPlQSbVNKelbcrLTopHZM8HLORLeu88G044OJUXuTl3HyhVJZvZTJDIybODFO",
+	"EL6I03FDxw11cANOosbckLp30zg3sC7dROOy7bTFcNwh2ZF1s1y1udQscafZgUZqn0FTz/E9LaERzdfg",
+	"LHc0MHVQa/1Kf8Lprl7pQ1h37Uo8Z5nKlYh+BOtW1ofbekpQNlbOMSvlZpoJLIKw7mKOdRCYkDh+DVDS",
+	"uJxHE8mUaI4Jlf88kvyQqaSYGJ7qJ5ly20BTj2s42hDMhgV2V6DpWqfnPjgJ1jLP50v4RV75VYZdi2YW",
+	"tTNfeQnZeaHZyS+fFl/kZEFTNnuNciqXxgxtohzAPoFYkpv0lunMDE1VW9aAWthxQO+ka+d5y47ZTC/Z",
+	"dBgqPnC1Gir+hA1IBfZXBEM0EFghaPlStob/ZjlmRiSQ61kjiCm3RRM2Dia2qdTyp1vAHXNTc84iZGuD",
+	"40hJGP23J6fR6Q+YTgswwlG92rwM8tlUQu6moG6a9fEf2ZwjwcWXqd0dDGEj21NsZwZA1p3BnK6tZl1D",
+	"WgVStUgPvRYEMsYmc7El9LSic+vlIn6W0xhTcDUgExfq0oI0cBxrYW5ONxVZH5i2s/Dr+V/PS6ePn/6f",
+	"AAAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

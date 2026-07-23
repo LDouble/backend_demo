@@ -47,7 +47,7 @@ components:
   schemas:
     CommentTargetType:
       type: string
-      enum: [activity, marketplace, errand, carpool]
+      enum: [activity, marketplace, errand, carpool, campus_circle_post]
     CommentViewerAction:
       type: string
       enum: [edit, withdraw, submit_review, reply, pin_comment, unpin_comment, verify_academic]
@@ -100,7 +100,7 @@ operations:
     permission: comment:read
     summary: 查询目标资源根评论
     query:
-      - {name: target_type, type: string, required: true, max_length: 32, enum: [activity, marketplace, errand, carpool]}
+      - {name: target_type, type: string, required: true, max_length: 32, enum: [activity, marketplace, errand, carpool, campus_circle_post]}
       - {name: target_id, type: integer, format: uint64, required: true, minimum: 1}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
@@ -134,7 +134,7 @@ operations:
     summary: 创建评论或多级回复
     body:
       fields:
-        - {name: target_type, type: string, required: true, max_length: 32}
+        - {name: target_type, type: string, required: true, max_length: 32, enum: [activity, marketplace, errand, carpool, campus_circle_post]}
         - {name: target_id, type: integer, format: uint64, required: true, minimum: 1}
         - {name: parent_id, type: integer, format: uint64, minimum: 1}
         - {name: content, type: string, required: true, max_length: 2000}
@@ -200,7 +200,7 @@ operations:
     permission: comment:admin_read
     summary: 管理端查询评论
     query:
-      - {name: target_type, type: string, enum: [activity, marketplace, errand, carpool]}
+      - {name: target_type, type: string, enum: [activity, marketplace, errand, carpool, campus_circle_post]}
       - {name: target_id, type: integer, format: uint64, minimum: 1}
       - {name: author_id, type: integer, format: uint64, minimum: 1}
       - {name: status, type: string, enum: [pending_review, approved, rejected, withdrawn]}

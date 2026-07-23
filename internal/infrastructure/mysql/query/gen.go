@@ -22,6 +22,10 @@ var (
 	AcademicVerificationRequest  *academicVerificationRequest
 	Activity                     *activity
 	ActivityRegistration         *activityRegistration
+	CampusCirclePost             *campusCirclePost
+	CampusCirclePostImage        *campusCirclePostImage
+	CampusCirclePostLike         *campusCirclePostLike
+	CampusCircleSection          *campusCircleSection
 	Comment                      *comment
 	CommentPin                   *commentPin
 	Config                       *config
@@ -54,6 +58,10 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	AcademicVerificationRequest = &Q.AcademicVerificationRequest
 	Activity = &Q.Activity
 	ActivityRegistration = &Q.ActivityRegistration
+	CampusCirclePost = &Q.CampusCirclePost
+	CampusCirclePostImage = &Q.CampusCirclePostImage
+	CampusCirclePostLike = &Q.CampusCirclePostLike
+	CampusCircleSection = &Q.CampusCircleSection
 	Comment = &Q.Comment
 	CommentPin = &Q.CommentPin
 	Config = &Q.Config
@@ -87,6 +95,10 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		AcademicVerificationRequest:  newAcademicVerificationRequest(db, opts...),
 		Activity:                     newActivity(db, opts...),
 		ActivityRegistration:         newActivityRegistration(db, opts...),
+		CampusCirclePost:             newCampusCirclePost(db, opts...),
+		CampusCirclePostImage:        newCampusCirclePostImage(db, opts...),
+		CampusCirclePostLike:         newCampusCirclePostLike(db, opts...),
+		CampusCircleSection:          newCampusCircleSection(db, opts...),
 		Comment:                      newComment(db, opts...),
 		CommentPin:                   newCommentPin(db, opts...),
 		Config:                       newConfig(db, opts...),
@@ -121,6 +133,10 @@ type Query struct {
 	AcademicVerificationRequest  academicVerificationRequest
 	Activity                     activity
 	ActivityRegistration         activityRegistration
+	CampusCirclePost             campusCirclePost
+	CampusCirclePostImage        campusCirclePostImage
+	CampusCirclePostLike         campusCirclePostLike
+	CampusCircleSection          campusCircleSection
 	Comment                      comment
 	CommentPin                   commentPin
 	Config                       config
@@ -158,6 +174,10 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		AcademicVerificationRequest:  q.AcademicVerificationRequest.clone(db),
 		Activity:                     q.Activity.clone(db),
 		ActivityRegistration:         q.ActivityRegistration.clone(db),
+		CampusCirclePost:             q.CampusCirclePost.clone(db),
+		CampusCirclePostImage:        q.CampusCirclePostImage.clone(db),
+		CampusCirclePostLike:         q.CampusCirclePostLike.clone(db),
+		CampusCircleSection:          q.CampusCircleSection.clone(db),
 		Comment:                      q.Comment.clone(db),
 		CommentPin:                   q.CommentPin.clone(db),
 		Config:                       q.Config.clone(db),
@@ -200,6 +220,10 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		AcademicVerificationRequest:  q.AcademicVerificationRequest.replaceDB(db),
 		Activity:                     q.Activity.replaceDB(db),
 		ActivityRegistration:         q.ActivityRegistration.replaceDB(db),
+		CampusCirclePost:             q.CampusCirclePost.replaceDB(db),
+		CampusCirclePostImage:        q.CampusCirclePostImage.replaceDB(db),
+		CampusCirclePostLike:         q.CampusCirclePostLike.replaceDB(db),
+		CampusCircleSection:          q.CampusCircleSection.replaceDB(db),
 		Comment:                      q.Comment.replaceDB(db),
 		CommentPin:                   q.CommentPin.replaceDB(db),
 		Config:                       q.Config.replaceDB(db),
@@ -232,6 +256,10 @@ type queryCtx struct {
 	AcademicVerificationRequest  IAcademicVerificationRequestDo
 	Activity                     IActivityDo
 	ActivityRegistration         IActivityRegistrationDo
+	CampusCirclePost             ICampusCirclePostDo
+	CampusCirclePostImage        ICampusCirclePostImageDo
+	CampusCirclePostLike         ICampusCirclePostLikeDo
+	CampusCircleSection          ICampusCircleSectionDo
 	Comment                      ICommentDo
 	CommentPin                   ICommentPinDo
 	Config                       IConfigDo
@@ -264,6 +292,10 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		AcademicVerificationRequest:  q.AcademicVerificationRequest.WithContext(ctx),
 		Activity:                     q.Activity.WithContext(ctx),
 		ActivityRegistration:         q.ActivityRegistration.WithContext(ctx),
+		CampusCirclePost:             q.CampusCirclePost.WithContext(ctx),
+		CampusCirclePostImage:        q.CampusCirclePostImage.WithContext(ctx),
+		CampusCirclePostLike:         q.CampusCirclePostLike.WithContext(ctx),
+		CampusCircleSection:          q.CampusCircleSection.WithContext(ctx),
 		Comment:                      q.Comment.WithContext(ctx),
 		CommentPin:                   q.CommentPin.WithContext(ctx),
 		Config:                       q.Config.WithContext(ctx),
