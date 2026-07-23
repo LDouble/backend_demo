@@ -500,7 +500,7 @@ func createManualAcademicRequest(
 	suffix string,
 ) (string, academicRequest) {
 	t.Helper()
-	username := "reject_" + suffix
+	username := "r_" + suffix
 	decodeData(t, request(t, client, http.MethodPost, base+"/api/v1/users", adminToken, map[string]any{
 		"username": username,
 		"password": integrationPassword,
