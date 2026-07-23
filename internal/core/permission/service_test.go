@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -176,6 +177,53 @@ func TestEffectivePermissionCodes(t *testing.T) {
 	}
 	if containsString(codes, "core:createconfig") {
 		t.Fatalf("reader unexpectedly received write permission: %v", codes)
+	}
+}
+
+func TestBootstrapReconcilesExistingMemberPolicies(t *testing.T) {
+	ctx := context.Background()
+	svc, db := testServiceWithDB(t)
+	if err := db.Create(&model.Role{
+		Name:        model.MemberRole,
+		Description: "已认证成员",
+		Builtin:     true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&casbinRule{
+		Ptype:   "p",
+		V0:      model.MemberRole,
+		V1:      "/api/v1/carpool/trips",
+		V2:      "GET",
+		Managed: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.Bootstrap(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	for _, permission := range []struct {
+		method string
+		path   string
+	}{
+		{method: "PATCH", path: "/api/v1/carpool/trips/42"},
+		{method: "POST", path: "/api/v1/carpool/trips/42/submit-review"},
+	} {
+		var count int64
+		if err := db.Model(&casbinRule{}).Where(
+			"ptype = ? AND v0 = ? AND v1 = ? AND v2 = ? AND managed = ?",
+			"p",
+			model.MemberRole,
+			strings.ReplaceAll(permission.path, "42", ":id"),
+			permission.method,
+			true,
+		).Count(&count).Error; err != nil {
+			t.Fatal(err)
+		}
+		if count != 1 {
+			t.Fatalf("%s %s managed policies=%d want=1", permission.method, permission.path, count)
+		}
 	}
 }
 
