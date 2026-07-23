@@ -36,6 +36,10 @@ func newTrip(db *gorm.DB, opts ...gen.DOOption) trip {
 	_trip.TotalSeats = field.NewInt64(tableName, "total_seats")
 	_trip.OccupiedSeats = field.NewInt64(tableName, "occupied_seats")
 	_trip.Status = field.NewString(tableName, "status")
+	_trip.ReviewStatus = field.NewString(tableName, "review_status")
+	_trip.ReviewReason = field.NewString(tableName, "review_reason")
+	_trip.ReviewedBy = field.NewUint64(tableName, "reviewed_by")
+	_trip.ReviewedAt = field.NewTime(tableName, "reviewed_at")
 	_trip.OrganizerId = field.NewUint64(tableName, "organizer_id")
 	_trip.ContactType = field.NewString(tableName, "contact_type")
 	_trip.ContactCiphertext = field.NewString(tableName, "contact_ciphertext")
@@ -60,6 +64,10 @@ type trip struct {
 	TotalSeats        field.Int64
 	OccupiedSeats     field.Int64
 	Status            field.String
+	ReviewStatus      field.String
+	ReviewReason      field.String
+	ReviewedBy        field.Uint64
+	ReviewedAt        field.Time
 	OrganizerId       field.Uint64
 	ContactType       field.String
 	ContactCiphertext field.String
@@ -90,6 +98,10 @@ func (t *trip) updateTableName(table string) *trip {
 	t.TotalSeats = field.NewInt64(table, "total_seats")
 	t.OccupiedSeats = field.NewInt64(table, "occupied_seats")
 	t.Status = field.NewString(table, "status")
+	t.ReviewStatus = field.NewString(table, "review_status")
+	t.ReviewReason = field.NewString(table, "review_reason")
+	t.ReviewedBy = field.NewUint64(table, "reviewed_by")
+	t.ReviewedAt = field.NewTime(table, "reviewed_at")
 	t.OrganizerId = field.NewUint64(table, "organizer_id")
 	t.ContactType = field.NewString(table, "contact_type")
 	t.ContactCiphertext = field.NewString(table, "contact_ciphertext")
@@ -120,7 +132,7 @@ func (t *trip) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (t *trip) fillFieldMap() {
-	t.fieldMap = make(map[string]field.Expr, 14)
+	t.fieldMap = make(map[string]field.Expr, 18)
 	t.fieldMap["id"] = t.ID
 	t.fieldMap["title"] = t.Title
 	t.fieldMap["origin"] = t.Origin
@@ -129,6 +141,10 @@ func (t *trip) fillFieldMap() {
 	t.fieldMap["total_seats"] = t.TotalSeats
 	t.fieldMap["occupied_seats"] = t.OccupiedSeats
 	t.fieldMap["status"] = t.Status
+	t.fieldMap["review_status"] = t.ReviewStatus
+	t.fieldMap["review_reason"] = t.ReviewReason
+	t.fieldMap["reviewed_by"] = t.ReviewedBy
+	t.fieldMap["reviewed_at"] = t.ReviewedAt
 	t.fieldMap["organizer_id"] = t.OrganizerId
 	t.fieldMap["contact_type"] = t.ContactType
 	t.fieldMap["contact_ciphertext"] = t.ContactCiphertext

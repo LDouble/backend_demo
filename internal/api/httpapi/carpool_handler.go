@@ -7,19 +7,21 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/weouc-plus/campus-platform/internal/api/generated"
 	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/privacy"
 	carpool "github.com/weouc-plus/campus-platform/internal/modules/carpool/domain"
 )
 
 type carpoolRequest struct {
-	Title       string    `json:"title"`
-	Origin      string    `json:"origin"`
-	Destination string    `json:"destination"`
-	DepartureAt time.Time `json:"departure_at"`
-	TotalSeats  int64     `json:"total_seats"`
-	ContactType string    `json:"contact_type"`
-	Contact     string    `json:"contact"`
+	Title           string    `json:"title"`
+	Origin          string    `json:"origin"`
+	Destination     string    `json:"destination"`
+	DepartureAt     time.Time `json:"departure_at"`
+	TotalSeats      int64     `json:"total_seats"`
+	ContactType     string    `json:"contact_type"`
+	Contact         string    `json:"contact"`
+	ExpectedVersion uint64    `json:"expected_version"`
 }
 type carpoolVersionRequest struct {
 	ExpectedVersion uint64 `json:"expected_version"`
@@ -60,12 +62,97 @@ func (h *Handler) createCarpoolTrip(c *gin.Context) {
 	if !bind(c, &req) {
 		return
 	}
-	trip, err := h.carpools.Create(c.Request.Context(), c.GetUint64(userIDKey), carpool.TripInput{Title: req.Title, Origin: req.Origin, Destination: req.Destination, DepartureAt: req.DepartureAt, TotalSeats: req.TotalSeats, ContactType: req.ContactType, Contact: req.Contact})
+	trip, err := h.carpools.Create(c.Request.Context(), c.GetUint64(userIDKey), carpool.TripInput{Title: req.Title, Origin: req.Origin, Destination: req.Destination, DepartureAt: req.DepartureAt, TotalSeats: req.TotalSeats, ContactType: req.ContactType, Contact: req.Contact, ContactProvided: true})
 	if err != nil {
 		failure(c, err)
 		return
 	}
 	success(c, http.StatusCreated, h.carpoolView(trip, true))
+}
+func (h *Handler) updateCarpoolTrip(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req carpoolRequest
+	if !bind(c, &req) {
+		return
+	}
+	contactProvided := strings.TrimSpace(req.ContactType) != "" || strings.TrimSpace(req.Contact) != ""
+	trip, err := h.carpools.Update(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, carpool.TripInput{Title: req.Title, Origin: req.Origin, Destination: req.Destination, DepartureAt: req.DepartureAt, TotalSeats: req.TotalSeats, ContactType: req.ContactType, Contact: req.Contact, ContactProvided: contactProvided})
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusOK, h.carpoolView(trip, true))
+}
+func (h *Handler) listAdminCarpoolTrips(c *gin.Context) {
+	params, ok := generatedParams[generated.ListAdminCarpoolTripsParams](c, "ListAdminCarpoolTrips")
+	if !ok {
+		failure(c, apperror.New(400, "invalid_parameter", "缺少已校验的拼车列表参数"))
+		return
+	}
+	p, size := paging(c)
+	rows, total, err := h.carpools.ListAdmin(c.Request.Context(), carpool.AdminSearch{
+		Status: trimmedCarpoolFilter(params.Status), ReviewStatus: trimmedCarpoolFilter(params.ReviewStatus),
+		Keyword: trimmedCarpoolFilter(params.Keyword),
+	}, p, size)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	views := make([]carpoolView, len(rows))
+	for i := range rows {
+		views[i] = h.carpoolView(&rows[i], false)
+	}
+	success(c, http.StatusOK, pageData(views, p, size, total))
+}
+func (h *Handler) submitCarpoolTripReview(c *gin.Context) {
+	h.carpoolChange(c, func(id, user, version uint64) (*carpool.Trip, error) {
+		return h.carpools.SubmitReview(c.Request.Context(), id, user, version)
+	})
+}
+func (h *Handler) reviewCarpoolTrip(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req generated.ReviewCarpoolTripJSONBody
+	if !bind(c, &req) {
+		return
+	}
+	reason := ""
+	if req.Reason != nil {
+		reason = *req.Reason
+	}
+	trip, err := h.carpools.Review(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, req.Approved, reason)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusOK, h.carpoolView(trip, false))
+}
+func (h *Handler) revokeCarpoolTripReview(c *gin.Context) {
+	id, ok := idParam(c)
+	if !ok {
+		return
+	}
+	var req generated.RevokeCarpoolTripReviewJSONBody
+	if !bind(c, &req) {
+		return
+	}
+	trip, err := h.carpools.RevokeReview(c.Request.Context(), id, c.GetUint64(userIDKey), req.ExpectedVersion, req.Reason)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusOK, h.carpoolView(trip, false))
+}
+func trimmedCarpoolFilter(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
 }
 func (h *Handler) getCarpoolTrip(c *gin.Context) {
 	id, ok := idParam(c)
@@ -123,20 +210,24 @@ func (h *Handler) carpoolChange(c *gin.Context, change func(uint64, uint64, uint
 }
 
 type carpoolView struct {
-	ID            uint64    `json:"id"`
-	Title         string    `json:"title"`
-	Origin        string    `json:"origin"`
-	Destination   string    `json:"destination"`
-	DepartureAt   time.Time `json:"departure_at"`
-	TotalSeats    int64     `json:"total_seats"`
-	OccupiedSeats int64     `json:"occupied_seats"`
-	Status        string    `json:"status"`
-	OrganizerID   uint64    `json:"organizer_id"`
-	ContactType   string    `json:"contact_type"`
-	Contact       string    `json:"contact"`
-	Version       uint64    `json:"version"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uint64     `json:"id"`
+	Title         string     `json:"title"`
+	Origin        string     `json:"origin"`
+	Destination   string     `json:"destination"`
+	DepartureAt   time.Time  `json:"departure_at"`
+	TotalSeats    int64      `json:"total_seats"`
+	OccupiedSeats int64      `json:"occupied_seats"`
+	Status        string     `json:"status"`
+	ReviewStatus  string     `json:"review_status"`
+	ReviewReason  *string    `json:"review_reason"`
+	ReviewedBy    *uint64    `json:"reviewed_by"`
+	ReviewedAt    *time.Time `json:"reviewed_at"`
+	OrganizerID   uint64     `json:"organizer_id"`
+	ContactType   string     `json:"contact_type"`
+	Contact       string     `json:"contact"`
+	Version       uint64     `json:"version"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 func (h *Handler) carpoolView(trip *carpool.Trip, full bool) carpoolView {
@@ -147,5 +238,5 @@ func (h *Handler) carpoolView(trip *carpool.Trip, full bool) carpoolView {
 			contact = plain
 		}
 	}
-	return carpoolView{ID: trip.ID, Title: trip.Title, Origin: trip.Origin, Destination: trip.Destination, DepartureAt: trip.DepartureAt, TotalSeats: trip.TotalSeats, OccupiedSeats: trip.OccupiedSeats, Status: trip.Status, OrganizerID: trip.OrganizerId, ContactType: trip.ContactType, Contact: strings.TrimSpace(contact), Version: trip.Version, CreatedAt: trip.CreatedAt, UpdatedAt: trip.UpdatedAt}
+	return carpoolView{ID: trip.ID, Title: trip.Title, Origin: trip.Origin, Destination: trip.Destination, DepartureAt: trip.DepartureAt, TotalSeats: trip.TotalSeats, OccupiedSeats: trip.OccupiedSeats, Status: trip.Status, ReviewStatus: trip.ReviewStatus, ReviewReason: trip.ReviewReason, ReviewedBy: trip.ReviewedBy, ReviewedAt: trip.ReviewedAt, OrganizerID: trip.OrganizerId, ContactType: trip.ContactType, Contact: strings.TrimSpace(contact), Version: trip.Version, CreatedAt: trip.CreatedAt, UpdatedAt: trip.UpdatedAt}
 }

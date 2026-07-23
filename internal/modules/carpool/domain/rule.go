@@ -20,6 +20,14 @@ const (
 	ParticipantJoined = "joined"
 	// ParticipantLeft marks a participant that has left the trip.
 	ParticipantLeft = "left"
+	// ReviewPending means a newly published trip is waiting for moderation.
+	ReviewPending = "pending_review"
+	// ReviewApproved means a trip is publicly visible and joinable.
+	ReviewApproved = "approved"
+	// ReviewRejected means the organizer must edit and resubmit.
+	ReviewRejected = "rejected"
+	// ReviewDraft means an edited trip has not been resubmitted.
+	ReviewDraft = "draft"
 )
 
 // TripInput is the user-controlled portion of a trip.
@@ -27,6 +35,7 @@ type TripInput struct {
 	Title, Origin, Destination, ContactType, Contact string
 	DepartureAt                                      time.Time
 	TotalSeats                                       int64
+	ContactProvided                                  bool
 }
 
 // Search contains public trip search filters.
@@ -36,8 +45,24 @@ type Search struct {
 	SeatsNeeded         int64
 }
 
+// AdminSearch contains moderation-list filters.
+type AdminSearch struct {
+	Status       string
+	ReviewStatus string
+	Keyword      string
+}
+
 // ValidateTripInput validates a trip before persistence.
 func ValidateTripInput(in TripInput, now time.Time) error {
+	return validateTripInput(in, now, true)
+}
+
+// ValidateTripUpdateInput validates editable trip content and an optional contact update.
+func ValidateTripUpdateInput(in TripInput, now time.Time) error {
+	return validateTripInput(in, now, false)
+}
+
+func validateTripInput(in TripInput, now time.Time, contactRequired bool) error {
 	title := strings.TrimSpace(in.Title)
 	origin := strings.TrimSpace(in.Origin)
 	destination := strings.TrimSpace(in.Destination)
@@ -52,6 +77,9 @@ func ValidateTripInput(in TripInput, now time.Time) error {
 	}
 	if !in.DepartureAt.After(now) {
 		return fmt.Errorf("出发时间必须晚于当前时间")
+	}
+	if !contactRequired && !in.ContactProvided {
+		return nil
 	}
 	switch strings.TrimSpace(in.ContactType) {
 	case "phone", "wechat", "qq":

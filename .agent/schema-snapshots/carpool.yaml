@@ -32,6 +32,21 @@ entity:
           required: true
           size: 24
           index: true
+        - name: review_status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_reason
+          type: string
+          required: false
+          size: 500
+        - name: reviewed_by
+          type: uint64
+          required: false
+        - name: reviewed_at
+          type: datetime
+          required: false
         - name: organizer_id
           type: uint64
           required: true
@@ -83,6 +98,21 @@ entities:
           required: true
           size: 24
           index: true
+        - name: review_status
+          type: string
+          required: true
+          size: 24
+          index: true
+        - name: review_reason
+          type: string
+          required: false
+          size: 500
+        - name: reviewed_by
+          type: uint64
+          required: false
+        - name: reviewed_at
+          type: datetime
+          required: false
         - name: organizer_id
           type: uint64
           required: true
@@ -141,35 +171,166 @@ crud:
     - list
     - update
 permissions:
+    - name: carpool:admin_read
+      path: /api/v1/admin/carpool/trips
+      methods:
+        - GET
     - name: carpool:cancel
       path: /api/v1/carpool/trips/:id/cancel
       methods:
         - POST
+      default_roles:
+        - member
     - name: carpool:create
       path: /api/v1/carpool/trips
       methods:
         - POST
+      default_roles:
+        - member
     - name: carpool:join
       path: /api/v1/carpool/trips/:id/join
       methods:
         - POST
+      default_roles:
+        - member
     - name: carpool:leave
       path: /api/v1/carpool/trips/:id/leave
       methods:
         - POST
+      default_roles:
+        - member
     - name: carpool:read
       path: /api/v1/carpool/trips
       methods:
         - GET
+      default_roles:
+        - guest
+        - member
     - name: carpool:read_item
       path: /api/v1/carpool/trips/:id
       methods:
         - GET
+      default_roles:
+        - guest
+        - member
+    - name: carpool:review
+      path: /api/v1/admin/carpool/trips/:id/review
+      methods:
+        - POST
+    - name: carpool:review_revoke
+      path: /api/v1/admin/carpool/trips/:id/revoke-review
+      methods:
+        - POST
+    - name: carpool:submit_review
+      path: /api/v1/carpool/trips/:id/submit-review
+      methods:
+        - POST
+      default_roles:
+        - member
+    - name: carpool:update
+      path: /api/v1/carpool/trips/:id
+      methods:
+        - PATCH
+      default_roles:
+        - member
 operations:
+    - operation_id: ListAdminCarpoolTrips
+      method: GET
+      path: /api/v1/admin/carpool/trips
+      permission: carpool:admin_read
+      request_content: application/json
+      summary: 管理端查询拼车行程
+      query:
+        - name: status
+          type: string
+        - name: review_status
+          type: string
+        - name: keyword
+          type: string
+        - name: page
+          type: integer
+          format: int32
+          minimum: 1
+        - name: page_size
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+      responses:
+        - status: 200
+          kind: success
+    - operation_id: ReviewCarpoolTrip
+      method: POST
+      path: /api/v1/admin/carpool/trips/{id}/review
+      permission: carpool:review
+      idempotency: required
+      academic_verification: none
+      request_content: application/json
+      summary: 审核拼车行程
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+            - name: approved
+              type: boolean
+              required: true
+            - name: reason
+              type: string
+              max_length: 500
+      responses:
+        - status: 200
+          kind: success
+        - status: 400
+          kind: error
+        - status: 409
+          kind: error
+    - operation_id: RevokeCarpoolTripReview
+      method: POST
+      path: /api/v1/admin/carpool/trips/{id}/revoke-review
+      permission: carpool:review_revoke
+      idempotency: required
+      academic_verification: none
+      request_content: application/json
+      summary: 撤销拼车行程审核结果
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+            - name: reason
+              type: string
+              required: true
+              max_length: 500
+      responses:
+        - status: 200
+          kind: success
+        - status: 400
+          kind: error
+        - status: 409
+          kind: error
     - operation_id: ListCarpoolTrips
       method: GET
       path: /api/v1/carpool/trips
       permission: carpool:read
+      default_roles:
+        - guest
+        - member
+      request_content: application/json
       summary: 搜索开放拼车行程
       query:
         - name: origin
@@ -199,7 +360,11 @@ operations:
       method: POST
       path: /api/v1/carpool/trips
       permission: carpool:create
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 发起拼车行程
       headers:
         - name: Idempotency-Key
@@ -211,12 +376,15 @@ operations:
             - name: title
               type: string
               required: true
+              max_length: 200
             - name: origin
               type: string
               required: true
+              max_length: 500
             - name: destination
               type: string
               required: true
+              max_length: 500
             - name: departure_at
               type: string
               required: true
@@ -229,9 +397,11 @@ operations:
             - name: contact_type
               type: string
               required: true
+              max_length: 16
             - name: contact
               type: string
               required: true
+              max_length: 200
       responses:
         - status: 201
           kind: success
@@ -239,15 +409,77 @@ operations:
       method: GET
       path: /api/v1/carpool/trips/{id}
       permission: carpool:read_item
+      default_roles:
+        - guest
+        - member
+      request_content: application/json
       summary: 查看拼车行程
       responses:
         - status: 200
           kind: success
+    - operation_id: UpdateCarpoolTrip
+      method: PATCH
+      path: /api/v1/carpool/trips/{id}
+      permission: carpool:update
+      default_roles:
+        - member
+      idempotency: required
+      academic_verification: required
+      request_content: application/json
+      summary: 修改未成行的拼车行程
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: title
+              type: string
+              required: true
+              max_length: 200
+            - name: origin
+              type: string
+              required: true
+              max_length: 500
+            - name: destination
+              type: string
+              required: true
+              max_length: 500
+            - name: departure_at
+              type: string
+              required: true
+              format: date-time
+            - name: total_seats
+              type: integer
+              required: true
+              format: int64
+              minimum: 1
+            - name: contact_type
+              type: string
+              max_length: 16
+            - name: contact
+              type: string
+              max_length: 200
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
     - operation_id: CancelCarpoolTrip
       method: POST
       path: /api/v1/carpool/trips/{id}/cancel
       permission: carpool:cancel
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 取消拼车行程
       headers:
         - name: Idempotency-Key
@@ -268,7 +500,11 @@ operations:
       method: POST
       path: /api/v1/carpool/trips/{id}/join
       permission: carpool:join
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 原子加入拼车行程
       headers:
         - name: Idempotency-Key
@@ -291,7 +527,11 @@ operations:
       method: POST
       path: /api/v1/carpool/trips/{id}/leave
       permission: carpool:leave
+      default_roles:
+        - member
       idempotency: required
+      academic_verification: required
+      request_content: application/json
       summary: 退出拼车行程
       headers:
         - name: Idempotency-Key
@@ -308,3 +548,30 @@ operations:
       responses:
         - status: 200
           kind: success
+    - operation_id: SubmitCarpoolTripReview
+      method: POST
+      path: /api/v1/carpool/trips/{id}/submit-review
+      permission: carpool:submit_review
+      default_roles:
+        - member
+      idempotency: required
+      academic_verification: required
+      request_content: application/json
+      summary: 重新提交拼车行程审核
+      headers:
+        - name: Idempotency-Key
+          type: string
+          required: true
+          max_length: 128
+      body:
+        fields:
+            - name: expected_version
+              type: integer
+              required: true
+              format: uint64
+              minimum: 1
+      responses:
+        - status: 200
+          kind: success
+        - status: 409
+          kind: error
