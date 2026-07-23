@@ -87,6 +87,17 @@ func TestStudentCardApprovalSupersedesPendingAndSwitchesBaseRole(t *testing.T) {
 	if err != nil || identity.Status != domain.IdentityRevoked || len(roles.guest) != 1 {
 		t.Fatalf("identity=%+v guest=%v err=%v", identity, roles.guest, err)
 	}
+	revoked, err := store.GetRequest(context.Background(), first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hasReason := revoked.ReviewReason != nil && *revoked.ReviewReason == "离校"
+	hasReviewer := revoked.ReviewedBy != nil && *revoked.ReviewedBy == 99
+	hasReviewTime := revoked.ReviewedAt != nil && revoked.ReviewedAt.Equal(now.Add(time.Minute))
+	updatedVersion := revoked.Version == approved.Version+1
+	if revoked.Status != domain.RequestRevoked || !hasReason || !hasReviewer || !hasReviewTime || !updatedVersion {
+		t.Fatalf("revoked request=%+v", revoked)
+	}
 	var events []domainevent.Event
 	if err = db.Order("id").Find(&events).Error; err != nil {
 		t.Fatal(err)

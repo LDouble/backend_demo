@@ -127,6 +127,19 @@ func (h *Handler) getAdminAcademicVerificationMaterial(c *gin.Context) {
 	c.Data(http.StatusOK, content.MIMEType, content.Data)
 }
 
+func (h *Handler) getAdminAcademicIdentity(c *gin.Context) {
+	userID, ok := idParam(c)
+	if !ok {
+		return
+	}
+	identity, err := h.academic.GetIdentity(c.Request.Context(), userID)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusOK, identity)
+}
+
 func (h *Handler) approveAcademicVerificationRequest(c *gin.Context) {
 	id, ok := idParam(c)
 	if !ok {

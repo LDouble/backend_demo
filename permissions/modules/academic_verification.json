@@ -9,6 +9,13 @@
       ]
     },
     {
+      "name": "academic_verification:admin_identity_read",
+      "path_pattern": "/api/v1/admin/academic-verification/users/:id/identity",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
       "name": "academic_verification:admin_list",
       "path_pattern": "/api/v1/admin/academic-verification/requests",
       "methods": [

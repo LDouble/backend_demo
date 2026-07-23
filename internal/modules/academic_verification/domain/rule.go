@@ -22,6 +22,8 @@ const (
 	RequestRejected = "rejected"
 	// RequestSuperseded was made obsolete by another successful verification.
 	RequestSuperseded = "superseded"
+	// RequestRevoked records that a previously approved identity was revoked.
+	RequestRevoked = "revoked"
 
 	// MaterialAvailable is an unbound one-time upload.
 	MaterialAvailable = "available"

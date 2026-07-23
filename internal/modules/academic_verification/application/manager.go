@@ -52,6 +52,7 @@ type Store interface {
 	VerifyCredentials(context.Context, uint64, string, string, time.Time) (*domain.AcademicVerificationRequest, error)
 	ListRequests(context.Context, string, int, int) ([]domain.AcademicVerificationRequest, int64, error)
 	GetRequest(context.Context, uint64) (*domain.AcademicVerificationRequest, error)
+	GetIdentity(context.Context, uint64) (*domain.AcademicIdentity, error)
 	GetMaterial(context.Context, uint64) (*domain.AcademicVerificationMaterial, error)
 	Approve(context.Context, uint64, uint64, uint64, time.Time) (*domain.AcademicVerificationRequest, error)
 	Reject(context.Context, uint64, uint64, uint64, string, time.Time) (*domain.AcademicVerificationRequest, error)
@@ -197,6 +198,11 @@ func (m *Manager) ListRequests(ctx context.Context, status string, page, pageSiz
 // GetRequest returns one review request.
 func (m *Manager) GetRequest(ctx context.Context, id uint64) (*domain.AcademicVerificationRequest, error) {
 	return m.store.GetRequest(ctx, id)
+}
+
+// GetIdentity returns the current identity for administrator revocation.
+func (m *Manager) GetIdentity(ctx context.Context, userID uint64) (*domain.AcademicIdentity, error) {
+	return m.store.GetIdentity(ctx, userID)
 }
 
 // OpenMaterial decrypts a material after authorization has already succeeded.

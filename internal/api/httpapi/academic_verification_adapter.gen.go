@@ -78,3 +78,9 @@ func (h *Handler) RejectAcademicVerificationRequest(c *gin.Context, id uint64, p
 		h.rejectAcademicVerificationRequest(c)
 	})
 }
+
+// GetAdminAcademicIdentity adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) GetAdminAcademicIdentity(c *gin.Context, id uint64) {
+	setGeneratedPathParam(c, "id", id)
+	h.getAdminAcademicIdentity(c)
+}
