@@ -49,11 +49,16 @@ func TestMarketplaceTypedListingFiltersStayOperationSpecific(t *testing.T) {
 		t.Fatalf("mine search = %#v", mineSearch)
 	}
 
-	adminParams := generated.ListAdminMarketplaceListingsParams{Status: &status, Keyword: &keyword}
+	adminParams := generated.ListAdminMarketplaceListingsParams{
+		Status: &status, Keyword: &keyword, MinPriceCents: &minimum, MaxPriceCents: &maximum,
+		Page: &page, PageSize: &pageSize,
+	}
 	adminSearch := marketplaceSearchFromAdminParams(adminParams)
 	hasAdminFilters := adminSearch.Status == status && adminSearch.Keyword == "lamp" &&
-		adminSearch.MinPriceCents == nil && adminSearch.MaxPriceCents == nil
-	if !hasAdminFilters {
+		adminSearch.MinPriceCents != nil && *adminSearch.MinPriceCents == minimum &&
+		adminSearch.MaxPriceCents != nil && *adminSearch.MaxPriceCents == maximum
+	hasAdminPaging := adminSearch.Page == 2 && adminSearch.PageSize == 50
+	if !hasAdminFilters || !hasAdminPaging {
 		t.Fatalf("admin search = %#v", adminSearch)
 	}
 }

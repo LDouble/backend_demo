@@ -160,6 +160,8 @@ operations:
     query:
       - {name: status, type: string}
       - {name: keyword, type: string}
+      - {name: min_price_cents, type: integer, format: int64, minimum: 0}
+      - {name: max_price_cents, type: integer, format: int64, minimum: 0}
       - {name: page, type: integer, format: int32, minimum: 1}
       - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
   - operation_id: RemoveMarketplaceListing
