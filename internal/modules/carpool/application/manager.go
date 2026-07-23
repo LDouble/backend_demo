@@ -17,6 +17,7 @@ type Store interface {
 	GetTrip(context.Context, uint64, uint64) (*domain.Trip, bool, error)
 	SearchTrips(context.Context, domain.Search, int, int, time.Time) ([]domain.Trip, int64, error)
 	ListAdmin(context.Context, domain.AdminSearch, int, int) ([]domain.Trip, int64, error)
+	ListMine(context.Context, uint64, domain.AdminSearch, int, int) ([]domain.Trip, int64, error)
 	SubmitReview(context.Context, uint64, uint64, uint64) (*domain.Trip, error)
 	Review(context.Context, uint64, uint64, uint64, bool, string, time.Time) (*domain.Trip, error)
 	RevokeReview(context.Context, uint64, uint64, uint64, string, time.Time) (*domain.Trip, error)
@@ -67,6 +68,12 @@ func (m *Manager) Search(ctx context.Context, s domain.Search, p, size int) ([]d
 // ListAdmin returns trips matching moderation filters.
 func (m *Manager) ListAdmin(ctx context.Context, search domain.AdminSearch, page, size int) ([]domain.Trip, int64, error) {
 	return m.store.ListAdmin(ctx, search, page, size)
+}
+
+// ListMine returns all trips organized by the current user, including trips
+// that are not publicly visible yet.
+func (m *Manager) ListMine(ctx context.Context, userID uint64, search domain.AdminSearch, page, size int) ([]domain.Trip, int64, error) {
+	return m.store.ListMine(ctx, userID, search, page, size)
 }
 
 // SubmitReview resubmits an edited trip for moderation.

@@ -107,6 +107,27 @@ func (h *Handler) listAdminCarpoolTrips(c *gin.Context) {
 	}
 	success(c, http.StatusOK, pageData(views, p, size, total))
 }
+func (h *Handler) listMyCarpoolTrips(c *gin.Context) {
+	params, ok := generatedParams[generated.ListMyCarpoolTripsParams](c, "ListMyCarpoolTrips")
+	if !ok {
+		failure(c, apperror.New(400, "invalid_parameter", "缺少已校验的拼车列表参数"))
+		return
+	}
+	p, size := paging(c)
+	rows, total, err := h.carpools.ListMine(c.Request.Context(), c.GetUint64(userIDKey), carpool.AdminSearch{
+		Status: trimmedCarpoolFilter(params.Status), ReviewStatus: trimmedCarpoolFilter(params.ReviewStatus),
+		Keyword: trimmedCarpoolFilter(params.Keyword),
+	}, p, size)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	views := make([]carpoolView, len(rows))
+	for i := range rows {
+		views[i] = h.carpoolView(&rows[i], true)
+	}
+	success(c, http.StatusOK, pageData(views, p, size, total))
+}
 func (h *Handler) submitCarpoolTripReview(c *gin.Context) {
 	h.carpoolChange(c, func(id, user, version uint64) (*carpool.Trip, error) {
 		return h.carpools.SubmitReview(c.Request.Context(), id, user, version)

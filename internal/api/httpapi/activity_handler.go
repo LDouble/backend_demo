@@ -88,6 +88,25 @@ func (h *Handler) listAdminActivities(c *gin.Context) {
 	success(c, http.StatusOK, pageData(views, p, s, total))
 }
 
+func (h *Handler) listMyActivities(c *gin.Context) {
+	p, s := paging(c)
+	search, ok := parseActivitySearch(c, true)
+	if !ok {
+		return
+	}
+	rows, total, err := h.activities.ListMine(c.Request.Context(), c.GetUint64(userIDKey), search, p, s)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	views, err := h.activityViews(c, rows)
+	if err != nil {
+		failure(c, err)
+		return
+	}
+	success(c, http.StatusOK, pageData(views, p, s, total))
+}
+
 func (h *Handler) createAdminActivity(c *gin.Context) {
 	var req activityRequest
 	if !bind(c, &req) {

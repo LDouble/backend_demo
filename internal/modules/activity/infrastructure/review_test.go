@@ -116,6 +116,46 @@ func TestApproveRejectsExpiredActivity(t *testing.T) {
 	}
 }
 
+func TestListMineScopesFiltersAndPaginatesActivities(t *testing.T) {
+	db := newActivityStoreTestDB(t)
+	store := NewStore(db)
+	startDate := time.Now().UTC().AddDate(0, 0, 2).Truncate(24 * time.Hour)
+	activities := []domain.Activity{
+		{
+			Title: "我的迎新活动", Status: domain.ActivityStatusDraft,
+			ReviewStatus: domain.ReviewStatusPendingReview, CreatedBy: 7, UpdatedBy: 7,
+			StartAt: startDate.Add(time.Hour), EndAt: startDate.Add(2 * time.Hour), Version: 1,
+		},
+		{
+			Title: "我的旧活动", Status: domain.ActivityStatusDraft,
+			ReviewStatus: domain.ReviewStatusRejected, CreatedBy: 7, UpdatedBy: 7,
+			StartAt: startDate.AddDate(0, 0, 1), EndAt: startDate.AddDate(0, 0, 1).Add(time.Hour), Version: 1,
+		},
+		{
+			Title: "他人的迎新活动", Status: domain.ActivityStatusDraft,
+			ReviewStatus: domain.ReviewStatusPendingReview, CreatedBy: 8, UpdatedBy: 8,
+			StartAt: startDate.Add(time.Hour), EndAt: startDate.Add(2 * time.Hour), Version: 1,
+		},
+	}
+	if err := db.Create(&activities).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	rows, total, err := store.ListMine(context.Background(), 7, domain.AdminSearch{}, 1, 1)
+	if err != nil || total != 2 || len(rows) != 1 {
+		t.Fatalf("page rows=%+v total=%d err=%v", rows, total, err)
+	}
+	rows, total, err = store.ListMine(context.Background(), 7, domain.AdminSearch{
+		Status:       domain.ActivityStatusDraft,
+		ReviewStatus: domain.ReviewStatusPendingReview,
+		Keyword:      " 迎新活动 ",
+		StartDate:    &startDate,
+	}, 1, 20)
+	if err != nil || total != 1 || len(rows) != 1 || rows[0].ID != activities[0].ID {
+		t.Fatalf("filtered rows=%+v total=%d err=%v", rows, total, err)
+	}
+}
+
 func newActivityStoreTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(

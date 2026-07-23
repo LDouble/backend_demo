@@ -49,6 +49,12 @@ func (h *Handler) CreateCarpoolTrip(c *gin.Context, params generated.CreateCarpo
 	})
 }
 
+// ListMyCarpoolTrips adapts the generated OpenAPI operation to handwritten business handling.
+func (h *Handler) ListMyCarpoolTrips(c *gin.Context, params generated.ListMyCarpoolTripsParams) {
+	setGeneratedParams(c, "ListMyCarpoolTrips", params)
+	h.listMyCarpoolTrips(c)
+}
+
 // GetCarpoolTrip adapts the generated OpenAPI operation to handwritten business handling.
 func (h *Handler) GetCarpoolTrip(c *gin.Context, id uint64) {
 	setGeneratedPathParam(c, "id", id)

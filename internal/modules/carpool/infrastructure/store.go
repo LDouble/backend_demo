@@ -150,8 +150,24 @@ func (s *Store) ListAdmin(
 	page,
 	size int,
 ) ([]domain.Trip, int64, error) {
-	rows := []domain.Trip{}
 	base := idempotency.DB(ctx, s.db).Model(&domain.Trip{})
+	return listTrips(base, search, page, size)
+}
+
+// ListMine returns trips owned by one organizer in every lifecycle state.
+func (s *Store) ListMine(
+	ctx context.Context,
+	organizerID uint64,
+	search domain.AdminSearch,
+	page,
+	size int,
+) ([]domain.Trip, int64, error) {
+	base := idempotency.DB(ctx, s.db).Model(&domain.Trip{}).Where("organizer_id = ?", organizerID)
+	return listTrips(base, search, page, size)
+}
+
+func listTrips(base *gorm.DB, search domain.AdminSearch, page, size int) ([]domain.Trip, int64, error) {
+	rows := []domain.Trip{}
 	if keyword := strings.TrimSpace(search.Keyword); keyword != "" {
 		pattern := "%" + keyword + "%"
 		base = base.Where(

@@ -527,6 +527,54 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Success"
+  /api/v1/activities/mine:
+    get:
+      operationId: ListMyActivities
+      tags: [activity]
+      summary: "查询我发布的活动"
+      x-generated-module: activity
+      x-permission: activity:read_mine
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: review_status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
   /api/v1/activities/registrations/mine:
     get:
       operationId: ListMyActivityRegistrations
@@ -1272,6 +1320,48 @@ paths:
                   maxLength: 200
       responses:
         "201":
+          $ref: "#/components/responses/Success"
+  /api/v1/carpool/trips/mine:
+    get:
+      operationId: ListMyCarpoolTrips
+      tags: [carpool]
+      summary: "查询我发布的拼车行程"
+      x-generated-module: carpool
+      x-permission: carpool:read_mine
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: review_status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
           $ref: "#/components/responses/Success"
   /api/v1/carpool/trips/{id}:
     get:
