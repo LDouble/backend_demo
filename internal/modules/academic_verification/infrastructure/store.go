@@ -393,6 +393,33 @@ func (s *Store) Revoke(
 		if err != nil {
 			return err
 		}
+		requests := platformquery.Use(tx).AcademicVerificationRequest
+		request, err := requests.WithContext(txCtx).Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(
+				requests.UserId.Eq(identity.UserId),
+				requests.Status.Eq(domain.RequestApproved),
+			).
+			Order(requests.ID.Desc()).
+			First()
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apperror.New(http.StatusConflict, "academic_request_conflict", "认证申请状态已变化")
+		}
+		if err != nil {
+			return err
+		}
+		_, err = requests.WithContext(txCtx).Where(
+			requests.ID.Eq(request.ID),
+			requests.Version.Eq(request.Version),
+		).UpdateSimple(
+			requests.Status.Value(domain.RequestRevoked),
+			requests.ReviewReason.Value(reason),
+			requests.ReviewedBy.Value(adminID),
+			requests.ReviewedAt.Value(now),
+			requests.Version.Add(1),
+		)
+		if err != nil {
+			return err
+		}
 		if err = s.roles.EnsureGuestForUser(txCtx, identity.UserId); err != nil {
 			return fmt.Errorf("restore guest role: %w", err)
 		}
