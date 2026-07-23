@@ -292,3 +292,16 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/Success"
+  /api/v1/admin/academic-verification/users/{id}/identity:
+    get:
+      operationId: GetAdminAcademicIdentity
+      tags: [academic_verification]
+      summary: "查询用户当前认证身份"
+      x-generated-module: academic_verification
+      x-permission: academic_verification:admin_identity_read
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: uint64, minimum: 1}}
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"

@@ -217,6 +217,16 @@ func (s *Store) GetRequest(ctx context.Context, id uint64) (*domain.AcademicVeri
 	return row, err
 }
 
+// GetIdentity returns the current identity for one user without exposing storage metadata.
+func (s *Store) GetIdentity(ctx context.Context, userID uint64) (*domain.AcademicIdentity, error) {
+	q := platformquery.Use(idempotency.DB(ctx, s.db)).AcademicIdentity
+	identity, err := q.WithContext(ctx).Where(q.UserId.Eq(userID)).First()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, apperror.New(http.StatusNotFound, "academic_identity_not_found", "教务身份不存在")
+	}
+	return identity, err
+}
+
 // GetMaterial returns private metadata; storage keys must never be mapped into API JSON.
 func (s *Store) GetMaterial(ctx context.Context, id uint64) (*domain.AcademicVerificationMaterial, error) {
 	q := platformquery.Use(idempotency.DB(ctx, s.db)).AcademicVerificationMaterial

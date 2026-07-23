@@ -114,6 +114,11 @@ operations:
     path: /api/v1/admin/academic-verification/materials/{id}
     permission: academic_verification:admin_material
     summary: 受控读取认证材料
+  - operation_id: GetAdminAcademicIdentity
+    method: GET
+    path: /api/v1/admin/academic-verification/users/{id}/identity
+    permission: academic_verification:admin_identity_read
+    summary: 查询用户当前认证身份
   - operation_id: ApproveAcademicVerificationRequest
     method: POST
     idempotency: required
