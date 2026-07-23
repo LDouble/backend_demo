@@ -24,6 +24,8 @@ import (
 	activityinfra "github.com/weouc-plus/campus-platform/internal/modules/activity/infrastructure"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	carpoolinfra "github.com/weouc-plus/campus-platform/internal/modules/carpool/infrastructure"
+	commentapp "github.com/weouc-plus/campus-platform/internal/modules/comment/application"
+	commentinfra "github.com/weouc-plus/campus-platform/internal/modules/comment/infrastructure"
 	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
 	errandinfra "github.com/weouc-plus/campus-platform/internal/modules/errand/infrastructure"
 	marketplaceapp "github.com/weouc-plus/campus-platform/internal/modules/marketplace/application"
@@ -50,6 +52,7 @@ type Runtime struct {
 	Marketplace *marketplaceapp.Manager
 	Errands     *errandapp.Manager
 	Carpools    *carpoolapp.Manager
+	Comments    *commentapp.Manager
 	Trades      *tradeapp.Manager
 	Academic    *academicapp.Manager
 	WeChat      *wechat.CachingResolver
@@ -124,6 +127,15 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	marketplaceService := marketplaceinfra.NewManager(db, cipher)
 	errandService := errandinfra.NewManager(db, cipher)
 	carpoolService := carpoolinfra.NewManager(db, cipher)
+	commentService := commentapp.NewManager(
+		commentinfra.NewStore(db),
+		commentTargetResolver{
+			activities:  activityService,
+			marketplace: marketplaceService,
+			errands:     errandService,
+			carpools:    carpoolService,
+		},
+	)
 	tradeService := tradeinfra.NewManager(db, nil)
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -139,6 +151,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		WithMarketplace(marketplaceService).
 		WithErrands(errandService).
 		WithCarpools(carpoolService).
+		WithComments(commentService).
 		WithTrades(tradeService).
 		WithAcademicVerification(academicService)
 	router, err := h.Router()
@@ -154,6 +167,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	runtime.Marketplace = marketplaceService
 	runtime.Errands = errandService
 	runtime.Carpools = carpoolService
+	runtime.Comments = commentService
 	runtime.Trades = tradeService
 	runtime.Academic = academicService
 	initialized = true

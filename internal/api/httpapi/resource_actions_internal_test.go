@@ -204,6 +204,73 @@ func TestAvailableActionsForViewer(t *testing.T) {
 	}
 }
 
+func TestCommentActionsOnlyReplaceReply(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	newContext := func(viewerID uint64) *gin.Context {
+		recorder := httptest.NewRecorder()
+		context, _ := gin.CreateTestContext(recorder)
+		context.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+		context.Set(userIDKey, viewerID)
+		return context
+	}
+	tests := []struct {
+		name     string
+		viewerID uint64
+		verified bool
+		actions  []string
+		want     []string
+		calls    int
+	}{
+		{
+			name:    "anonymous reply remains visible",
+			actions: []string{"reply"},
+			want:    []string{"reply"},
+		},
+		{
+			name:     "verified member keeps all actions",
+			viewerID: 7,
+			verified: true,
+			actions:  []string{"edit", "reply"},
+			want:     []string{"edit", "reply"},
+			calls:    1,
+		},
+		{
+			name:     "unverified author keeps owner actions",
+			viewerID: 7,
+			actions:  []string{"edit", "withdraw", "reply"},
+			want:     []string{"edit", "withdraw", actionVerifyAcademic},
+			calls:    1,
+		},
+		{
+			name:     "no reply skips verification",
+			viewerID: 7,
+			actions:  []string{"edit"},
+			want:     []string{"edit"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gate := &academicActionGate{verified: test.verified}
+			handler := &Handler{academicGate: gate}
+			got, err := handler.commentActionsForViewer(newContext(test.viewerID), test.actions)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != len(test.want) {
+				t.Fatalf("actions=%v want=%v", got, test.want)
+			}
+			for index := range got {
+				if got[index] != test.want[index] {
+					t.Fatalf("actions=%v want=%v", got, test.want)
+				}
+			}
+			if gate.calls != test.calls {
+				t.Fatalf("calls=%d want=%d", gate.calls, test.calls)
+			}
+		})
+	}
+}
+
 func TestAvailableActionsForViewerCachesVerificationAndPropagatesErrors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()

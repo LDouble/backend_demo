@@ -184,6 +184,14 @@
     {
       "path": "migrations/20260723090848_carpool_review.up.sql",
       "sha256": "076e664e02b1fd85c5108bf08b8c6f7811bdcd999d7aa3630ca7018768eff519"
+    },
+    {
+      "path": "migrations/20260723132057_add_comment_moderation.down.sql",
+      "sha256": "250b24f8526e89e65221d97e88704e60860ac0faac2906a6b9a0c9c5828ceaa1"
+    },
+    {
+      "path": "migrations/20260723132057_add_comment_moderation.up.sql",
+      "sha256": "201e43b686f387a51e849286494148f57f2e6bc2a33a390b0561e02b7dd48bd5"
     }
   ]
 }
