@@ -1,0 +1,171 @@
+{
+  "module": "campus_circle",
+  "permissions": [
+    {
+      "name": "campus_circle:activate_section",
+      "path_pattern": "/api/v1/admin/campus-circle/sections/:id/activate",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "campus_circle:admin_read_post",
+      "path_pattern": "/api/v1/admin/campus-circle/posts/:id",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "campus_circle:admin_read_posts",
+      "path_pattern": "/api/v1/admin/campus-circle/posts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "campus_circle:admin_read_sections",
+      "path_pattern": "/api/v1/admin/campus-circle/sections",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "name": "campus_circle:archive_section",
+      "path_pattern": "/api/v1/admin/campus-circle/sections/:id/archive",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "campus_circle:create_post",
+      "path_pattern": "/api/v1/campus-circle/posts",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:create_section",
+      "path_pattern": "/api/v1/admin/campus-circle/sections",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "campus_circle:like_post",
+      "path_pattern": "/api/v1/campus-circle/posts/:id/like",
+      "methods": [
+        "PUT"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:read_mine",
+      "path_pattern": "/api/v1/campus-circle/posts/mine",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:read_post",
+      "path_pattern": "/api/v1/campus-circle/posts/:id",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:read_posts",
+      "path_pattern": "/api/v1/campus-circle/posts",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:read_sections",
+      "path_pattern": "/api/v1/campus-circle/sections",
+      "methods": [
+        "GET"
+      ],
+      "default_roles": [
+        "guest",
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:review_post",
+      "path_pattern": "/api/v1/admin/campus-circle/posts/:id/review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "campus_circle:review_revoke",
+      "path_pattern": "/api/v1/admin/campus-circle/posts/:id/revoke-review",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "name": "campus_circle:submit_review",
+      "path_pattern": "/api/v1/campus-circle/posts/:id/submit-review",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:unlike_post",
+      "path_pattern": "/api/v1/campus-circle/posts/:id/like",
+      "methods": [
+        "DELETE"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:update_post",
+      "path_pattern": "/api/v1/campus-circle/posts/:id",
+      "methods": [
+        "PATCH"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    },
+    {
+      "name": "campus_circle:update_section",
+      "path_pattern": "/api/v1/admin/campus-circle/sections/:id",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "name": "campus_circle:withdraw_post",
+      "path_pattern": "/api/v1/campus-circle/posts/:id/withdraw",
+      "methods": [
+        "POST"
+      ],
+      "default_roles": [
+        "member"
+      ]
+    }
+  ]
+}

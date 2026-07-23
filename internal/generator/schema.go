@@ -131,14 +131,15 @@ type APIObject struct {
 
 // APIField declares one JSON request field.
 type APIField struct {
-	Name      string `yaml:"name"`
-	Type      string `yaml:"type"`
-	Required  bool   `yaml:"required,omitempty"`
-	Format    string `yaml:"format,omitempty"`
-	Items     string `yaml:"items,omitempty"`
-	Minimum   *int64 `yaml:"minimum,omitempty"`
-	Maximum   *int64 `yaml:"maximum,omitempty"`
-	MaxLength *int64 `yaml:"max_length,omitempty"`
+	Name      string   `yaml:"name"`
+	Type      string   `yaml:"type"`
+	Required  bool     `yaml:"required,omitempty"`
+	Format    string   `yaml:"format,omitempty"`
+	Items     string   `yaml:"items,omitempty"`
+	Enum      []string `yaml:"enum,omitempty"`
+	Minimum   *int64   `yaml:"minimum,omitempty"`
+	Maximum   *int64   `yaml:"maximum,omitempty"`
+	MaxLength *int64   `yaml:"max_length,omitempty"`
 }
 
 // APIResponse declares one operation response status and shared envelope kind.
@@ -662,6 +663,23 @@ func normalizeAPIField(field *APIField) error {
 	}
 	if !validAPIFormat(field.Type, field.Format) {
 		return fmt.Errorf("field %q has invalid format %q", field.Name, field.Format)
+	}
+	if len(field.Enum) > 0 {
+		if field.Type != "string" {
+			return fmt.Errorf("field %q has enum values for non-string type", field.Name)
+		}
+		seen := make(map[string]struct{}, len(field.Enum))
+		for i, value := range field.Enum {
+			value = strings.TrimSpace(value)
+			if value == "" {
+				return fmt.Errorf("field %q has an empty enum value", field.Name)
+			}
+			if _, exists := seen[value]; exists {
+				return fmt.Errorf("field %q has duplicate enum value %q", field.Name, value)
+			}
+			seen[value] = struct{}{}
+			field.Enum[i] = value
+		}
 	}
 	if field.Type == "array" && (field.Items == "array" || !validAPIType(field.Items)) {
 		return fmt.Errorf("array field %q has invalid items", field.Name)

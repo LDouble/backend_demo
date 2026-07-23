@@ -22,6 +22,8 @@ import (
 	academicinfra "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/infrastructure"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
 	activityinfra "github.com/weouc-plus/campus-platform/internal/modules/activity/infrastructure"
+	campuscircleapp "github.com/weouc-plus/campus-platform/internal/modules/campus_circle/application"
+	campuscircleinfra "github.com/weouc-plus/campus-platform/internal/modules/campus_circle/infrastructure"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	carpoolinfra "github.com/weouc-plus/campus-platform/internal/modules/carpool/infrastructure"
 	commentapp "github.com/weouc-plus/campus-platform/internal/modules/comment/application"
@@ -40,22 +42,23 @@ import (
 
 // Runtime owns initialized dependencies and the HTTP router.
 type Runtime struct {
-	Config      bootstrap.Config
-	DB          *gorm.DB
-	Redis       *redis.Client
-	Logger      *zap.Logger
-	Router      *gin.Engine
-	Users       *user.Service
-	Permissions *permission.Service
-	Notices     *noticeapp.Manager
-	Activities  *activityapp.Manager
-	Marketplace *marketplaceapp.Manager
-	Errands     *errandapp.Manager
-	Carpools    *carpoolapp.Manager
-	Comments    *commentapp.Manager
-	Trades      *tradeapp.Manager
-	Academic    *academicapp.Manager
-	WeChat      *wechat.CachingResolver
+	Config       bootstrap.Config
+	DB           *gorm.DB
+	Redis        *redis.Client
+	Logger       *zap.Logger
+	Router       *gin.Engine
+	Users        *user.Service
+	Permissions  *permission.Service
+	Notices      *noticeapp.Manager
+	Activities   *activityapp.Manager
+	CampusCircle *campuscircleapp.Manager
+	Marketplace  *marketplaceapp.Manager
+	Errands      *errandapp.Manager
+	Carpools     *carpoolapp.Manager
+	Comments     *commentapp.Manager
+	Trades       *tradeapp.Manager
+	Academic     *academicapp.Manager
+	WeChat       *wechat.CachingResolver
 }
 
 // Build initializes all runtime dependencies.
@@ -127,13 +130,15 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	marketplaceService := marketplaceinfra.NewManager(db, cipher)
 	errandService := errandinfra.NewManager(db, cipher)
 	carpoolService := carpoolinfra.NewManager(db, cipher)
+	campusCircleService := campuscircleinfra.NewManager(db)
 	commentService := commentapp.NewManager(
 		commentinfra.NewStore(db),
 		commentTargetResolver{
-			activities:  activityService,
-			marketplace: marketplaceService,
-			errands:     errandService,
-			carpools:    carpoolService,
+			activities:   activityService,
+			campusCircle: campusCircleService,
+			marketplace:  marketplaceService,
+			errands:      errandService,
+			carpools:     carpoolService,
 		},
 	)
 	tradeService := tradeinfra.NewManager(db, nil)
@@ -148,6 +153,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 		WithAuthLimiter(redisclient.NewAuthLimiter(rdb, cfg.IsProduction())).
 		WithNotices(noticeService).
 		WithActivities(activityService).
+		WithCampusCircle(campusCircleService).
 		WithMarketplace(marketplaceService).
 		WithErrands(errandService).
 		WithCarpools(carpoolService).
@@ -164,6 +170,7 @@ func Build(ctx context.Context, cfg bootstrap.Config) (*Runtime, error) {
 	runtime.Permissions = permissionService
 	runtime.Notices = noticeService
 	runtime.Activities = activityService
+	runtime.CampusCircle = campusCircleService
 	runtime.Marketplace = marketplaceService
 	runtime.Errands = errandService
 	runtime.Carpools = carpoolService

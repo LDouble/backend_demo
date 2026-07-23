@@ -170,11 +170,20 @@ func TestAvailableActionsForViewer(t *testing.T) {
 			wantCalls:  1,
 		},
 		{
-			name:       "publisher action bypasses verification lookup",
+			name:       "unverified publisher keeps only non-publishing actions",
 			viewerID:   8,
 			actions:    []string{"edit", "cancel"},
 			restricted: "register",
-			want:       []string{"edit", "cancel"},
+			want:       []string{"cancel", actionVerifyAcademic},
+			wantCalls:  1,
+		},
+		{
+			name:       "unverified resubmission is hidden and actions are deduplicated",
+			viewerID:   8,
+			actions:    []string{"submit_review", "withdraw", "withdraw"},
+			restricted: "register",
+			want:       []string{"withdraw", actionVerifyAcademic},
+			wantCalls:  1,
 		},
 	}
 	for _, test := range tests {
@@ -235,17 +244,18 @@ func TestCommentActionsOnlyReplaceReply(t *testing.T) {
 			calls:    1,
 		},
 		{
-			name:     "unverified author keeps owner actions",
+			name:     "unverified author keeps only non-publishing owner actions",
 			viewerID: 7,
 			actions:  []string{"edit", "withdraw", "reply"},
-			want:     []string{"edit", "withdraw", actionVerifyAcademic},
+			want:     []string{"withdraw", actionVerifyAcademic},
 			calls:    1,
 		},
 		{
-			name:     "no reply skips verification",
+			name:     "edit still requires verification without reply",
 			viewerID: 7,
 			actions:  []string{"edit"},
-			want:     []string{"edit"},
+			want:     []string{actionVerifyAcademic},
+			calls:    1,
 		},
 	}
 	for _, test := range tests {

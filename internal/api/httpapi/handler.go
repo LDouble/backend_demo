@@ -22,6 +22,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/core/user"
 	academicapp "github.com/weouc-plus/campus-platform/internal/modules/academic_verification/application"
 	activityapp "github.com/weouc-plus/campus-platform/internal/modules/activity/application"
+	campuscircleapp "github.com/weouc-plus/campus-platform/internal/modules/campus_circle/application"
 	carpoolapp "github.com/weouc-plus/campus-platform/internal/modules/carpool/application"
 	commentapp "github.com/weouc-plus/campus-platform/internal/modules/comment/application"
 	errandapp "github.com/weouc-plus/campus-platform/internal/modules/errand/application"
@@ -40,6 +41,7 @@ type Handler struct {
 	configs           *configcenter.Service
 	notices           *noticeapp.Manager
 	activities        *activityapp.Manager
+	campusCircle      *campuscircleapp.Manager
 	marketplace       *marketplaceapp.Manager
 	errands           *errandapp.Manager
 	carpools          *carpoolapp.Manager
@@ -77,6 +79,12 @@ func (h *Handler) WithNotices(manager *noticeapp.Manager) *Handler { h.notices =
 // WithActivities attaches the activity domain service.
 func (h *Handler) WithActivities(manager *activityapp.Manager) *Handler {
 	h.activities = manager
+	return h
+}
+
+// WithCampusCircle attaches the campus-circle content service.
+func (h *Handler) WithCampusCircle(manager *campuscircleapp.Manager) *Handler {
+	h.campusCircle = manager
 	return h
 }
 
@@ -122,6 +130,8 @@ type AcademicVerificationGate interface {
 const (
 	academicVerificationStatusKey = "academic_verification_status"
 	actionVerifyAcademic          = "verify_academic"
+	actionEditContent             = "edit"
+	actionSubmitReview            = "submit_review"
 )
 
 // WithAcademicVerificationGate overrides only the write gate, primarily for isolated adapters.
@@ -147,19 +157,36 @@ func (h *Handler) requireAcademicVerification(c *gin.Context) bool {
 	return true
 }
 
-// availableActionsForViewer replaces one action that requires academic
-// verification with the action that starts verification. Publisher-owned and
-// participant-owned actions pass through unchanged because they do not include
-// the restricted action.
+// availableActionsForViewer hides publishing and cross-user actions from an
+// unverified member while preserving unrelated owner actions.
 func (h *Handler) availableActionsForViewer(
 	c *gin.Context,
 	actions []string,
-	restrictedAction string,
+	restrictedActions ...string,
 ) ([]string, error) {
 	if actions == nil {
 		actions = []string{}
 	}
-	if c.GetUint64(userIDKey) == 0 || !containsAction(actions, restrictedAction) {
+	if c.GetUint64(userIDKey) == 0 {
+		return actions, nil
+	}
+	restricted := map[string]struct{}{
+		actionEditContent:  {},
+		actionSubmitReview: {},
+	}
+	for _, action := range restrictedActions {
+		if action != "" {
+			restricted[action] = struct{}{}
+		}
+	}
+	hasRestricted := false
+	for _, action := range actions {
+		if _, ok := restricted[action]; ok {
+			hasRestricted = true
+			break
+		}
+	}
+	if !hasRestricted {
 		return actions, nil
 	}
 	verified, err := h.viewerAcademicVerified(c)
@@ -169,7 +196,22 @@ func (h *Handler) availableActionsForViewer(
 	if verified {
 		return actions, nil
 	}
-	return []string{actionVerifyAcademic}, nil
+	result := make([]string, 0, len(actions))
+	seen := make(map[string]struct{}, len(actions))
+	for _, action := range actions {
+		if _, ok := restricted[action]; ok {
+			continue
+		}
+		if action == actionVerifyAcademic {
+			continue
+		}
+		if _, ok := seen[action]; ok {
+			continue
+		}
+		seen[action] = struct{}{}
+		result = append(result, action)
+	}
+	return append(result, actionVerifyAcademic), nil
 }
 
 func (h *Handler) viewerAcademicVerified(c *gin.Context) (bool, error) {
@@ -192,15 +234,6 @@ func (h *Handler) viewerAcademicVerified(c *gin.Context) (bool, error) {
 	}
 	c.Set(academicVerificationStatusKey, verified)
 	return verified, nil
-}
-
-func containsAction(actions []string, target string) bool {
-	for _, action := range actions {
-		if action == target {
-			return true
-		}
-	}
-	return false
 }
 
 func generatedActions[T ~string](actions []string) []T {

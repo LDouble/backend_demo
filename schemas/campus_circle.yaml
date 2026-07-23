@@ -1,0 +1,399 @@
+version: 2
+module: campus_circle
+entities:
+  - name: CampusCircleSection
+    table: campus_circle_sections
+    primary: true
+    fields:
+      - {name: parent_id, type: uint64, index: true}
+      - {name: slug, type: string, size: 64, required: true, unique: true}
+      - {name: name, type: string, size: 64, required: true}
+      - {name: description, type: string, size: 500}
+      - {name: icon_url, type: string, size: 2048}
+      - {name: cover_url, type: string, size: 2048}
+      - {name: sort_order, type: int64, required: true}
+      - {name: status, type: string, size: 16, required: true, index: true}
+      - {name: created_by, type: uint64, required: true}
+      - {name: updated_by, type: uint64, required: true}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: uk_campus_circle_section_slug, fields: [slug], unique: true}
+      - {name: idx_campus_circle_section_tree, fields: [parent_id, status, sort_order]}
+    foreign_keys:
+      - {field: parent_id, references: campus_circle_sections.id, on_delete: RESTRICT}
+  - name: CampusCirclePost
+    table: campus_circle_posts
+    fields:
+      - {name: section_id, type: uint64, required: true, index: true}
+      - {name: author_id, type: uint64, required: true, index: true}
+      - {name: title, type: string, size: 100}
+      - {name: content, type: text}
+      - {name: status, type: string, size: 24, required: true, index: true}
+      - {name: review_reason, type: string, size: 500}
+      - {name: reviewed_by, type: uint64}
+      - {name: reviewed_at, type: datetime}
+      - {name: published_at, type: datetime}
+      - {name: version, type: uint64, required: true}
+    indexes:
+      - {name: idx_campus_circle_post_public, fields: [status, section_id, published_at]}
+      - {name: idx_campus_circle_post_author, fields: [author_id, status]}
+      - {name: idx_campus_circle_post_section, fields: [section_id, status]}
+    foreign_keys:
+      - {field: section_id, references: campus_circle_sections.id, on_delete: RESTRICT}
+  - name: CampusCirclePostImage
+    table: campus_circle_post_images
+    fields:
+      - {name: post_id, type: uint64, required: true, index: true}
+      - {name: url, type: string, size: 2048, required: true}
+      - {name: sort_order, type: int64, required: true}
+    indexes:
+      - {name: uk_campus_circle_post_image_order, fields: [post_id, sort_order], unique: true}
+    foreign_keys:
+      - {field: post_id, references: campus_circle_posts.id, on_delete: CASCADE}
+  - name: CampusCirclePostLike
+    table: campus_circle_post_likes
+    fields:
+      - {name: post_id, type: uint64, required: true, index: true}
+      - {name: user_id, type: uint64, required: true, index: true}
+    indexes:
+      - {name: uk_campus_circle_post_like_user, fields: [post_id, user_id], unique: true}
+      - {name: idx_campus_circle_post_like_user, fields: [user_id]}
+    foreign_keys:
+      - {field: post_id, references: campus_circle_posts.id, on_delete: CASCADE}
+crud: [create, get, list, update]
+components:
+  responses:
+    CampusCircleSectionResponse:
+      description: 校园圈子模块
+      content: {application/json: {schema: {$ref: "#/components/schemas/CampusCircleSectionResponseBody"}}}
+    CampusCircleSectionTreeResponse:
+      description: 校园圈子模块树
+      content: {application/json: {schema: {$ref: "#/components/schemas/CampusCircleSectionTreeResponseBody"}}}
+    CampusCirclePostResponse:
+      description: 校园圈帖子
+      content: {application/json: {schema: {$ref: "#/components/schemas/CampusCirclePostResponseBody"}}}
+    CampusCirclePostPageResponse:
+      description: 校园圈帖子分页
+      content: {application/json: {schema: {$ref: "#/components/schemas/CampusCirclePostPageResponseBody"}}}
+  schemas:
+    CampusCircleSectionStatus:
+      type: string
+      enum: [active, archived]
+    CampusCirclePostStatus:
+      type: string
+      enum: [pending_review, approved, rejected, withdrawn]
+    CampusCircleViewerRelation:
+      type: string
+      enum: [anonymous, owner, other, admin]
+    CampusCircleViewerAction:
+      type: string
+      enum: [edit, withdraw, submit_review, like, unlike, comment, verify_academic]
+    CampusCircleSectionView:
+      type: object
+      required: [id, parent_id, slug, name, description, icon_url, cover_url, sort_order, status, version, created_at, updated_at, children]
+      properties:
+        id: {type: integer, format: uint64}
+        parent_id: {type: integer, format: uint64, nullable: true}
+        slug: {type: string}
+        name: {type: string}
+        description: {type: string, nullable: true}
+        icon_url: {type: string, nullable: true}
+        cover_url: {type: string, nullable: true}
+        sort_order: {type: integer, format: int64}
+        status: {$ref: "#/components/schemas/CampusCircleSectionStatus"}
+        version: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        children:
+          type: array
+          items: {$ref: "#/components/schemas/CampusCircleSectionView"}
+    CampusCirclePostImageView:
+      type: object
+      required: [id, url, sort_order]
+      properties:
+        id: {type: integer, format: uint64}
+        url: {type: string}
+        sort_order: {type: integer, format: int64}
+    CampusCirclePostView:
+      type: object
+      required: [id, section_id, author_id, title, content, images, status, review_reason, reviewed_by, reviewed_at, published_at, version, created_at, updated_at, like_count, comment_count, liked, viewer_relation, available_actions]
+      properties:
+        id: {type: integer, format: uint64}
+        section_id: {type: integer, format: uint64}
+        author_id: {type: integer, format: uint64}
+        title: {type: string, nullable: true}
+        content: {type: string, nullable: true}
+        images: {type: array, items: {$ref: "#/components/schemas/CampusCirclePostImageView"}}
+        status: {$ref: "#/components/schemas/CampusCirclePostStatus"}
+        review_reason: {type: string, nullable: true}
+        reviewed_by: {type: integer, format: uint64, nullable: true}
+        reviewed_at: {type: string, format: date-time, nullable: true}
+        published_at: {type: string, format: date-time, nullable: true}
+        version: {type: integer, format: uint64}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        like_count: {type: integer, format: int64}
+        comment_count: {type: integer, format: int64, description: 审核通过且公开可见的根评论数量}
+        liked: {type: boolean}
+        viewer_relation: {$ref: "#/components/schemas/CampusCircleViewerRelation"}
+        available_actions: {type: array, items: {$ref: "#/components/schemas/CampusCircleViewerAction"}}
+    CampusCircleSectionTree:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/CampusCircleSectionView"}}
+    CampusCirclePostPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/CampusCirclePostView"}}
+        page: {type: integer, minimum: 1}
+        page_size: {type: integer, minimum: 1, maximum: 100}
+        total: {type: integer, format: int64}
+    CampusCircleSectionResponseBody:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: {$ref: "#/components/schemas/CampusCircleSectionView"}
+        request_id: {type: string}
+    CampusCircleSectionTreeResponseBody:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: {$ref: "#/components/schemas/CampusCircleSectionTree"}
+        request_id: {type: string}
+    CampusCirclePostResponseBody:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: {$ref: "#/components/schemas/CampusCirclePostView"}
+        request_id: {type: string}
+    CampusCirclePostPageResponseBody:
+      type: object
+      required: [data, request_id]
+      properties:
+        data: {$ref: "#/components/schemas/CampusCirclePostPage"}
+        request_id: {type: string}
+operations:
+  - operation_id: ListCampusCircleSections
+    default_roles: [guest, member]
+    method: GET
+    path: /api/v1/campus-circle/sections
+    permission: campus_circle:read_sections
+    summary: 查询启用的校园圈子模块树
+    responses: [{status: 200, kind: success, ref: CampusCircleSectionTreeResponse}]
+  - operation_id: ListCampusCirclePosts
+    default_roles: [guest, member]
+    method: GET
+    path: /api/v1/campus-circle/posts
+    permission: campus_circle:read_posts
+    summary: 查询已审核通过的校园圈帖子
+    query:
+      - {name: section_id, type: integer, format: uint64, minimum: 1}
+      - {name: parent_section_id, type: integer, format: uint64, minimum: 1}
+      - {name: keyword, type: string, max_length: 100}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostPageResponse}]
+  - operation_id: ListMyCampusCirclePosts
+    default_roles: [member]
+    method: GET
+    path: /api/v1/campus-circle/posts/mine
+    permission: campus_circle:read_mine
+    summary: 查询我发布的校园圈帖子
+    query:
+      - {name: section_id, type: integer, format: uint64, minimum: 1}
+      - {name: status, type: string, enum: [pending_review, approved, rejected, withdrawn]}
+      - {name: keyword, type: string, max_length: 100}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostPageResponse}]
+  - operation_id: CreateCampusCirclePost
+    default_roles: [member]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/campus-circle/posts
+    permission: campus_circle:create_post
+    summary: 发布校园圈帖子并进入待审核
+    body:
+      fields:
+        - {name: section_id, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: title, type: string, max_length: 100}
+        - {name: content, type: string, max_length: 5000}
+        - {name: image_urls, type: array, items: string}
+    responses: [{status: 201, kind: success, ref: CampusCirclePostResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: GetCampusCirclePost
+    default_roles: [guest, member]
+    method: GET
+    path: /api/v1/campus-circle/posts/{id}
+    permission: campus_circle:read_post
+    summary: 查询校园圈帖子详情
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 404, kind: error}]
+  - operation_id: UpdateCampusCirclePost
+    default_roles: [member]
+    method: PATCH
+    idempotency: required
+    academic_verification: required
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/campus-circle/posts/{id}
+    permission: campus_circle:update_post
+    summary: 编辑我的校园圈帖子并重新进入待审核
+    body:
+      fields:
+        - {name: section_id, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: title, type: string, max_length: 100}
+        - {name: content, type: string, max_length: 5000}
+        - {name: image_urls, type: array, items: string}
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: SubmitCampusCirclePostReview
+    default_roles: [member]
+    method: POST
+    idempotency: required
+    academic_verification: required
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/campus-circle/posts/{id}/submit-review
+    permission: campus_circle:submit_review
+    summary: 重新提交被拒绝的校园圈帖子
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 409, kind: error}]
+  - operation_id: WithdrawCampusCirclePost
+    default_roles: [member]
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/campus-circle/posts/{id}/withdraw
+    permission: campus_circle:withdraw_post
+    summary: 撤回我的校园圈帖子
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 409, kind: error}]
+  - operation_id: LikeCampusCirclePost
+    default_roles: [member]
+    method: PUT
+    idempotency: inherent
+    academic_verification: required
+    path: /api/v1/campus-circle/posts/{id}/like
+    permission: campus_circle:like_post
+    summary: 点赞校园圈帖子
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 404, kind: error}]
+  - operation_id: UnlikeCampusCirclePost
+    default_roles: [member]
+    method: DELETE
+    idempotency: inherent
+    academic_verification: required
+    path: /api/v1/campus-circle/posts/{id}/like
+    permission: campus_circle:unlike_post
+    summary: 取消点赞校园圈帖子
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 404, kind: error}]
+  - operation_id: ListAdminCampusCircleSections
+    method: GET
+    path: /api/v1/admin/campus-circle/sections
+    permission: campus_circle:admin_read_sections
+    summary: 管理端查询全部校园圈子模块
+    responses: [{status: 200, kind: success, ref: CampusCircleSectionTreeResponse}]
+  - operation_id: CreateCampusCircleSection
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/campus-circle/sections
+    permission: campus_circle:create_section
+    summary: 创建校园圈子模块
+    body:
+      fields:
+        - {name: parent_id, type: integer, format: uint64, minimum: 1}
+        - {name: slug, type: string, required: true, max_length: 64}
+        - {name: name, type: string, required: true, max_length: 64}
+        - {name: description, type: string, max_length: 500}
+        - {name: icon_url, type: string, max_length: 2048}
+        - {name: cover_url, type: string, max_length: 2048}
+        - {name: sort_order, type: integer, format: int64, required: true}
+    responses: [{status: 201, kind: success, ref: CampusCircleSectionResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: UpdateCampusCircleSection
+    method: PATCH
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/campus-circle/sections/{id}
+    permission: campus_circle:update_section
+    summary: 修改校园圈子模块
+    body:
+      fields:
+        - {name: name, type: string, required: true, max_length: 64}
+        - {name: description, type: string, max_length: 500}
+        - {name: icon_url, type: string, max_length: 2048}
+        - {name: cover_url, type: string, max_length: 2048}
+        - {name: sort_order, type: integer, format: int64, required: true}
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+    responses: [{status: 200, kind: success, ref: CampusCircleSectionResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: ArchiveCampusCircleSection
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/campus-circle/sections/{id}/archive
+    permission: campus_circle:archive_section
+    summary: 归档校园圈子模块
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CampusCircleSectionResponse}, {status: 409, kind: error}]
+  - operation_id: ActivateCampusCircleSection
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/campus-circle/sections/{id}/activate
+    permission: campus_circle:activate_section
+    summary: 启用校园圈子模块
+    body: {fields: [{name: expected_version, type: integer, format: uint64, required: true, minimum: 1}]}
+    responses: [{status: 200, kind: success, ref: CampusCircleSectionResponse}, {status: 409, kind: error}]
+  - operation_id: ListAdminCampusCirclePosts
+    method: GET
+    path: /api/v1/admin/campus-circle/posts
+    permission: campus_circle:admin_read_posts
+    summary: 管理端查询校园圈帖子
+    query:
+      - {name: section_id, type: integer, format: uint64, minimum: 1}
+      - {name: author_id, type: integer, format: uint64, minimum: 1}
+      - {name: status, type: string, enum: [pending_review, approved, rejected, withdrawn]}
+      - {name: keyword, type: string, max_length: 100}
+      - {name: created_from, type: string, format: date-time}
+      - {name: created_to, type: string, format: date-time}
+      - {name: page, type: integer, format: int32, minimum: 1}
+      - {name: page_size, type: integer, format: int32, minimum: 1, maximum: 100}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostPageResponse}]
+  - operation_id: GetAdminCampusCirclePost
+    method: GET
+    path: /api/v1/admin/campus-circle/posts/{id}
+    permission: campus_circle:admin_read_post
+    summary: 管理端查询校园圈帖子详情
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 404, kind: error}]
+  - operation_id: ReviewCampusCirclePost
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/campus-circle/posts/{id}/review
+    permission: campus_circle:review_post
+    summary: 审核校园圈帖子
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: approved, type: boolean, required: true}
+        - {name: reason, type: string, max_length: 500}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 400, kind: error}, {status: 409, kind: error}]
+  - operation_id: RevokeCampusCirclePostReview
+    method: POST
+    idempotency: required
+    academic_verification: none
+    headers: [{name: Idempotency-Key, type: string, required: true}]
+    path: /api/v1/admin/campus-circle/posts/{id}/revoke-review
+    permission: campus_circle:review_revoke
+    summary: 撤销校园圈帖子审核结果
+    body:
+      fields:
+        - {name: expected_version, type: integer, format: uint64, required: true, minimum: 1}
+        - {name: reason, type: string, required: true, max_length: 500}
+    responses: [{status: 200, kind: success, ref: CampusCirclePostResponse}, {status: 400, kind: error}, {status: 409, kind: error}]

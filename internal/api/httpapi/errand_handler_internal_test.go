@@ -49,7 +49,10 @@ func TestListMyErrandsUsesTypedFiltersAndReturnsViewerActions(t *testing.T) {
 		ReviewStatus: erranddomain.ReviewApproved, RequesterId: 7,
 		Deadline: now.Add(time.Hour), Version: 2,
 	}}
-	handler := &Handler{errands: errandapp.NewManager(store)}
+	handler := &Handler{
+		errands:      errandapp.NewManager(store),
+		academicGate: &academicActionGate{verified: true},
+	}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/errands/mine?page=1&page_size=20", nil)
