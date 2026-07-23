@@ -11,6 +11,7 @@ import (
 	"github.com/weouc-plus/campus-platform/internal/modules/comment/domain"
 )
 
+// Supported comment target types.
 const (
 	TargetActivity    = "activity"
 	TargetMarketplace = "marketplace"
@@ -203,14 +204,17 @@ func (m *Manager) Update(
 	return m.store.Update(ctx, id, actorID, version, content, m.now().UTC())
 }
 
+// Withdraw hides an owned comment.
 func (m *Manager) Withdraw(ctx context.Context, id, actorID, version uint64) (Item, error) {
 	return m.store.Withdraw(ctx, id, actorID, version, m.now().UTC())
 }
 
+// SubmitReview resubmits a rejected comment for moderation.
 func (m *Manager) SubmitReview(ctx context.Context, id, actorID, version uint64) (Item, error) {
 	return m.store.SubmitReview(ctx, id, actorID, version, m.now().UTC())
 }
 
+// Review records an administrator moderation decision.
 func (m *Manager) Review(
 	ctx context.Context,
 	id,
@@ -226,6 +230,7 @@ func (m *Manager) Review(
 	return m.store.Review(ctx, id, adminID, version, approved, reason, m.now().UTC())
 }
 
+// RevokeReview returns a decided comment to pending moderation.
 func (m *Manager) RevokeReview(
 	ctx context.Context,
 	id,

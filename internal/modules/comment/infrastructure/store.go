@@ -1,3 +1,4 @@
+// Package infrastructure implements transactional comment persistence.
 package infrastructure
 
 import (

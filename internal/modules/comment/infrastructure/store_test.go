@@ -2,12 +2,10 @@ package infrastructure
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/weouc-plus/campus-platform/internal/core/apperror"
 	"github.com/weouc-plus/campus-platform/internal/core/domainevent"
 	commentapp "github.com/weouc-plus/campus-platform/internal/modules/comment/application"
 	"github.com/weouc-plus/campus-platform/internal/modules/comment/domain"
@@ -257,12 +255,4 @@ func storeDB(t *testing.T) *gorm.DB {
 		t.Fatal(err)
 	}
 	return db
-}
-
-func requireStoreCode(t *testing.T, err error, code string) {
-	t.Helper()
-	var appErr *apperror.Error
-	if !errors.As(err, &appErr) || appErr.Code != code {
-		t.Fatalf("error=%v want=%s", err, code)
-	}
 }

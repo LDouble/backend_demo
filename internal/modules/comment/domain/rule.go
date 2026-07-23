@@ -1,3 +1,4 @@
+// Package domain defines comment entities and lifecycle rules.
 package domain
 
 import (
@@ -5,16 +6,21 @@ import (
 	"strings"
 )
 
+// Comment moderation statuses.
 const (
 	StatusPendingReview = "pending_review"
 	StatusApproved      = "approved"
 	StatusRejected      = "rejected"
 	StatusWithdrawn     = "withdrawn"
-
-	MaxDepth         int64 = 8
-	MaxContentLength       = 2000
 )
 
+// MaxDepth is the deepest accepted reply level.
+const MaxDepth int64 = 8
+
+// MaxContentLength is the maximum number of Unicode code points in a comment.
+const MaxContentLength = 2000
+
+// Comment viewer actions.
 const (
 	ActionEdit         = "edit"
 	ActionWithdraw     = "withdraw"
@@ -24,6 +30,7 @@ const (
 	ActionUnpin        = "unpin_comment"
 )
 
+// Comment validation errors.
 var (
 	ErrContentRequired = errors.New("评论内容不能为空")
 	ErrContentTooLong  = errors.New("评论内容不能超过 2000 个字符")
@@ -62,16 +69,21 @@ func VisibleTo(comment *Comment, viewerID uint64, admin bool) bool {
 		(comment.Status == StatusApproved || admin || (viewerID != 0 && comment.AuthorId == viewerID))
 }
 
+// CanEdit reports whether a comment may be edited.
 func CanEdit(status string) bool {
 	return status == StatusPendingReview || status == StatusApproved || status == StatusRejected
 }
 
+// CanWithdraw reports whether a comment may be withdrawn.
 func CanWithdraw(status string) bool { return status != StatusWithdrawn }
 
+// CanSubmitReview reports whether a rejected comment may be resubmitted.
 func CanSubmitReview(status string) bool { return status == StatusRejected }
 
+// CanReview reports whether an administrator may review the comment.
 func CanReview(status string) bool { return status == StatusPendingReview }
 
+// CanRevokeReview reports whether an administrator may revoke the decision.
 func CanRevokeReview(status string) bool {
 	return status == StatusApproved || status == StatusRejected
 }
