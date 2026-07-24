@@ -4,6 +4,13 @@
 
 交易能力拆分为 Trade、Marketplace 和 Payment 三个边界：统一订单保存交易事实，Marketplace 仅保存商品与保留，Payment 预留在线支付、退款和回调模型。架构说明见 [`docs/trade-payment-architecture.md`](docs/trade-payment-architecture.md)。
 
+## 全栈项目
+
+- 用户端小程序：[LDouble/campus-miniapp](https://github.com/LDouble/campus-miniapp)
+- 管理端：[LDouble/campus-admin-web](https://github.com/LDouble/campus-admin-web)
+
+跨端需求使用同一个 GitHub issue 和功能标识关联，OpenAPI 契约由本仓库维护。
+
 ## 本地启动
 
 ```bash
